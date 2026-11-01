@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/witness-client" },
+    { "path": "packages/term-extractor" },
+    { "path": "packages/paypal-client" },
+    { "path": "packages/sdk" },
+    { "path": "packages/cli" },
+    { "path": "packages/mcp-server" },
+    { "path": "packages/workbench" }
+  ]
+}

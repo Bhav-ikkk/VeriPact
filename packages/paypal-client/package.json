@@ -1,0 +1,14 @@
+{
+  "name": "@veripact/paypal-client",
+  "version": "0.1.0",
+  "description": "VeriPact PayPal client: Orders v2 builders, webhooks, Disputes v1 HATEOAS engine.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b ."
+  },
+  "dependencies": {
+    "@veripact/core": "^0.1.0"
+  },
+  "license": "MIT"
+}

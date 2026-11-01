@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@veripact/core": ["packages/core/src/index"],
+      "@veripact/witness-client": ["packages/witness-client/src/index"],
+      "@veripact/term-extractor": ["packages/term-extractor/src/index"],
+      "@veripact/paypal-client": ["packages/paypal-client/src/index"],
+      "@veripact/sdk": ["packages/sdk/src/index"],
+      "@veripact/cli": ["packages/cli/src/index"],
+      "@veripact/mcp-server": ["packages/mcp-server/src/index"],
+      "@veripact/workbench": ["packages/workbench/src/index"]
+    }
+  },
+  "include": ["packages/*/src/**/*.ts", "packages/*/test/**/*.ts", "vitest.config.ts"]
+}

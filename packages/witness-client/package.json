@@ -1,0 +1,14 @@
+{
+  "name": "@veripact/witness-client",
+  "version": "0.1.0",
+  "description": "VeriPact witness interfaces: RFC 3161 TSA, Channel3 oracle, HTTPS snapshotter.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b ."
+  },
+  "dependencies": {
+    "@veripact/core": "^0.1.0"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@veripact/term-extractor",
+  "version": "0.1.0",
+  "description": "VeriPact term extraction: hidden-DOM scanner, quote verifier, sufficiency gate.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b ."
+  },
+  "dependencies": {
+    "@veripact/core": "^0.1.0"
+  },
+  "license": "MIT"
+}

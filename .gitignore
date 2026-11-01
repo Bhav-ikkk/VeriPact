@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.tools/
+.DS_Store
+*.log
+.npm-cache/
+.vitest-tmp/

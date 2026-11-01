@@ -1,0 +1,14 @@
+{
+  "mandateId": "mnd_20261101_001",
+  "createdAtUtc": "2026-11-01T06:30:00.000Z",
+  "buyerId": "buyer_sandbox_01",
+  "itemQuery": "27-inch 4K IPS Monitor",
+  "constraints": {
+    "requiredCondition": "NEW",
+    "maxAllInPriceUsd": 320,
+    "minReturnWindowDays": 30,
+    "maxRestockingFeePct": 0
+  },
+  "buyerPublicKeyHex": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+  "buyerSignatureHex": "REPLACE_ME_IN_PROMPT_2"
+}

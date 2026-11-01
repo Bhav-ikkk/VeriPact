@@ -1,0 +1,17 @@
+{
+  "name": "@veripact/cli",
+  "version": "0.1.0",
+  "description": "VeriPact executable CLI entry point.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "veripact": "./bin/veripact.js"
+  },
+  "scripts": {
+    "build": "tsc -b ."
+  },
+  "dependencies": {
+    "@veripact/sdk": "^0.1.0"
+  },
+  "license": "MIT"
+}

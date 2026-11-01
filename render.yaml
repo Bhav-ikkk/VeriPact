@@ -1,0 +1,27 @@
+# 1-click Render blueprint: builds the monorepo, starts the workbench.
+services:
+  - type: web
+    name: veripact-workbench
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: node packages/workbench/dist/index.js
+    envVars:
+      - key: NODE_VERSION
+        value: 22.13.1
+      - key: PUBLIC_STORE_BASE_URL
+        value: https://veripact-workbench.onrender.com
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: BUYER_ED25519_PRIVATE_KEY
+        sync: false
+      - key: WITNESS_ED25519_PRIVATE_KEY
+        sync: false
+      - key: MERCHANT_ED25519_PRIVATE_KEY
+        sync: false
+      - key: CHANNEL3_API_KEY
+        sync: false
+      - key: AG_STUDIO_LICENSE_KEY
+        sync: false

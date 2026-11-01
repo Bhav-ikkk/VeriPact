@@ -1,0 +1,31 @@
+{
+  "name": "veripact",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VeriPact: prove what the merchant promised. Spectra-style TypeScript monorepo foundation.",
+  "type": "commonjs",
+  "packageManager": "npm@10",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -b .",
+    "clean": "tsc -b --clean .",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "lint": "eslint .",
+    "test": "tsc -b . && vitest run",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "eslint": "^9.18.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^3.0.4"
+  }
+}
