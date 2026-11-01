@@ -7,7 +7,7 @@
 
 ## Method and evidence base
 
-This audit fuses (a) live web verification run today (6 research agents, 100+ tool calls, official PayPal Developer docs + raw GitHub READMEs + Devpost pages fetched 2026-11-01), and (b) a full read of the locked spec in this repo ([Idea.md](/absolute/path/D:/Bhavik/VerdiPact/Idea.md)).
+This audit fuses (a) live web verification run today (6 research agents, 100+ tool calls, official PayPal Developer docs + raw GitHub READMEs + Devpost pages fetched 2026-11-01), and (b) a full read of the locked spec in this repo ([Idea.md](Idea.md)).
 
 Primary Devpost rules pages returned HTTP 403 to fetch, so rules/prize facts below are corroborated by the PayPal Developer blog, CourseJoiner, StartupGrantsIndia, Eventopia, and a Devpost transcription doc — not by Devpost directly. Every unverified claim is named in the Appendix. Where the deep-research aggregator returned "no source-backed claims," that was an aggregation failure, not an evidence failure: the five child evidence packs below are real and cited inline.
 

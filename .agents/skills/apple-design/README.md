@@ -27,10 +27,10 @@ npx skills update apple-design                            # pull the latest vers
 
 ### Claude Code, by hand
 
-Claude Code reads skills from `.claude/skills/` in a project or `~/.claude/skills/` for the user:
+Claude Code reads skills from `.agents/skills/` in a project or `~/.agents/skills/` for the user:
 
 ```bash
-git clone https://github.com/dickwu/apple-design-skill.git ~/.claude/skills/apple-design
+git clone https://github.com/dickwu/apple-design-skill.git ~/.agents/skills/apple-design
 ```
 
 The skill triggers on design-review requests and is also available as `/apple-design`.

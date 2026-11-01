@@ -74,7 +74,7 @@ From `fixture/`:
 (Both first build the shared `grid-config` lib. `npm run build` builds React + Angular for production.)
 
 ## Manual iteration with the live skill
-`fixture/.claude/skills/ag-update` is a gitignored symlink to the real skill. Launch claude **in
+`fixture/.agents/skills/ag-update` is a gitignored symlink to the real skill. Launch claude **in
 `fixture/`** to drive the upgrade with the live skill. Running the skill there mutates the packages
 in place — `git checkout`/`git stash` to reset.
 

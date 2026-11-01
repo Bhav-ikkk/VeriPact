@@ -12,8 +12,8 @@ Owns: `packages/workbench`.
 - Single-process Node HTTP server: `/health`, `/api/buyer`, `/api/witness`,
   `/api/merchant`, `/store` — route modules keep Rule 2 key boundaries.
 - Sequoia 2-view web UI (buyer checkout + dispute desk) styled per
-  `.claude/skills/apple-design` and Emil Kowalski UI guidance.
-- AG Grid master table + AG Studio desk per `.claude/skills/ag-grid-skills`
+  `.agents/skills/apple-design` and Emil Kowalski UI guidance.
+- AG Grid master table + AG Studio desk per `.agents/skills/ag-grid-skills`
   (never guess Studio APIs; the skill is the source of truth).
 
 ## Hard boundaries

@@ -40,11 +40,11 @@ export async function runTest(
   const cwd = hasFixture ? join(workDir, "new") : workDir;
   mkdirSync(cwd, { recursive: true });
 
-  // Install skills into project-scoped .claude/skills (under cwd) so Claude Code discovers them.
+  // Install skills into project-scoped .agents/skills (under cwd) so Claude Code discovers them.
   // The skill name is the directory name (no parsing): a referenced skill installs as
-  // .claude/skills/<basename>; an embedded case mirrors .claude/skills in its own skills/ folder,
+  // .agents/skills/<basename>; an embedded case mirrors .agents/skills in its own skills/ folder,
   // whose contents (skills/<name>/SKILL.md) are copied in directly.
-  const skillsDest = join(cwd, ".claude/skills");
+  const skillsDest = join(cwd, ".agents/skills");
   if (def.skill) {
     cpSync(join(REPO, def.skill), join(skillsDest, basename(def.skill)), {
       recursive: true,
@@ -53,11 +53,11 @@ export async function runTest(
     cpSync(join(caseDir, "skills"), skillsDest, { recursive: true });
   }
 
-  // Real-skill cases run in a git repo so the skill's per-step commits work. Ignore .claude and
+  // Real-skill cases run in a git repo so the skill's per-step commits work. Ignore .agents and
   // node_modules so they pollute neither the skill's commits nor the old/new diff.
   if (hasFixture) {
     // Write the same .gitignore into old/ and new/ so it is diff-neutral; git only inits new/.
-    const gitignore = "node_modules\n.claude/\n";
+    const gitignore = "node_modules\n.agents/\n";
     writeFileSync(join(workDir, "old", ".gitignore"), gitignore);
     writeFileSync(join(cwd, ".gitignore"), gitignore);
     execSync(

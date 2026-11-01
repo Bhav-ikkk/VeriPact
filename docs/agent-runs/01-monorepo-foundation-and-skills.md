@@ -3,6 +3,10 @@
 Date: 2026-11-01. Scope: Atomic Prompt #1 (foundation only, no product code).
 Repo: `https://github.com/Bhav-ikkk/VeriPact.git` (was empty; this run creates `main`).
 
+> Correction (run 01b, 2026-11-01): skill/subagent paths below were migrated
+> to `.agents/skills/` and `.agents/subagents/` (Muse Spark toolchain).
+> Counts and content are unchanged.
+
 ## 1. What was created
 
 Spectra-style npm-workspaces TypeScript monorepo (CommonJS, strict, composite
@@ -30,8 +34,8 @@ veripact/
 ├── benchmark/
 │   ├── scenarios/{README.md,schema.json}  responses/README.md  results/README.md
 ├── .veripact/mandates.json   # sample buyer mandate (signature placeholder marked)
-├── .claude/agents/01..05-*.md
-├── .claude/skills/           # 7 skill dirs, 34 SKILL.md files (nested .git stripped)
+├── .agents/subagents/01..05-*.md
+├── .agents/skills/           # 7 skill dirs, 34 SKILL.md files (nested .git stripped)
 ├── skills/veripact-witness/SKILL.md
 ├── docs/agent-runs/01-monorepo-foundation-and-skills.md (this file)
 ├── package.json  package-lock.json  tsconfig.{json,base.json,typecheck.json}
@@ -67,7 +71,7 @@ and `require.resolve('@veripact/core')` was proven to land on
   Gap accepted: PayPal API shapes for agent 02 come from official docs
   already verified in `VERIPACT_V4_JUDGE_AUDIT.md`.
 - `AGENTS.md` encodes the 4 non-negotiable rules + the sandbox-tested
-  toolchain block. `.claude/agents/01..05` own the package map.
+  toolchain block. `.agents/subagents/01..05` own the package map.
   `skills/veripact-witness/SKILL.md` publishes the CLI/MCP contract
   (v0.1.0 skeleton status stated honestly).
 

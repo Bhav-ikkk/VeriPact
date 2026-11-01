@@ -5,6 +5,38 @@
  * changes require a repo-wide migration in the same run (see agent 01).
  */
 
+import {
+  canonicalizeJson,
+  computeCommitment,
+  deriveEd25519KeyPairFromSeed,
+  evaluateContestedDispute,
+  generateEd25519KeyPair,
+  sha256Hex,
+  signCanonicalPayload,
+  verifyCanonicalPayload,
+  COMMITMENT_LENGTH,
+  COMMITMENT_PREFIX,
+} from './crypto';
+
+export {
+  canonicalizeJson,
+  computeCommitment,
+  deriveEd25519KeyPairFromSeed,
+  evaluateContestedDispute,
+  generateEd25519KeyPair,
+  sha256Hex,
+  signCanonicalPayload,
+  verifyCanonicalPayload,
+  COMMITMENT_LENGTH,
+  COMMITMENT_PREFIX,
+};
+export type {
+  ContestedDisputeInput,
+  ContestedDisputeResult,
+  Ed25519KeyPair,
+  SignedReceipt,
+} from './crypto';
+
 /** Evidence ladder rung: buyer-recorded, independent-witness, merchant-signed. */
 export type EvidenceRung = 'SELF' | 'WIT' | 'SIGN';
 
@@ -127,11 +159,7 @@ export interface Referee<TInput, TOutput> {
   decide(input: TInput): TOutput;
 }
 
-/** PayPal `custom_id` commitment prefix. */
-export const COMMITMENT_PREFIX = 'VP1:';
-
-/** Exact length of a `VP1:` + sha256-hex commitment (4 + 64). */
-export const COMMITMENT_LENGTH = 68;
+/** Commitment constants live in `./crypto` and are re-exported above. */
 
 const SHA256_HEX_RE = /^[0-9a-f]{64}$/;
 

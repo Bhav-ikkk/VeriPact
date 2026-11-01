@@ -14,7 +14,7 @@ Owns: `benchmark/`.
   (`benchmark/responses/`, labeled `REPLAY`).
 - Regression runner output (`benchmark/results/regression_benchmark_report.json`)
   with Wilson 95% confidence intervals.
-- Multi-phase security audits via `.claude/skills/security-audit`
+- Multi-phase security audits via `.agents/skills/security-audit`
   (secret handling, key boundaries, injection surfaces, dependency review).
 
 ## Hard boundaries

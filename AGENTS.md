@@ -77,5 +77,15 @@ self-corrections with rationale, and the full verification output.
 | `packages/mcp-server` | Stdio JSON-RPC 2.0 MCP server |
 | `packages/workbench` | Sequoia 2-view web UI + single-process HTTP server |
 
-Sub-agent ownership lives in `.claude/agents/`.
+Sub-agent ownership (Muse Spark toolchain):
+`.agents/subagents/01-core-crypto-referee.md`,
+`.agents/subagents/02-extractor-and-paypal.md`,
+`.agents/subagents/03-sdk-cli-mcp.md`,
+`.agents/subagents/04-sequoia-ag-workbench.md`,
+`.agents/subagents/05-security-and-benchmark.md`.
+Cached marketplace skills: `.agents/skills/ag-grid-skills`,
+`.agents/skills/apple-design`, `.agents/skills/emilkowalski-skill`,
+`.agents/skills/frontend-design`, `.agents/skills/react-best-practices`,
+`.agents/skills/web-design-guidelines`, `.agents/skills/security-audit`,
+`.agents/skills/paypal-api-context`.
 The external-agent contract lives in `skills/veripact-witness/SKILL.md`.

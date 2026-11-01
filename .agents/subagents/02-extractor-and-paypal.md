@@ -14,7 +14,7 @@ Owns: `packages/term-extractor`, `packages/paypal-client`.
 - PayPal Orders v2 request builders (AUTHORIZE / PATCH / CAPTURE / VOID),
   webhook signature verification, and the Disputes v1 HATEOAS action engine.
 - PayPal API shapes follow the APIMatic PayPal context plugin
-  (`.claude/skills/`, see agent-run ledger) and official developer docs.
+  (`.agents/skills/`, see agent-run ledger) and official developer docs.
 
 ## Hard boundaries
 

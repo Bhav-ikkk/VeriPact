@@ -13,7 +13,7 @@ coverage/
 *.tsbuildinfo
 
 # Local-only symlinked skill installs for manual iteration inside fixtures
-tests/harness/cases/*/fixture/.claude/
+tests/harness/cases/*/fixture/.agents/
 
 # Work files when running skill locally
 AG_UPDATE_*.md
