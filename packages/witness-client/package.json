@@ -8,7 +8,8 @@
     "build": "tsc -b ."
   },
   "dependencies": {
-    "@veripact/core": "^0.1.0"
+    "@veripact/core": "^0.1.0",
+    "@veripact/term-extractor": "^0.1.0"
   },
   "license": "MIT"
 }

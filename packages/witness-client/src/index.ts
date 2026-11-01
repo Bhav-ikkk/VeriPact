@@ -1,46 +1,24 @@
 /**
- * @veripact/witness-client — Rung 2 (WIT) interfaces and stubs.
+ * @veripact/witness-client — Rung 2 (WIT) independent witness.
+ *
+ * Modules: `tsa` (RFC 3161 anchoring), `channel3-oracle` (catalog
+ * cross-check), `snapshotter` (fetch → scan → extract → gate → sign).
  *
  * Honesty contract (AGENTS.md Rule 3): a timestamp proves that a hash
  * existed at time T plus independent witness observation. It never
  * proves content truth.
  */
-import type { TermReceipt, WitnessProvenance } from '@veripact/core';
+import type { MandateSpec, TermReceipt, WitnessProvenance } from '@veripact/core';
 import { NotImplementedError } from '@veripact/core';
+import { createWitnessSnapshot } from './snapshotter';
+import type { TsaMode } from './tsa';
+import type { Channel3CatalogCache, Channel3OracleMode } from './channel3-oracle';
+import type { HtmlFetcher } from './snapshotter';
 
 export { NotImplementedError };
-
-/** RFC 3161 timestamp request over a canonical-receipt digest. */
-export interface TimestampRequest {
-  sha256Hex: string;
-}
-
-/** RFC 3161 timestamp response (token is raw DER, base64). */
-export interface TimestampResponse {
-  issuer: string;
-  timeUtc: string;
-  tokenBase64: string;
-}
-
-/** Pluggable timestamp authority (DigiCert live, freeTSA/OpenSSL for tests). */
-export interface ITimestampAuthority {
-  readonly name: string;
-  timestamp(req: TimestampRequest): Promise<TimestampResponse>;
-}
-
-/** Minimal Channel3 catalog product used as the oracle cross-check. */
-export interface Channel3Product {
-  productId: string;
-  brand?: string;
-  condition?: string;
-  referencePriceUsd?: number;
-}
-
-/** Pluggable Channel3 catalog oracle. */
-export interface IChannel3Oracle {
-  readonly name: string;
-  lookup(query: string): Promise<Channel3Product | null>;
-}
+export * from './tsa';
+export * from './channel3-oracle';
+export * from './snapshotter';
 
 /** Out-of-band page fetch result. */
 export interface SnapshotResult {
@@ -50,7 +28,7 @@ export interface SnapshotResult {
   bodyText: string;
 }
 
-/** Pluggable HTTPS snapshotter (must fetch the DEPLOYED url, never localhost). */
+/** HTTPS snapshotter contract (implemented by `NodeHttpSnapshotter`). */
 export interface IHttpSnapshotter {
   readonly name: string;
   fetch(url: string): Promise<SnapshotResult>;
@@ -62,20 +40,23 @@ export interface WitnessedReceipt {
   provenance: WitnessProvenance;
 }
 
-/** Rung 2 witness service contract (Prompt #2 implements `witness`). */
+/** Rung 2 witness service contract. */
 export interface IWitnessService {
   readonly name: string;
-  witness(listingUrl: string, mandateSha256: string): Promise<WitnessedReceipt>;
+  witness(listingUrl: string, mandate: MandateSpec): Promise<WitnessedReceipt>;
 }
 
 export interface WitnessClientDeps {
-  tsa: ITimestampAuthority;
-  oracle: IChannel3Oracle;
-  snapshotter: IHttpSnapshotter;
   witnessPublicKeyHex: string;
+  witnessPrivateKeyHex: string;
+  requirePublicHttps?: boolean;
+  tsaMode?: TsaMode;
+  channel3Mode?: Channel3OracleMode;
+  htmlFetcher?: HtmlFetcher;
+  channel3Cache?: Channel3CatalogCache;
 }
 
-/** Foundation stub: constructor is real, `witness` throws until Prompt #2. */
+/** Configured witness facade over `createWitnessSnapshot`. */
 export class WitnessClient implements IWitnessService {
   readonly name = 'witness-client';
   private readonly deps: WitnessClientDeps;
@@ -88,8 +69,21 @@ export class WitnessClient implements IWitnessService {
     return this.deps.witnessPublicKeyHex;
   }
 
-  witness(_listingUrl: string, _mandateSha256: string): Promise<WitnessedReceipt> {
-    return Promise.reject(new NotImplementedError('WitnessClient.witness'));
+  async witness(listingUrl: string, mandate: MandateSpec): Promise<WitnessedReceipt> {
+    const output = await createWitnessSnapshot({
+      listingUrl,
+      mandate,
+      witnessKeys: {
+        publicKeyHex: this.deps.witnessPublicKeyHex,
+        privateKeyHex: this.deps.witnessPrivateKeyHex,
+      },
+      htmlFetcher: this.deps.htmlFetcher,
+      requirePublicHttps: this.deps.requirePublicHttps,
+      tsaMode: this.deps.tsaMode,
+      channel3Mode: this.deps.channel3Mode,
+      channel3Cache: this.deps.channel3Cache,
+    });
+    return { receipt: output.termReceipt, provenance: output.provenance };
   }
 }
 

@@ -52,6 +52,9 @@ export type DisputeVerdict =
   | 'MERCHANT_DRIFT_CONFIRMED'
   | 'TERMS_HONORED';
 
+/** Page integrity from the pre-LLM DOM scan. */
+export type PageIntegrity = 'CLEAN' | 'ADVERSARIAL_DOM';
+
 /** Buyer spending/terms constraints locked before shopping. */
 export interface MandateConstraints {
   requiredCondition: string;
@@ -93,8 +96,13 @@ export interface ObservedTermSheet {
   itemTitle: ObservedCriterion<string>;
   condition: ObservedCriterion<string>;
   basePriceUsd: ObservedCriterion<number>;
+  shippingUsd: ObservedCriterion<number>;
+  taxUsd: ObservedCriterion<number>;
   returnWindowDays: ObservedCriterion<number>;
   restockingFeePct: ObservedCriterion<number>;
+  /** Derived sum (base + shipping + tax) when all three are determinate. */
+  allInTotalUsd: ObservedCriterion<number>;
+  pageIntegrity: PageIntegrity;
   headroomRemainingUsd: number;
 }
 
@@ -105,6 +113,8 @@ export interface ObservedTermSheet {
 export interface WitnessProvenance {
   fetchedUrl: string;
   httpStatus: number;
+  /** True only when fetched over verified TLS (honest transport record). */
+  tlsVerified: boolean;
   fetchedAtUtc: string;
   witnessPublicKeyHex: string;
   tsaIssuer: string;
@@ -115,6 +125,8 @@ export interface WitnessProvenance {
 /** Canonical witnessed receipt bound into PayPal `custom_id`. */
 export interface TermReceipt {
   receiptVersion: 'VP1';
+  /** Ladder rung this receipt was produced at. */
+  rung: EvidenceRung;
   capturedAtUtc: string;
   merchantDomain: string;
   listingUrl: string;

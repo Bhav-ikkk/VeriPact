@@ -1,19 +1,22 @@
 /**
- * @veripact/term-extractor — visible-quote extraction and the sufficiency gate.
+ * @veripact/term-extractor — deterministic extraction and sufficiency gating.
  *
- * Pure helpers (`looksHidden`, `containsAdversarialPhrase`,
- * `isExactSubstring`, `SufficiencyGate`) are real and tested. DOM/LLM
- * networked implementations land in later prompts.
+ * Modules: `dom-scanner` (pre-LLM hidden-DOM scan), `quote-verifier`
+ * (substring-verified extraction), `sufficiency-gate` (mandate-aware
+ * 3-state decision). The heuristics below are the run-01 pure helpers,
+ * kept as the fast-path API.
  */
 import type {
   GateDecision,
   ObservedCriterion,
   Referee,
-  VerifiedQuote,
 } from '@veripact/core';
 import { NotImplementedError } from '@veripact/core';
 
 export { NotImplementedError };
+export * from './dom-scanner';
+export * from './quote-verifier';
+export * from './sufficiency-gate';
 
 /** CSS heuristics that mark an element as hidden from a human reader. */
 const HIDDEN_STYLE_RES = [
@@ -54,33 +57,7 @@ export function isExactSubstring(blockText: string, quote: string): boolean {
   return quote.length > 0 && blockText.includes(quote);
 }
 
-/** One hidden node found by the pre-LLM scanner. */
-export interface HiddenNodeFinding {
-  selector: string;
-  reason: string;
-  text: string;
-}
-
-/** Pre-LLM deterministic DOM scanner contract. */
-export interface IDomScanner {
-  readonly name: string;
-  scan(html: string): HiddenNodeFinding[];
-}
-
-/** Quote extractor contract (LLM + substring verifier in later prompts). */
-export interface IQuoteExtractor {
-  readonly name: string;
-  extract(blocks: Array<{ blockId: string; selector: string; text: string }>): VerifiedQuote[];
-}
-
-/** Foundation stub: throws until the DOM/LLM wiring lands. */
-export class DomScannerStub implements IDomScanner {
-  readonly name = 'dom-scanner-stub';
-
-  scan(_html: string): HiddenNodeFinding[] {
-    throw new NotImplementedError('DomScanner.scan');
-  }
-}
+/** Scanner contracts live in `./dom-scanner` (re-exported above). */
 
 /**
  * Deterministic 3-state gate over per-criterion statuses:
