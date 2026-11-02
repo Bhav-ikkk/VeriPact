@@ -49,7 +49,7 @@ export function renderApprovalPage(d: ApprovalPageData): string {
 <dt>Shipping</dt><dd class="num">${money(d.shippingUsd)}</dd>
 <dt>Tax</dt><dd class="num">${money(d.taxUsd)}</dd>
 <dt><b>Final total</b></dt><dd class="num"><b>${money(d.finalTotalUsd)}</b></dd>
-<dt>Commitment</dt><dd class="mono wrap">${esc(d.customId)}</dd>
+<dt>Commitment</dt><dd class="mono">${esc(d.customId)}</dd>
 <dt>Mode</dt><dd class="mono">${esc(d.transportMode)}</dd></dl>
 <div id="act">${done ? '<div class="banner ok"><b>Already approved.</b> Return to the workbench — it will finalize automatically.</div>' : '<button type="button" id="approve-btn">Approve Order Hold as Buyer</button><p class="hint" id="approve-hint"></p>'}</div>`;
   return `<!doctype html>
@@ -57,26 +57,27 @@ export function renderApprovalPage(d: ApprovalPageData): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VeriPact Sandbox Buyer Approval — ${esc(d.orderId)}</title>
 <style>
-body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:0;background:#eef2f7;color:#14202e}
+:root{--bg-canvas:#f8f9fb;--bg-surface:#fff;--text-primary:#101828;--text-secondary:#475467;--text-muted:#667085;--border-subtle:#e5e7eb;--accent-charcoal:#182230;--accent-charcoal-hover:#253346;--accent-blue:#175cd3;--status-success-bg:#ecfdf3;--status-success-border:#abefc6;--status-success-ink:#15803d;--status-warn-bg:#fffaeb;--status-warn-border:#fedf89;--status-warn-ink:#b54708;--status-danger-bg:#fef3f2;--status-danger-border:#fecdca;--status-danger-ink:#b42318;--font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--font-mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace}
+*{box-sizing:border-box}
+body{font-family:var(--font-sans);margin:0;background:var(--bg-canvas);color:var(--text-primary);font-variant-numeric:tabular-nums}
 .wrap{max-width:560px;margin:0 auto;padding:26px 18px 60px}
-.sim{font-size:12px;font-weight:700;letter-spacing:.02em;color:#8a5a00;background:#fcefd2;border:1px solid #ecd9a8;border-radius:10px;padding:8px 12px;margin-bottom:12px}
+.sim{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--status-warn-ink);background:var(--status-warn-bg);border:1px solid var(--status-warn-border);border-radius:10px;padding:8px 12px;margin-bottom:12px}
 h1{font-size:20px;margin:0 0 4px}
-.card{background:#fff;border:1px solid #dfe6f0;border-radius:16px;padding:18px 20px}
-.crumb{font-size:13px;color:#44536a;margin:0 0 10px}
+.card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:12px;padding:18px 20px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.crumb{font-size:13px;color:var(--text-secondary);margin:0 0 10px}
 .kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;font-size:14px;margin:0}
-.kv dt{color:#44536a}.kv dd{margin:0;min-width:0}
-.mono{font-family:ui-monospace,Menlo,monospace;font-size:12px;font-variant-numeric:tabular-nums}
+.kv dt{color:var(--text-secondary)}.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.mono{font-family:var(--font-mono);font-size:12px;font-variant-numeric:tabular-nums}
 .num{font-variant-numeric:tabular-nums}
-.wrap-all{overflow-wrap:anywhere}
-#approve-btn{font-size:15px;font-weight:700;color:#fff;background:#0e6efd;border:0;border-radius:10px;padding:13px 22px;cursor:pointer;margin-top:14px;min-height:44px;width:100%}
+#approve-btn{font-size:15px;font-weight:600;color:#fff;background:var(--accent-charcoal);border:0;border-radius:8px;padding:13px 22px;cursor:pointer;margin-top:14px;min-height:44px;width:100%}
+#approve-btn:hover{background:var(--accent-charcoal-hover)}
 #approve-btn:disabled{opacity:.6;cursor:wait}
-.hint{font-size:13px;color:#44536a;min-height:20px}
-.banner{border-radius:10px;padding:12px 14px;font-size:14px;margin-top:12px}
-.banner.ok{background:#e2f4eb;color:#1f8a70}
-.banner.bad{background:#fbe3e8;color:#c81e3a}
-.foot{margin-top:16px;font-size:12px;color:#44536a}
-:focus-visible{outline:2px solid #0e6efd;outline-offset:2px}
-@media (prefers-color-scheme:dark){body{background:#0f141b;color:#e8eef6}.card{background:#161d27;border-color:#2a3444}.crumb,.hint,.foot{color:#9aa7bb}}
+.hint{font-size:13px;color:var(--text-secondary);min-height:20px}
+.banner{border-radius:10px;padding:12px 14px;font-size:14px;margin-top:12px;border:1px solid}
+.banner.ok{background:var(--status-success-bg);color:var(--status-success-ink);border-color:var(--status-success-border)}
+.banner.bad{background:var(--status-danger-bg);color:var(--status-danger-ink);border-color:var(--status-danger-border)}
+.foot{margin-top:16px;font-size:12px;color:var(--text-secondary)}
+:focus-visible{outline:2px solid var(--accent-blue);outline-offset:2px}
 </style></head>
 <body><main class="wrap">
 <div class="sim">VeriPact Deterministic Sandbox Buyer Approval — Zero-Key Mode. Simulation only: no real PayPal, no real money, no login.</div>

@@ -1,7 +1,7 @@
 {
   "name": "@veripact/workbench",
   "version": "0.1.0",
-  "description": "VeriPact Sequoia 2-view web UI and single-process Node HTTP server.",
+  "description": "VeriPact editorial-fintech 2-view web UI and single-process Node HTTP server.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {

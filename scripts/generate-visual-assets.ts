@@ -109,26 +109,26 @@ const num = (v: unknown, fb = 0): number => (typeof v === 'number' && Number.isF
 const money = (v: unknown): string => `$${num(v).toFixed(2)}`;
 const short = (s: string, n: number): string => (s.length <= n ? s : `${s.slice(0, n - 1)}…`);
 
-/* ---------------- minimal SVG DSL (dark clearing-terminal theme) ---------------- */
+/* -------- minimal SVG DSL (light editorial-fintech theme, run 09) -------- */
 
 const W = 1600;
 const H = 900;
 const C = {
-  bg: '#0f141b',
-  panel: '#161d27',
-  line: '#2a3444',
-  ink: '#e8eef6',
-  muted: '#9aa7bb',
-  emerald: '#3ddc97',
-  emeraldBg: '#123b2c',
-  amber: '#f5b942',
-  amberBg: '#4a3413',
-  crimson: '#f0667e',
-  crimsonBg: '#4a1620',
-  accent: '#5b9dff',
-  accentBg: '#16294a',
-  mono: 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace',
-  sans: 'system-ui,-apple-system,Segoe UI,sans-serif',
+  bg: '#f8f9fb',
+  panel: '#ffffff',
+  line: '#e5e7eb',
+  ink: '#101828',
+  muted: '#667085',
+  emerald: '#15803d',
+  emeraldBg: '#ecfdf3',
+  amber: '#b54708',
+  amberBg: '#fffaeb',
+  crimson: '#b42318',
+  crimsonBg: '#fef3f2',
+  accent: '#175cd3',
+  accentBg: '#e8eefb',
+  mono: "'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace",
+  sans: "'Inter',system-ui,-apple-system,Segoe UI,sans-serif",
 };
 
 function esc(s: string): string {

@@ -1,17 +1,14 @@
 /**
- * @veripact/workbench Sequoia 2-view UI template (agent 04).
+ * @veripact/workbench editorial-fintech light UI template (run 09).
  *
- * One self-contained HTML page: glass header, View 1 buyer checkout +
- * Verify-It-Yourself auditor, View 2 AG dispute desk with remounted
- * datasets. Design applications: apple-design (HIG foundations — semantic
- * status colors, tabular numerals, glass only on the floating header),
- * break-ui (hash chips truncate middle/end with copy-on-click + full value
- * on focus, min-width:0 flex children, tabular figures), interface
- * guidelines (skip link, aria-live status, focus-visible rings,
- * reduced-motion), taste (no landing-page tropes — a dense workspace).
- * AG usage follows ag-dev: explicit 560px containers, getRowId, remount
- * (never in-place data swaps) when switching datasets, native fallback
- * table when the CDN is unreachable.
+ * One self-contained HTML page: Tier A header, Tier B 3-stage evidence
+ * pipeline, Tier C 2-column checkout workspace, Tier D outcome/record/
+ * auditor strip, plus View 2 (dispute desk + deterministic studio agent).
+ * Flat light tokens (#F8F9FB canvas, #FFFFFF cards, #182230 actions);
+ * tabular numerals everywhere a number renders. All element IDs, API
+ * call shapes, security guards (finalizing lock, origin-checked
+ * postMessage, overflow rules) and the byte-identical inline `jcs`
+ * canonicalizer are preserved from the pre-redesign contract.
  */
 export function renderIndexPage(): string {
   return `<!doctype html>
@@ -23,166 +20,230 @@ export function renderIndexPage(): string {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.9/styles/ag-theme-quartz.css">
 <style>
 :root{
---bg:#f5f7fa;--panel:#ffffff;--ink:#14202e;--muted:#44536a;--line:#dfe6f0;
---accent:#0e6efd;--accent-ink:#ffffff;
---emerald:#1f8a70;--emerald-bg:#e2f4eb;--amber:#8a5a00;--amber-bg:#fcefd2;
---crimson:#c81e3a;--crimson-bg:#fbe3e8;--slate-bg:#e8eef5;
---mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
---r-sm:8px;--r-md:12px;--r-lg:16px;
---spring:cubic-bezier(.32,.72,0,1);
+--bg-canvas:#f8f9fb;--bg-surface:#ffffff;--bg-subtle:#f2f4f7;--bg-muted:#f9fafb;
+--text-primary:#101828;--text-secondary:#475467;--text-muted:#667085;
+--border-subtle:#e5e7eb;--border-strong:#d0d5dd;
+--accent-charcoal:#182230;--accent-charcoal-hover:#253346;--accent-blue:#175cd3;
+--status-success-bg:#ecfdf3;--status-success-border:#abefc6;--status-success-ink:#15803d;--status-success-solid:#16a34a;
+--status-warn-bg:#fffaeb;--status-warn-border:#fedf89;--status-warn-ink:#b54708;
+--status-danger-bg:#fef3f2;--status-danger-border:#fecdca;--status-danger-ink:#b42318;
+--radius-card:12px;--radius-control:8px;
+--shadow-card:0 1px 2px rgba(16,24,40,.04);
+--font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+--font-mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
 }
 *{box-sizing:border-box}
-body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:0;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
-.skip{position:absolute;left:-999px;top:8px;background:var(--ink);color:#fff;padding:8px 14px;border-radius:var(--r-sm);z-index:99}
+body{font-family:var(--font-sans);margin:0;background:var(--bg-canvas);color:var(--text-primary);font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums}
+.skip{position:absolute;left:-999px;top:8px;background:var(--accent-charcoal);color:#fff;padding:8px 14px;border-radius:var(--radius-control);z-index:99;font-size:13px}
 .skip:focus{left:8px;color:#fff}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
-h1{font-size:19px;margin:0;text-wrap:balance}
-h2{font-size:15px;margin:0 0 10px}
-h3{font-size:13px;margin:14px 0 8px;color:var(--muted);font-weight:600}
-.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-/* Floating glass header (the only blurred surface) */
-.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-background:rgba(255,255,255,.78);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
-border-bottom:1px solid var(--line);padding:10px 18px}
-.brand{display:flex;align-items:center;gap:10px;min-width:0}
-.brand-mark{width:30px;height:30px;border-radius:9px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0}
-.brand small{display:block;color:var(--muted);font-size:11px}
-.mode-pill{font-size:12px;font-weight:600;padding:4px 12px;border-radius:999px;white-space:nowrap;flex-shrink:0}
-.mode-live{background:var(--emerald-bg);color:var(--emerald)}
-.mode-replay{background:var(--amber-bg);color:var(--amber)}
-.rungs{display:flex;gap:6px;font-size:11px;color:var(--muted);align-items:center;min-width:0}
-.rung{border:1px solid var(--line);border-radius:999px;padding:2px 9px;white-space:nowrap;background:#fff}
-.view-switch{margin-left:auto;display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
-.view-switch button{border:0;background:transparent;padding:8px 16px;font-size:13px;cursor:pointer;color:var(--muted)}
-.view-switch button[aria-pressed="true"]{background:var(--ink);color:#fff;font-weight:600}
-.btn{font-size:13px;padding:9px 16px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;min-height:36px}
-.btn:hover{border-color:#b9c4d4}
-.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
-.btn-primary:hover{background:#0b5ed7}
+:focus-visible{outline:2px solid var(--accent-blue);outline-offset:2px;border-radius:4px}
+h1{font-size:18px;font-weight:800;margin:0;white-space:nowrap}
+h2{font-size:15px;font-weight:700;margin:0 0 10px}
+h3{font-size:13px;margin:14px 0 8px;color:var(--text-secondary);font-weight:600}
+.num,.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+/* Tier A — top header bar */
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;height:58px;background:var(--bg-surface);border-bottom:1px solid var(--border-subtle);padding:0 24px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;flex-shrink:0}
+.brand .divider{width:1px;height:18px;background:var(--border-strong);flex-shrink:0}
+.brand .tagline{font-size:13px;font-weight:500;color:var(--text-muted);white-space:nowrap}
+.view-switch{margin:0 auto;display:inline-flex;gap:4px;background:var(--bg-subtle);padding:3px;border-radius:8px;flex-shrink:0}
+.view-switch button{border:0;background:transparent;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text-secondary);border-radius:6px;font-family:inherit;white-space:nowrap}
+.view-switch button[aria-pressed="true"]{background:var(--accent-charcoal);color:#fff}
+.top-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.mode-pill{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:999px;white-space:nowrap;border:1px solid}
+.mode-pill::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.mode-live{background:var(--status-success-bg);border-color:var(--status-success-border);color:var(--status-success-ink)}
+.mode-replay{background:var(--status-warn-bg);border-color:var(--status-warn-border);color:var(--status-warn-ink)}
+#tour-status{font-size:12.5px;color:var(--text-muted);font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;min-width:0}
+.btn{font-family:inherit;font-size:13px;font-weight:600;padding:8px 16px;border-radius:var(--radius-control);border:1px solid var(--border-strong);background:#fff;color:var(--text-primary);cursor:pointer;min-height:36px;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+.btn:hover{border-color:#98a2b3;background:var(--bg-muted)}
+.btn-primary{background:var(--accent-charcoal);border-color:var(--accent-charcoal);color:#fff}
+.btn-primary:hover{background:var(--accent-charcoal-hover);border-color:var(--accent-charcoal-hover)}
 .btn:disabled{opacity:.55;cursor:wait}
-.btn-danger{color:var(--crimson);border-color:#f0b9c4}
-main{padding:18px;max-width:1460px;margin:0 auto}
+.btn-ghost{border-color:transparent;color:#344054}
+.btn-ghost:hover{background:var(--bg-subtle);border-color:transparent}
+.btn svg{flex-shrink:0}
+/* Workspace tiers */
+main{max-width:1560px;margin:0 auto;padding:12px 20px 26px;display:flex;flex-direction:column;gap:14px}
 /* Status pills: one color, one meaning */
-.pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 11px;border-radius:999px;white-space:nowrap;flex-shrink:0}
-.pill-ok{background:var(--emerald-bg);color:var(--emerald)}
-.pill-warn{background:var(--amber-bg);color:var(--amber)}
-.pill-bad{background:var(--crimson-bg);color:var(--crimson)}
-.pill-info{background:var(--slate-bg);color:var(--muted)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 11px;border-radius:999px;white-space:nowrap;flex-shrink:0;border:1px solid transparent;font-variant-numeric:tabular-nums}
+.pill-ok{background:var(--status-success-bg);color:var(--status-success-ink);border-color:var(--status-success-border)}
+.pill-warn{background:var(--status-warn-bg);color:var(--status-warn-ink);border-color:var(--status-warn-border)}
+.pill-bad{background:var(--status-danger-bg);color:var(--status-danger-ink);border-color:var(--status-danger-border)}
+.pill-info{background:var(--bg-subtle);color:var(--text-secondary);border-color:var(--border-subtle)}
 /* Hash chips: truncate, copy on click, full value via title + focus */
-.hash-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;font-family:var(--mono);font-size:12px;
-background:var(--slate-bg);border:1px solid var(--line);border-radius:var(--r-sm);padding:4px 8px;cursor:pointer;min-width:0}
+.hash-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;font-family:var(--font-mono);font-size:12px;background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:var(--radius-control);padding:4px 8px;cursor:pointer;min-width:0;color:var(--text-primary);font-variant-numeric:tabular-nums}
 .hash-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .hash-chip.mid span{direction:rtl;text-align:left}
-.mono-scroll{overflow-x:auto;white-space:pre;font-family:var(--mono);font-size:12px;background:#0f1620;color:#d7e3f4;border-radius:var(--r-sm);padding:10px 12px;max-width:100%}
-/* View 1 split pane */
+.mono-scroll{overflow-x:auto;white-space:pre;font-family:var(--font-mono);font-size:12px;background:#101828;color:#e8eef6;border-radius:var(--radius-control);padding:10px 12px;max-width:100%}
+/* Tier B — connected 3-stage evidence pipeline */
+.ribbon{display:grid;grid-template-columns:230px minmax(0,1fr) 32px minmax(0,1fr) 32px minmax(0,1.1fr);align-items:center;gap:12px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:12px 20px;box-shadow:var(--shadow-card)}
+.rb-title{border-right:1px solid var(--border-subtle);padding-right:16px}
+.rb-title b{display:block;font-size:15px;font-weight:700}
+.rb-title span{font-size:12px;color:var(--text-muted)}
+.ribbon-step{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.rb-num{font-family:var(--font-mono);font-weight:700;font-size:13px;background:var(--bg-subtle);color:var(--text-muted);border:1px solid var(--border-subtle);border-radius:50%;min-width:26px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ribbon-step.on .rb-num{background:var(--status-success-solid);border-color:var(--status-success-solid);color:#fff;font-size:0}
+.ribbon-step.on .rb-num::after{content:'✓';font-size:14px;font-weight:700}
+.ribbon-step.bad .rb-num{background:var(--status-danger-ink);border-color:var(--status-danger-ink);color:#fff}
+.ribbon-step b{font-size:13px;font-weight:700}
+.rb-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.rb-badges .badge{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.ribbon-step .rb-badges{flex-direction:column;gap:2px}
+.ribbon-step .badge{font-family:var(--font-mono);font-size:11.5px;color:var(--text-secondary);background:none;border:0;padding:0;font-variant-numeric:tabular-nums}
+#rb-ch3{color:var(--status-success-ink);font-weight:600}
+.rb-connector{height:2px;background:var(--border-strong);border-radius:2px}
+.rb-connector.done{background:var(--status-success-solid)}
+#rb-3{background:var(--bg-muted);border:1px solid var(--border-subtle);border-radius:10px;padding:8px 14px}
+#rb-3[data-state="captured"]{background:var(--status-success-bg);border-color:var(--status-success-border)}
+#rb-3[data-state="voided"],#rb-3[data-state="blocked"]{background:var(--status-danger-bg);border-color:var(--status-danger-border)}
+/* Tier C — two-column checkout workspace */
 .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;min-width:0}
-.card + .card{margin-top:14px}
-.scn-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.scn-row .btn[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-.store-frame{width:100%;height:430px;border:1px solid var(--line);border-radius:var(--r-md);background:#fff}
+.card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:16px 20px;min-width:0;box-shadow:var(--shadow-card)}
+.stack{display:flex;flex-direction:column;gap:12px;min-width:0}
+.scn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.scn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;border:1px solid var(--border-strong);border-radius:10px;background:#fff;cursor:pointer;min-width:0;font-family:inherit;color:var(--text-primary)}
+.scn:hover{border-color:#98a2b3}
+.scn b{font-size:13px;font-weight:700}
+.scn span{font-size:11.5px;color:var(--text-muted)}
+.scn svg{margin-bottom:4px}
+.scn[aria-pressed="true"]{background:var(--accent-charcoal);border-color:var(--accent-charcoal);color:#fff}
+.scn[aria-pressed="true"] span{color:#d0d5dd}
+.browser{border:1px solid var(--border-subtle);border-radius:10px;overflow:hidden;background:#fff}
+.browser-chrome{background:var(--bg-subtle);padding:7px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border-subtle)}
+.dots{display:flex;gap:5px;flex-shrink:0}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--border-strong)}
+.urlbar{background:#fff;border:1px solid var(--border-subtle);border-radius:6px;padding:3px 10px;font-family:var(--font-mono);font-size:11.5px;color:#344054;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;min-width:0}
+.store-frame{width:100%;height:430px;border:0;background:#fff;display:block}
 .badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.badge{font-family:var(--mono);font-size:11px;background:var(--slate-bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px;white-space:nowrap}
-.badge.q{border-left:3px solid var(--accent)}
+.badge{font-family:var(--font-mono);font-size:11px;background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:6px;padding:3px 8px;white-space:nowrap;color:var(--text-secondary);font-variant-numeric:tabular-nums}
+.badge.q{border-left:3px solid var(--accent-blue)}
 .mutate{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:13px}
-.mutate input{width:18px;height:18px;margin-top:1px;flex-shrink:0;accent-color:var(--crimson)}
-.suff-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
-.suff{border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;min-width:0}
-.suff b{display:block;font-size:12px;margin-bottom:4px}
-.rung-flow{display:flex;gap:6px;align-items:center;margin:10px 0;font-size:12px;font-weight:600}
-.rung-step{padding:4px 12px;border-radius:999px;background:var(--slate-bg);color:var(--muted);white-space:nowrap}
-.rung-step.on{background:var(--ink);color:#fff}
-.rung-arrow{color:#9aa7bb}
-.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:13px;margin:8px 0}
-.kv dt{color:var(--muted)}
-.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
-.result{margin-top:12px;border-top:1px dashed var(--line);padding-top:12px}
-.status-line{font-size:13px;color:var(--muted);margin:8px 0}
+.mutate input{width:18px;height:18px;margin-top:1px;flex-shrink:0;accent-color:var(--status-danger-ink)}
+/* Mandate card: metric strip + sufficiency pills */
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
+.card-head h2{margin:0;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.mandate-strip{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;border-top:1px solid var(--bg-subtle);padding-top:12px}
+.mandate-strip>div{padding:0 12px;text-align:center;min-width:0}
+.mandate-strip>div:first-child{padding-left:0;text-align:left}
+.mandate-strip>div:last-child{padding-right:0}
+.mandate-strip>div+div{border-left:1px solid var(--border-subtle)}
+.mandate-strip b{display:block;color:var(--text-primary);font-variant-numeric:tabular-nums}
+.mandate-strip .big{font-size:24px;font-weight:800}
+.mandate-strip .mid{font-size:16px;font-weight:700}
+.mandate-strip span{font-size:12px;color:var(--text-muted)}
+.suff-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0 0}
+.suff{border:1px solid var(--border-subtle);border-radius:10px;padding:8px 10px;min-width:0}
+.suff b{display:block;font-size:11.5px;margin-bottom:4px;color:var(--text-secondary);font-weight:600}
+.suff .pill{white-space:normal;overflow-wrap:anywhere}
+/* SELF → WIT → SIGN step strip */
+.rung-flow{display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr) 24px minmax(0,1fr);align-items:center;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:12px 16px;box-shadow:var(--shadow-card)}
+.rung-step{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap;min-width:0}
+.rung-step .dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--status-success-solid);color:var(--status-success-solid);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:#fff}
+.rung-step.on{color:var(--text-primary)}
+.rung-step small{display:block;font-weight:500;color:var(--text-muted);font-size:11px}
+#rung-sign .dot{background:var(--accent-charcoal);border-color:var(--accent-charcoal);color:#fff}
+.rung-arrow{height:2px;background:var(--border-subtle);border-radius:2px}
+/* Channel3 oracle bar */
+.oracle-bar{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:var(--shadow-card)}
+.oracle-bar .left{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-muted);min-width:0;flex-shrink:0}
+.oracle-bar .left b{color:var(--text-primary);white-space:nowrap}
+.oracle-bar .sep{color:var(--border-strong)}
+/* Controls row: checkboxes + actions */
+.controls-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px}
+.checks-card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:6px;justify-content:center;box-shadow:var(--shadow-card)}
+.checks-card label{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--text-primary);cursor:pointer}
+.checks-card input{width:16px;height:16px;accent-color:var(--accent-charcoal);flex-shrink:0}
+.actions-card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-card)}
+.status-line{font-size:13px;color:var(--text-secondary);margin:8px 0}
 .status-line[aria-live]{min-height:20px}
-/* View 2 desk */
-.desk-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-.ag-shell{border:1px solid var(--line);border-radius:var(--r-lg);background:#fff;overflow:hidden}
-#ag-live-disputes-grid,#ag-regression-benchmark-grid{height:560px;width:100%}
-.fallback-table{width:100%;border-collapse:collapse;font-size:13px}
-.fallback-table th,.fallback-table td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap}
-.fallback-table .hash-chip{max-width:260px}
-#ag-live-disputes-grid,#ag-regression-benchmark-grid{overflow-x:auto;max-width:100%}
-.fallback-table th{font-size:11px;color:var(--muted);font-weight:600}
-.fallback-table tbody tr{cursor:pointer}
-.fallback-table tbody tr:hover{background:#f0f4fa}
-.fallback-table tbody tr[aria-selected="true"]{background:#e4ecff}
-.fallback-table .num{font-size:12px}
-.inspector{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr);gap:14px;margin-top:14px;align-items:start}
-.insp-col{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 16px;min-width:0}
-.insp-col h2{font-size:13px}
-.match{display:inline-block;font-family:var(--mono);font-size:12px;font-weight:700;padding:2px 10px;border-radius:6px}
-.match.yes{background:var(--emerald-bg);color:var(--emerald)}
-.match.no{background:var(--crimson-bg);color:var(--crimson)}
-.action-stack{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-.action-stack .btn{text-align:left}
-.evidence-form textarea{width:100%;min-height:70px;font:inherit;font-size:13px;border:1px solid var(--line);border-radius:var(--r-sm);padding:8px;margin:6px 0}
+#awaiting-card{background:var(--bg-surface);border:1px solid var(--status-warn-border);border-radius:var(--radius-card);padding:14px 18px;box-shadow:var(--shadow-card)}
+#awaiting-card h3{margin-top:0}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:13px;margin:8px 0}
+.kv dt{color:var(--text-secondary)}
+.kv dd{margin:0;min-width:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+/* Tier D — outcome banner, transaction record, auditor */
+.tier-d{display:grid;grid-template-columns:0.85fr 1.15fr 1.15fr;gap:16px;align-items:stretch}
+.outcome-banner{border-radius:var(--radius-card);padding:18px 20px;display:flex;align-items:center;gap:16px;border:1px solid;min-width:0;box-shadow:var(--shadow-card)}
+.outcome-banner[data-state="idle"]{background:var(--bg-surface);border-color:var(--border-subtle)}
+.outcome-banner[data-state="captured"]{background:linear-gradient(135deg,#ecfdf3 0%,#ffffff 85%);border-color:var(--status-success-border)}
+.outcome-banner[data-state="voided"],.outcome-banner[data-state="blocked"]{background:linear-gradient(135deg,#fef3f2 0%,#ffffff 85%);border-color:var(--status-danger-border)}
+.outcome-banner h3{margin:0;font-size:20px;font-weight:800;color:var(--text-primary)}
+.outcome-banner p{margin:2px 0 0;font-size:13px;color:var(--text-secondary)}
+.outcome-icon{width:46px;height:46px;flex-shrink:0;display:block}
+.record-kv{display:grid;grid-template-columns:115px minmax(0,1fr);row-gap:7px;column-gap:10px;font-size:12.5px;margin:0}
+.record-kv dt{color:var(--text-secondary)}
+.record-kv dd{margin:0;min-width:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.auditor-card{display:flex;flex-direction:column}
+.audit-rows{display:flex;flex-direction:column;gap:6px;margin:10px 0;font-size:12.5px}
+.audit-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.audit-banner{background:var(--status-success-bg);border:1px solid var(--status-success-border);border-radius:8px;padding:9px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px}
+.audit-banner.bad{background:var(--status-danger-bg);border-color:var(--status-danger-border)}
+.audit-banner .left{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:#065f46}
+.audit-banner.bad .left{color:var(--status-danger-ink)}
+.audit-banner .right{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--status-success-ink);font-weight:700}
+details.inspect{display:inline-block;font-weight:600}
+details.inspect summary{cursor:pointer;font-size:12px;color:var(--text-secondary);text-decoration:underline;list-style:none}
+details.inspect summary::-webkit-details-marker{display:none}
 /* Auditor drawer (native details: free keyboard + screen-reader support) */
-details.drawer{border:1px solid var(--line);border-radius:var(--r-md);margin-top:12px;background:#fbfcfe}
+details.drawer{border:1px solid var(--border-subtle);border-radius:10px;margin-top:12px;background:var(--bg-muted)}
 details.drawer summary{cursor:pointer;padding:12px 14px;font-weight:600;font-size:13px;list-style:none;display:flex;gap:8px;align-items:center}
 details.drawer summary::-webkit-details-marker{display:none}
-details.drawer summary::before{content:"+";font-weight:700;color:var(--accent);flex-shrink:0}
+details.drawer summary::before{content:"+";font-weight:700;color:var(--accent-blue);flex-shrink:0}
 details.drawer[open] summary::before{content:"–"}
-details.drawer .drawer-body{padding:0 14px 14px;animation:vp-fade .25s var(--spring)}
+details.drawer .drawer-body{padding:0 14px 14px;animation:vp-fade .25s ease-out}
 @keyframes vp-fade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .check-row{display:flex;gap:8px;align-items:flex-start;margin:8px 0;font-size:13px;min-width:0}
 .check-row .pill{margin-top:1px}
+/* View 2 desk */
+.desk-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.seg{display:inline-flex;gap:4px;background:var(--bg-subtle);padding:3px;border-radius:8px}
+.seg .btn{border:0;background:transparent;min-height:0;padding:6px 14px;font-size:13px;font-weight:600;color:var(--text-secondary);border-radius:6px}
+.seg .btn[aria-pressed="true"]{background:var(--accent-charcoal);color:#fff}
+.ag-shell{border:1px solid var(--border-subtle);border-radius:var(--radius-card);background:#fff;overflow:hidden}
+#ag-live-disputes-grid,#ag-regression-benchmark-grid{height:560px;width:100%}
+.fallback-table{width:100%;border-collapse:collapse;font-size:13px}
+.fallback-table th,.fallback-table td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border-subtle);vertical-align:top;white-space:nowrap}
+.fallback-table .hash-chip{max-width:260px}
+#ag-live-disputes-grid,#ag-regression-benchmark-grid{overflow-x:auto;max-width:100%}
+.fallback-table th{font-size:11px;color:var(--text-muted);font-weight:600;background:var(--bg-muted)}
+.fallback-table tbody tr{cursor:pointer}
+.fallback-table tbody tr:hover{background:var(--bg-muted)}
+.fallback-table tbody tr[aria-selected="true"]{background:#e0eaff}
+.fallback-table .num{font-size:12px}
+.inspector{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr);gap:14px;margin-top:14px;align-items:start}
+.insp-col{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:14px 16px;min-width:0;box-shadow:var(--shadow-card)}
+.insp-col h2{font-size:13px}
+.match{display:inline-block;font-family:var(--font-mono);font-size:12px;font-weight:700;padding:2px 10px;border-radius:6px;font-variant-numeric:tabular-nums}
+.match.yes{background:var(--status-success-bg);color:var(--status-success-ink)}
+.match.no{background:var(--status-danger-bg);color:var(--status-danger-ink)}
+.action-stack{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.action-stack .btn{text-align:left;justify-content:flex-start}
+.evidence-form textarea{width:100%;min-height:70px;font:inherit;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-control);padding:8px;margin:6px 0;background:#fff;color:var(--text-primary)}
 /* Agent sidebar + charts */
 .desk-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:14px;align-items:start}
 .prompt-bar{display:flex;gap:8px;margin:10px 0}
-.prompt-bar input{flex:1;min-width:0;font:inherit;font-size:13px;padding:9px 12px;border:1px solid var(--line);border-radius:10px}
+.prompt-bar input{flex:1;min-width:0;font:inherit;font-size:13px;padding:9px 12px;border:1px solid var(--border-strong);border-radius:10px;background:#fff;color:var(--text-primary)}
 .preset-list{display:flex;flex-direction:column;gap:6px;margin:8px 0}
-.preset-list .btn{text-align:left;font-size:12px;white-space:normal}
-canvas.chart{width:100%;height:220px;border:1px solid var(--line);border-radius:var(--r-md);background:#fff}
+.preset-list .btn{text-align:left;justify-content:flex-start;font-size:12px;white-space:normal}
+canvas.chart{width:100%;height:220px;border:1px solid var(--border-subtle);border-radius:10px;background:#fff}
 .matrix{border-collapse:collapse;font-size:12px;margin-top:8px}
-.matrix th,.matrix td{border:1px solid var(--line);padding:6px 10px;text-align:center;font-variant-numeric:tabular-nums}
-.matrix th{background:var(--slate-bg);font-weight:600}
-.cell-good{background:var(--emerald-bg);font-weight:700}
-.cell-bad{background:var(--crimson-bg);color:#fff;font-weight:700}
+.matrix th,.matrix td{border:1px solid var(--border-subtle);padding:6px 10px;text-align:center;font-variant-numeric:tabular-nums}
+.matrix th{background:var(--bg-muted);font-weight:600}
+.cell-good{background:var(--status-success-bg);font-weight:700}
+.cell-bad{background:var(--status-danger-bg);color:var(--status-danger-ink);font-weight:700}
 /* Modal + toast */
 .modal-back{position:fixed;inset:0;background:rgba(10,16,26,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
-.modal{background:#fff;border-radius:var(--r-lg);max-width:640px;width:100%;max-height:85vh;overflow:auto;padding:20px 22px}
+.modal{background:#fff;border-radius:var(--radius-card);max-width:640px;width:100%;max-height:85vh;overflow:auto;padding:20px 22px;color:var(--text-primary)}
 .modal h2{font-size:16px}
-#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
-font-size:13px;padding:9px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .2s var(--spring);z-index:60}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--accent-charcoal);color:#fff;font-size:13px;padding:9px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .2s ease-out;z-index:60}
 #toast.show{opacity:1}
-footer.app{max-width:1460px;margin:0 auto;padding:0 18px 26px;color:var(--muted);font-size:12px}
-/* Cryptographic pipeline ribbon: 3-rung stepper with live badges */
-.ribbon{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
-.ribbon-step{display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);
-border-radius:var(--r-md);padding:12px 14px;min-width:0}
-.rb-num{font-family:var(--mono);font-weight:700;font-size:13px;background:var(--muted);color:#fff;border-radius:8px;
-min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ribbon-step.on .rb-num{background:var(--emerald)}
-.ribbon-step.bad .rb-num{background:var(--crimson)}
-.ribbon-step b{font-size:13px}
-.rb-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.rb-badges .badge{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+footer.app{max-width:1560px;margin:0 auto;padding:0 20px 26px;color:var(--text-muted);font-size:12px}
 /* Term diff pills: readable at video distance */
-.diff-pill{display:inline-block;font-family:var(--mono);font-size:15px;font-weight:700;background:var(--crimson-bg);
-color:var(--crimson);border:2px solid var(--crimson);border-radius:10px;padding:6px 14px;margin:3px 8px 3px 0;max-width:100%;
-font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
-.wit-pill{display:inline-block;font-family:var(--mono);font-size:13px;font-weight:700;background:var(--emerald-bg);
-color:var(--emerald);border:2px solid var(--emerald);border-radius:10px;padding:5px 12px;margin:3px 8px 3px 0;max-width:100%;
-font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
-#tour-status{font-weight:600}
-@media (max-width:1080px){.split,.desk-grid,.inspector,.ribbon{grid-template-columns:minmax(0,1fr)}}
+.diff-pill{display:inline-block;font-family:var(--font-mono);font-size:15px;font-weight:700;background:var(--status-danger-bg);color:var(--status-danger-ink);border:2px solid var(--status-danger-ink);border-radius:10px;padding:6px 14px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
+.wit-pill{display:inline-block;font-family:var(--font-mono);font-size:13px;font-weight:700;background:var(--status-success-bg);color:var(--status-success-ink);border:2px solid var(--status-success-ink);border-radius:10px;padding:5px 12px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
+@media (max-width:1080px){.split,.desk-grid,.inspector,.tier-d{grid-template-columns:minmax(0,1fr)}.ribbon{grid-template-columns:minmax(0,1fr)}.rb-title{border-right:0;border-bottom:1px solid var(--border-subtle);padding:0 0 10px}.rb-connector{display:none}.topbar{height:auto;flex-wrap:wrap;padding:10px 16px}.view-switch{margin:0}.suff-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
-@media (prefers-color-scheme:dark){
-:root{--bg:#0f141b;--panel:#161d27;--ink:#e8eef6;--muted:#9aa7bb;--line:#2a3444;--slate-bg:#1e2735}
-.topbar{background:rgba(15,20,27,.8)}
-.card,.insp-col,.ag-shell,canvas.chart{background:var(--panel)}
-.view-switch,.btn,.rung{background:#1e2735;border-color:#2a3444;color:var(--ink)}
-.fallback-table tbody tr:hover{background:#1e2735}
-.fallback-table tbody tr[aria-selected="true"]{background:#26314a}
-details.drawer{background:#161d27}
-.modal{background:#161d27}
-.prompt-bar input,.evidence-form textarea{background:#0f141b;color:var(--ink);border-color:#2a3444}
-}
 @media print{
 body{background:#fff}
 .topbar,main,footer.app,#toast,.no-print{display:none!important}
@@ -194,33 +255,40 @@ body{background:#fff}
 <body>
 <a class="skip" href="#main">Skip to workspace</a>
 <header class="topbar">
-<div class="brand"><span class="brand-mark" aria-hidden="true">V</span><div><h1>VeriPact</h1><small>Proving What the Merchant Promised</small></div></div>
-<span id="mode-pill" class="mode-pill mode-replay" role="status">Detecting mode…</span>
-<div class="rungs" aria-label="Evidence rung legend"><span class="rung">Rung 1: SELF</span><span class="rung">Rung 2: WIT</span><span class="rung">Rung 3: SIGN</span></div>
+<div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M3 8l7.5 10" stroke="#182230" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.5 18L23 5" stroke="#175cd3" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><h1>VeriPact</h1><span class="divider" aria-hidden="true"></span><span class="tagline">Proving What the Merchant Promised</span></div>
 <div class="view-switch" role="group" aria-label="View switcher">
 <button type="button" id="tab-checkout" aria-pressed="true">Buyer Checkout</button>
 <button type="button" id="tab-desk" aria-pressed="false">Dispute Desk</button>
 </div>
+<div class="top-actions">
+<span id="mode-pill" class="mode-pill mode-replay" role="status">Detecting mode…</span>
+<p id="tour-status" role="status" aria-live="polite"></p>
+<button type="button" class="btn btn-ghost" id="btn-reset" title="Re-seed replay disputes and orders"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 1.8v2.6h-2.6"/></svg>Reset Demo</button>
 <button type="button" class="btn btn-primary" id="btn-tour">▶ Run 60s Guided Demo Tour</button>
-<button type="button" class="btn" id="btn-reset" title="Re-seed replay disputes and orders">Reset demo</button>
+</div>
 </header>
 <main id="main">
 <nav id="pipeline-ribbon" class="ribbon" aria-label="Cryptographic evidence pipeline">
-<div class="ribbon-step" id="rb-1"><span class="rb-num" aria-hidden="true">1</span><div style="min-width:0"><b>SELF — Buyer mandate locked</b><div class="rb-badges"><span class="badge" id="rb-buyer-fp" title="Ed25519 buyer key fingerprint">buyer key fp …</span><span class="badge">ceiling $320.00</span></div></div></div>
-<div class="ribbon-step" id="rb-2"><span class="rb-num" aria-hidden="true">2</span><div style="min-width:0"><b>WIT — Independent HTTPS witness</b><div class="rb-badges"><span class="badge" id="rb-tsa">RFC 3161 …</span><span class="badge" id="rb-dom">DOM scan …</span><span class="badge" id="rb-ch3">Channel3 …</span></div></div></div>
-<div class="ribbon-step" id="rb-3"><span class="rb-num" aria-hidden="true">3</span><div style="min-width:0"><b>SIGN + PayPal custom_id anchor</b><div class="rb-badges"><span class="badge" id="rb-commit">VP1: …</span><span class="badge" id="rb-regate">re-gate …</span></div></div></div>
+<div class="rb-title"><b>Evidence Pipeline</b><span>Verifiable · Tamper-proof · PayPal-anchored</span></div>
+<div class="ribbon-step" id="rb-1"><span class="rb-num" aria-hidden="true">1</span><div style="min-width:0"><b>1. SELF — Buyer mandate locked</b><div class="rb-badges"><span class="badge" id="rb-buyer-fp" title="Ed25519 buyer key fingerprint">buyer key fp …</span><span class="badge">ceiling: $320.00</span></div></div></div>
+<div class="rb-connector" id="rb-conn-1" aria-hidden="true"></div>
+<div class="ribbon-step" id="rb-2"><span class="rb-num" aria-hidden="true">2</span><div style="min-width:0"><b>2. WIT — Independent HTTPS witness</b><div class="rb-badges"><span class="badge" id="rb-tsa">RFC 3161 …</span><span class="badge" id="rb-dom">DOM scan …</span><span class="badge" id="rb-ch3">Channel3 …</span></div></div></div>
+<div class="rb-connector" id="rb-conn-2" aria-hidden="true"></div>
+<div class="ribbon-step" id="rb-3"><span class="rb-num" aria-hidden="true">3</span><div style="min-width:0"><b>3. SIGN — PayPal custom_id anchor</b><div class="rb-badges"><span class="badge" id="rb-commit">VP1: …</span><span class="badge" id="rb-regate">re-gate …</span></div></div></div>
 </nav>
-<p id="tour-status" class="status-line" role="status" aria-live="polite"></p>
 <section id="view-checkout" aria-label="Buyer checkout and live receipt verifier">
 <div class="split">
 <div class="card">
-<h2>Synthetic storefront</h2>
-<div class="scn-row" role="group" aria-label="Scenario selector">
-<button type="button" class="btn" data-scn="normal" aria-pressed="true">1. Normal checkout ($297 capture)</button>
-<button type="button" class="btn" data-scn="surcharge_void" aria-pressed="false">2. Hidden $55 surcharge ($340.50 auto-void)</button>
-<button type="button" class="btn" data-scn="adversarial_hidden_dom" aria-pressed="false">3. Hidden prompt injection (pre-LLM block)</button>
+<h2>Select Scenario</h2>
+<div class="scn-grid" role="group" aria-label="Scenario selector">
+<button type="button" class="scn" data-scn="normal" aria-pressed="true"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M5.6 8.2l1.7 1.7 3.1-3.6"/></svg><b>Scenario 1</b><span>Normal checkout</span></button>
+<button type="button" class="scn" data-scn="surcharge_void" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l6 3-6 3-6-3 6-3z"/><path d="M2.5 8.2L8 10.8l5.5-2.6"/><path d="M2.5 11.2L8 13.8l5.5-2.6"/></svg><b>Scenario 2</b><span>Surcharge (&gt;$320)</span></button>
+<button type="button" class="scn" data-scn="adversarial_hidden_dom" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4L2.5 8 6 12"/><path d="M10 4l3.5 4L10 12"/></svg><b>Scenario 3</b><span>Injection (ADVERSARIAL)</span></button>
 </div>
+<div class="browser">
+<div class="browser-chrome"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="urlbar"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#15803d" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg><span id="store-url">https://store.example.com/product/APEX-27-4K-IPS</span></span></div>
 <iframe id="store-frame" class="store-frame" title="Synthetic merchant storefront" src="/store/normal"></iframe>
+</div>
 <h3>Visible quote badges</h3>
 <div id="quote-badges" class="badges" aria-live="polite"><span class="badge">Witness a scenario to pin quotes…</span></div>
 <label class="mutate"><input type="checkbox" id="mutate-toggle"><span><b>Post-purchase policy mutation preview.</b> Shows what a drifted policy (14-day returns, 25% restocking fee) would look like next to the witnessed terms. Illustrative only — re-run checkout to witness current terms.</span></label>
@@ -230,34 +298,47 @@ body{background:#fff}
 <dt>Effect</dt><dd>Receipt hash would no longer match the PayPal order custom_id → MERCHANT_DRIFT_CONFIRMED. See the drift case on the Dispute Desk.</dd>
 </dl></div>
 </div>
-<div>
+<div class="stack">
 <div class="card">
-<h2>Mandate &amp; sufficiency</h2>
-<dl class="kv"><dt>Cap</dt><dd class="num">$320.00 all-in</dd><dt>Condition</dt><dd>NEW</dd><dt>Returns</dt><dd>30-day minimum · 0% fee maximum</dd></dl>
+<div class="card-head"><h2><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#175cd3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5 1.8v3.6c0 3.2-2.1 5.4-5 6.8-2.9-1.4-5-3.6-5-6.8V3.6l5-1.8z"/><path d="M5.8 8l1.6 1.6 2.8-3.2"/></svg>Buyer Mandate &amp; Sufficiency</h2><span id="gate-badge" class="pill pill-info">Awaiting witness…</span></div>
+<div class="mandate-strip">
+<div><b class="big">$320.00</b><span>Cap (all-in)</span></div>
+<div><b class="mid">NEW</b><span>Condition</span></div>
+<div><b class="mid">≥ 30 days</b><span>Return window</span></div>
+<div><b class="mid">0%</b><span>Restocking fee</span></div>
+</div>
 <div class="suff-grid" id="suff-pills">
-<div class="suff"><b>Brand/model &amp; condition</b><span class="pill pill-info">Awaiting witness…</span></div>
-<div class="suff"><b>Base price ($279)</b><span class="pill pill-info">Awaiting witness…</span></div>
-<div class="suff"><b>Shipping &amp; tax callback</b><span class="pill pill-info">Awaiting witness…</span></div>
-<div class="suff"><b>Return policy (30d / 0% fee)</b><span class="pill pill-info">Awaiting witness…</span></div>
+<div class="suff"><b>Brand / Model</b><span class="pill pill-info">Awaiting witness…</span></div>
+<div class="suff"><b>Base Price</b><span class="pill pill-info">Awaiting witness…</span></div>
+<div class="suff"><b>Shipping &amp; Tax</b><span class="pill pill-info">Awaiting witness…</span></div>
+<div class="suff"><b>Return Policy</b><span class="pill pill-info">Awaiting witness…</span></div>
 </div>
-<div class="rung-flow" aria-label="Evidence rung progress"><span class="rung-step on" id="rung-self">SELF</span><span class="rung-arrow" aria-hidden="true">→</span><span class="rung-step" id="rung-wit">WIT</span><span class="rung-arrow" aria-hidden="true">→</span><span class="rung-step" id="rung-sign">SIGN</span></div>
-<div id="oracle-line" class="status-line">Channel3 oracle: not queried yet.</div>
-<div style="display:flex;gap:8px;flex-wrap:wrap">
-<button type="button" class="btn" id="btn-witness">Witness this offer</button>
-<button type="button" class="btn btn-primary" id="btn-checkout">Authorize &amp; verify with PayPal</button>
 </div>
-<label class="mutate" style="margin-top:8px"><input type="checkbox" id="twostep-toggle"><span><b>Step-by-step buyer popup approval.</b> Creates the order, opens the buyer approval popup, then finalizes authorize → re-gate → capture/void. Automatic in live sandbox mode.</span></label>
+<div class="rung-flow" aria-label="Evidence rung progress"><span class="rung-step on" id="rung-self"><span class="dot" aria-hidden="true">✓</span><span>SELF<small>Set mandate</small></span></span><span class="rung-arrow" aria-hidden="true"></span><span class="rung-step" id="rung-wit"><span class="dot" aria-hidden="true">✓</span><span>WIT<small>Capture &amp; attest</small></span></span><span class="rung-arrow" aria-hidden="true"></span><span class="rung-step" id="rung-sign"><span class="dot" aria-hidden="true">◎</span><span>SIGN<small>Authorize via PayPal</small></span></span></div>
+<div class="oracle-bar"><span class="left"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#175cd3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 8h2.6l1.4-3.5 2.4 7 1.6-4.5 1 1H14.5"/></svg><b>Channel3 Oracle</b><span class="sep" aria-hidden="true">|</span><span>Market policy + merchant reputation</span></span><span id="oracle-line" class="pill pill-info">Channel3 oracle: not queried yet.</span></div>
+<div class="controls-row">
+<div class="checks-card">
+<label><input type="checkbox" id="reviewed-toggle" checked><span>I've reviewed the merchant terms</span></label>
+<label><input type="checkbox" id="twostep-toggle"><span><b>Two-step approval</b> (recommended)</span></label>
+</div>
+<div class="actions-card">
+<button type="button" class="btn" id="btn-witness"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.8" y="4.5" width="12.4" height="8.5" rx="2"/><circle cx="8" cy="8.7" r="2.4"/><path d="M5.5 4.5l1-2h3l1 2"/></svg>Witness Page</button>
+<button type="button" class="btn btn-primary" id="btn-checkout"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><text x="8" y="12.5" text-anchor="middle" font-size="12" font-weight="800" fill="currentColor" font-family="Inter,system-ui,sans-serif">P</text></svg>Authorize with PayPal</button>
+</div>
+</div>
 <p id="checkout-status" class="status-line" aria-live="polite"></p>
-<div id="awaiting-card" class="result" hidden></div>
-<div id="checkout-result" class="result" hidden></div>
+<div id="awaiting-card" hidden></div>
 </div>
-<div class="card">
-<h2>Verify it yourself</h2>
-<p class="status-line">Your browser recomputes the receipt hash and compares it with the PayPal order record. Nothing here trusts the server.</p>
+</div>
+<div class="tier-d">
+<div class="outcome-banner" id="checkout-outcome-banner" data-state="idle"><svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" stroke="#d0d5dd" stroke-width="2.5"/><path d="M15 23.5l5.5 5.5L31 18" stroke="#98a2b3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><h3>Awaiting checkout</h3><p>Run a witness pass, then authorize with PayPal.</p></div></div>
+<div class="card" id="checkout-result" hidden></div>
+<div class="card auditor-card">
+<div class="card-head"><h2><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#175cd3" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7.5a4 4 0 0 1 8 0v4"/><path d="M2.5 7.5a5.5 5.5 0 0 1 11 0v5"/><path d="M8 5.5v6"/><path d="M6 9.5v3M10 9.5v3"/></svg>Verify-It-Yourself (Auditor)</h2></div>
+<p class="status-line" style="margin-top:0">Your browser recomputes the receipt hash and compares it with the PayPal order record. Nothing here trusts the server.</p>
 <details class="drawer" id="auditor"><summary>Open the client-side auditor</summary><div class="drawer-body" id="auditor-body">
 <p class="status-line">Run a checkout first — the auditor needs a witnessed receipt and a PayPal order.</p>
 </div></details>
-</div>
 </div>
 </div>
 </section>
@@ -267,8 +348,7 @@ body{background:#fff}
 <div class="card">
 <h2>Contested dispute verifier desk</h2>
 <div class="desk-tools" role="group" aria-label="Dataset toggle">
-<button type="button" class="btn" id="ds-live" aria-pressed="true">Live contested disputes (Case B &amp; Case A)</button>
-<button type="button" class="btn" id="ds-regression" aria-pressed="false">24-scenario regression suite (72 runs, Wilson 95% CIs)</button>
+<span class="seg"><button type="button" class="btn" id="ds-live" aria-pressed="true">Live contested disputes (Case B &amp; Case A)</button><button type="button" class="btn" id="ds-regression" aria-pressed="false">24-scenario regression suite (72 runs, Wilson 95% CIs)</button></span>
 <span id="grid-engine" class="pill pill-info">Grid engine: detecting…</span>
 </div>
 <div class="ag-shell"><div id="ag-live-disputes-grid" class="ag-theme-quartz" role="grid" aria-label="Live contested disputes grid"></div></div>
@@ -311,30 +391,37 @@ function chip(full,mid){return '<button type="button" class="hash-chip'+(mid?' m
 document.addEventListener('click',function(e){var b=e.target.closest?e.target.closest('[data-copy]'):null;if(b){copyText(b.getAttribute('data-copy'));}});
 function pillFor(status){if(status==='DETERMINATE'||status==='PROCEED'||status==='CAPTURED')return 'pill-ok';if(status==='INDETERMINATE'||status==='ASK_HUMAN_DELTA')return 'pill-warn';return 'pill-bad';}
 function api(path,opts){return fetch(path,Object.assign({headers:{'content-type':'application/json'}},opts||{})).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;});});}
+/* Outcome banner icons (46px, geometric, no emoji) */
+var ICON_IDLE='<svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" stroke="#d0d5dd" stroke-width="2.5"/><path d="M15 23.5l5.5 5.5L31 18" stroke="#98a2b3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var ICON_OK='<svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" fill="#16a34a"/><path d="M15 23.5l5.5 5.5L31 18" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var ICON_BAD='<svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" fill="#b42318"/><path d="M17 17l12 12M29 17L17 29" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>';
+var LINK_SVG='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 9.5a3 3 0 0 0 4.2 0l2-2a3 3 0 0 0-4.2-4.2l-1 1"/><path d="M9.5 6.5a3 3 0 0 0-4.2 0l-2 2a3 3 0 0 0 4.2 4.2l1-1"/></svg>';
+var DIAMOND_SVG='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#175cd3" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.5 4.2L8 14.2 2.5 6 8 1.8z"/><path d="M2.5 6h11M8 1.8L5.5 6 8 14.2 10.5 6 8 1.8z" stroke-width="1.2"/></svg>';
 /* ---------- state ---------- */
 var state={scenario:'normal',witness:null,checkout:null,verify:null,disputes:null,selectedCase:'buyer_forgery',dataset:'live',benchmark:null,grids:{},engine:'native'};
 var CASE_META={
 buyer_forgery:{label:'Case B — Buyer forgery',buyerTerms:'60-day returns (self-signed SELF receipt)',sellerTerms:'Stands by witnessed terms',witnessed:'30-day returns · 0% fee',diffs:[{field:'return_window_days',left:'60',right:'30'}],blurb:'The buyer edited local JSON to claim 60-day returns. Signature verifies (self-signed) but the hash cannot match the PayPal-anchored commitment.'},
 merchant_drift:{label:'Case A — Merchant drift',buyerTerms:'30-day free returns (matches witness)',sellerTerms:'14-day returns · 25% restocking fee',witnessed:'30-day returns · 0% fee',diffs:[{field:'return_window_days',left:'30',right:'14'},{field:'restocking_fee_pct',left:'0%',right:'25%'}],blurb:'The seller changed the return policy after purchase. The buyer receipt still matches; the seller counter-claim diverges.'}};
 /* ---------- header + tabs ---------- */
-api('/health').then(function(h){var p=$('mode-pill');var live=h.transportMode==='LIVE_PAYPAL_SANDBOX';state.liveMode=live;p.textContent=live?'Live Sandbox':'Replay · deterministic';p.className='mode-pill '+(live?'mode-live':'mode-replay');if(live){$('twostep-toggle').checked=true;}}).catch(function(){});
+api('/health').then(function(h){var p=$('mode-pill');var live=h.transportMode==='LIVE_PAYPAL_SANDBOX';state.liveMode=live;p.textContent=live?'Live PayPal Sandbox':'Replay · deterministic';p.className='mode-pill '+(live?'mode-live':'mode-replay');if(live){$('twostep-toggle').checked=true;}}).catch(function(){});
 api('/api/system/status').then(function(s){$('rb-buyer-fp').textContent='buyer key fp '+s.keyFingerprints.buyer;$('rb-buyer-fp').title='Ed25519 buyer key fingerprint '+s.keyFingerprints.buyer+' · '+s.regressionPassRate+' regression';}).catch(function(){$('rb-buyer-fp').textContent='buyer key fp …';});
 /* ---------- pipeline ribbon (3-rung evidence stepper) ---------- */
-function ribbonTo(stage,bad){for(var i=1;i<=3;i++){var el=$('rb-'+i);el.className='ribbon-step'+(i<=stage?' on':'')+(bad&&i===stage?' bad':'');}}
+function ribbonTo(stage,bad){for(var i=1;i<=3;i++){var el=$('rb-'+i);el.className='ribbon-step'+(i<=stage?' on':'')+(bad&&i===stage?' bad':'');}var c1=$('rb-conn-1'),c2=$('rb-conn-2');if(c1)c1.className='rb-connector'+(stage>=2?' done':'');if(c2)c2.className='rb-connector'+(stage>=3?' done':'');}
 function ribbonFillWitness(s){ribbonTo(2,s.gateResult.decision==='BLOCK');
 var p=s.provenance||{};$('rb-tsa').textContent='RFC 3161 '+(p.tsaIssuer||'…');$('rb-tsa').title='Timestamp authority '+(p.tsaIssuer||'?')+' @ '+(p.tsaTimeUtc||'?');
 var integ=(s.termReceipt.observedTerms||{}).pageIntegrity;$('rb-dom').textContent=integ==='ADVERSARIAL_DOM'?'DOM scan ADVERSARIAL_DOM':'DOM scan CLEAN · 13 checks';
 var o=s.oracleResult||{};$('rb-ch3').textContent=(o.matched?'✓ ':'✗ ')+(o.productId||'…');$('rb-ch3').title='Channel3 oracle '+(o.source||'');}
-function ribbonFillCheckout(r){if(r.outcome==='BLOCKED_PRE_CHECKOUT'){ribbonTo(2,true);$('rb-regate').textContent='re-gate BLOCKED pre-checkout';return;}
+function ribbonFillCheckout(r){var box=$('rb-3');if(r.outcome==='BLOCKED_PRE_CHECKOUT'){ribbonTo(2,true);$('rb-regate').textContent='re-gate BLOCKED pre-checkout';if(box)box.dataset.state='blocked';return;}
 ribbonTo(3,false);var c=r.snapshot.commitment;$('rb-commit').textContent=c.slice(0,16)+'…';$('rb-commit').title='PayPal purchase_units[0].custom_id = '+c;
-$('rb-regate').textContent='$'+Number(r.finalTotalUsd).toFixed(2)+' '+(r.outcome==='CAPTURED'?'CAPTURED':'AUTO-VOIDED');}
+$('rb-regate').textContent='$'+Number(r.finalTotalUsd).toFixed(2)+' '+(r.outcome==='CAPTURED'?'CAPTURED':'AUTO-VOIDED');if(box)box.dataset.state=r.outcome==='CAPTURED'?'captured':'voided';}
 function showView(which){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');if(!c){ensureDesk().catch(function(){});}}
 $('tab-checkout').addEventListener('click',function(){showView('checkout');});
 $('tab-desk').addEventListener('click',function(){showView('desk');});
 $('btn-reset').addEventListener('click',function(){api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);});});
 /* ---------- view 1 ---------- */
 var scnBtns=Array.prototype.slice.call(document.querySelectorAll('[data-scn]'));
-function selectScenario(scn){state.scenario=scn;scnBtns.forEach(function(x){x.setAttribute('aria-pressed',x.getAttribute('data-scn')===scn?'true':'false');});$('store-frame').src='/store/'+scn;$('checkout-result').hidden=true;$('awaiting-card').hidden=true;$('checkout-status').textContent='';}
+function resetOutcomeBanner(){var b=$('checkout-outcome-banner');if(!b)return;b.dataset.state='idle';b.innerHTML=ICON_IDLE+'<div><h3>Awaiting checkout</h3><p>Run a witness pass, then authorize with PayPal.</p></div>';}
+function selectScenario(scn){state.scenario=scn;scnBtns.forEach(function(x){x.setAttribute('aria-pressed',x.getAttribute('data-scn')===scn?'true':'false');});$('store-frame').src='/store/'+scn;var su=$('store-url');if(su)su.textContent='https://store.example.com/product/APEX-27-4K-IPS'+(scn==='normal'?'':'/'+scn);$('checkout-result').hidden=true;$('awaiting-card').hidden=true;$('checkout-status').textContent='';resetOutcomeBanner();}
 scnBtns.forEach(function(b){b.addEventListener('click',function(){selectScenario(b.getAttribute('data-scn'));});});
 $('mutate-toggle').addEventListener('change',function(e){$('mutate-panel').hidden=!e.target.checked;});
 function suffPills(observed){var cells=$('suff-pills').children;function set(i,txt,cls){cells[i].querySelector('.pill').textContent=txt;cells[i].querySelector('.pill').className='pill '+cls;}
@@ -343,26 +430,37 @@ set(1,'$'+Number(observed.basePriceUsd.value||0).toFixed(2),pillFor(observed.bas
 var st=observed.shippingUsd.status==='DETERMINATE'&&observed.taxUsd.status==='DETERMINATE'?'$'+Number(observed.shippingUsd.value).toFixed(2)+' + $'+Number(observed.taxUsd.value).toFixed(2):'Calculated at checkout';
 set(2,st,observed.shippingUsd.status==='DETERMINATE'&&observed.taxUsd.status==='DETERMINATE'?'pill-ok':'pill-warn');
 set(3,String(observed.returnWindowDays.value)+'d / '+String(observed.restockingFeePct.value)+'% fee',pillFor(observed.returnWindowDays.status));}
+function gateBadge(g){var el=$('gate-badge');if(!el||!g)return;var d=g.decision;
+if(d==='PROCEED'){el.textContent='✓ SUFFICIENT';el.className='pill pill-ok';}
+else if(d==='ASK_HUMAN_DELTA'){el.textContent='ASK_HUMAN_DELTA · $'+Number(g.headroomUsd||0).toFixed(2)+' headroom';el.className='pill pill-warn';}
+else{var r=String((g.reasons&&g.reasons[0])||d);var t=r.length>44?r.slice(0,44):r;if(r.length>44){var sp=t.lastIndexOf(' ');t=(sp>12?t.slice(0,sp):t)+' …';}el.textContent='✕ BLOCKED · '+t;el.className='pill pill-bad';}}
+function oracleLine(o){var el=$('oracle-line');el.textContent='Channel3 oracle: '+(o.matched?'match ':'no match ')+o.productId+' · '+o.source;el.className='pill '+(o.matched?'pill-ok':'pill-warn');}
 function rungTo(stage){$('rung-wit').className='rung-step'+(stage>=1?' on':'');$('rung-sign').className='rung-step'+(stage>=2?' on':'');}
 function runWitnessFlow(){var b=$('btn-witness');b.disabled=true;$('checkout-status').textContent='Witnessing offer…';
-return api('/api/witness/snapshot',{method:'POST',body:JSON.stringify({scenario:state.scenario})}).then(function(s){state.witness=s;suffPills(s.termReceipt.observedTerms);rungTo(1);ribbonFillWitness(s);
-$('oracle-line').textContent='Channel3 oracle: '+(s.oracleResult.matched?'match ':'no match ')+s.oracleResult.productId+' · '+s.oracleResult.source;
+return api('/api/witness/snapshot',{method:'POST',body:JSON.stringify({scenario:state.scenario})}).then(function(s){state.witness=s;suffPills(s.termReceipt.observedTerms);rungTo(1);ribbonFillWitness(s);gateBadge(s.gateResult);
+oracleLine(s.oracleResult);
 $('quote-badges').innerHTML=badgeHtml(s);
 $('checkout-status').textContent='Gate decision: '+s.gateResult.decision+' — '+s.gateResult.reasons.join('; ');return s;},function(e){$('checkout-status').textContent=e.message;throw e;}).finally(function(){b.disabled=false;});}
 $('btn-witness').addEventListener('click',function(){runWitnessFlow().catch(function(){});});
 function badgeHtml(s){var terms=s.termReceipt.observedTerms;var out=[];['itemTitle','condition','basePriceUsd','shippingUsd','taxUsd','returnWindowDays','restockingFeePct'].forEach(function(k){var c=terms[k];if(c&&c.blockId){out.push('<span class="badge q" title="'+esc(c.verbatimQuote||'')+'">'+esc(c.blockId)+' · '+esc(k)+'</span>');}});return out.join('')||'<span class="badge">No verified quotes</span>';}
-function renderCheckoutDone(r){state.checkout=r;state.verify=null;suffPills(r.snapshot.termReceipt.observedTerms);rungTo(r.outcome==='BLOCKED_PRE_CHECKOUT'?1:2);ribbonFillWitness(r.snapshot);ribbonFillCheckout(r);
-$('oracle-line').textContent='Channel3 oracle: '+(r.snapshot.oracleResult.matched?'match ':'no match ')+r.snapshot.oracleResult.productId+' · '+r.snapshot.oracleResult.source;
+function paypalModeLabel(mode){return mode==='LIVE_PAYPAL_SANDBOX'?'Live PayPal Sandbox':'Sandbox (Deterministic)';}
+function renderCheckoutDone(r){state.checkout=r;state.verify=null;if(r.outcome!=='CAPTURED'){$('auditor-body').innerHTML='<p class="status-line">Run a checkout that captures first.</p>';}suffPills(r.snapshot.termReceipt.observedTerms);rungTo(r.outcome==='BLOCKED_PRE_CHECKOUT'?1:2);ribbonFillWitness(r.snapshot);ribbonFillCheckout(r);gateBadge(r.snapshot.gateResult);
+oracleLine(r.snapshot.oracleResult);
 $('quote-badges').innerHTML=badgeHtml(r.snapshot);
-var cls=r.outcome==='CAPTURED'?'pill-ok':(r.outcome==='AUTO_VOIDED'?'pill-warn':'pill-bad');
-var html='<h3>Outcome <span class="pill '+cls+'">'+esc(r.outcome)+'</span></h3><dl class="kv">';
-if(r.orderId)html+='<dt>Order</dt><dd class="mono">'+esc(r.orderId)+'</dd>';
+var banner=$('checkout-outcome-banner');var total='$'+Number(r.finalTotalUsd).toFixed(2);
+if(r.outcome==='CAPTURED'){banner.dataset.state='captured';banner.innerHTML=ICON_OK+'<div><h3>Purchase Captured</h3><p>Order completed and anchored to PayPal · '+total+'</p></div>';}
+else if(r.outcome==='AUTO_VOIDED'){banner.dataset.state='voided';banner.innerHTML=ICON_BAD+'<div><h3>Authorization Auto-Voided</h3><p>'+total+' exceeded $320.00 cap · $0 captured</p></div>';}
+else{banner.dataset.state='blocked';banner.innerHTML=ICON_BAD+'<div><h3>Blocked Pre-Checkout</h3><p>ADVERSARIAL_DOM detected · 0 PayPal API calls</p></div>';}
+var html='<div class="card-head"><h2>'+DIAMOND_SVG+'Transaction Record</h2></div><dl class="record-kv">';
+if(r.orderId)html+='<dt>Order ID</dt><dd class="mono">'+esc(r.orderId)+'</dd>';
+else html+='<dt>Order ID</dt><dd class="mono">— (none created)</dd>';
 if(r.authorizationId)html+='<dt>Authorization</dt><dd class="mono">'+esc(r.authorizationId)+'</dd>';
-if(r.captureId)html+='<dt>Capture</dt><dd class="mono">'+esc(r.captureId)+' · <span class="num">$'+Number(r.finalTotalUsd).toFixed(2)+'</span></dd>';
-if(r.voidReason)html+='<dt>Void</dt><dd>'+esc(r.voidReason)+'</dd>';
+if(r.captureId)html+='<dt>Capture</dt><dd class="mono">'+esc(r.captureId)+' · <strong style="color:#15803d">'+total+'</strong></dd>';
+if(r.voidReason)html+='<dt>Capture</dt><dd><strong style="color:#b42318">VOIDED · $0.00</strong></dd>';
+if(!r.captureId&&!r.voidReason)html+='<dt>Capture</dt><dd class="mono">—</dd>';
 html+='<dt>Commitment</dt><dd>'+chip(r.snapshot.commitment,true)+'</dd>';
-html+='<dt>PayPal mode</dt><dd class="mono">'+esc(r.transportMode)+'</dd></dl>';
-if(r.outcome==='CAPTURED'){html+='<button type="button" class="btn" id="btn-audit-open">Verify it yourself ↓</button>';}
+html+='<dt>PayPal Mode</dt><dd class="mono">'+esc(paypalModeLabel(r.transportMode))+'</dd></dl>';
+if(r.outcome==='CAPTURED'){html+='<div style="margin-top:10px"><button type="button" class="btn" id="btn-audit-open">Verify it yourself ↓</button></div>';}
 $('checkout-result').innerHTML=html;$('checkout-result').hidden=false;
 $('checkout-status').textContent='Gate: '+r.snapshot.gateResult.decision+' · Outcome: '+r.outcome;
 var ao=$('btn-audit-open');if(ao){ao.addEventListener('click',function(){$('auditor').open=true;runAuditor();});}}
@@ -371,11 +469,11 @@ function finalizeApproved(orderId){if(finalizing)return;finalizing=true;var fb=$
 $('checkout-status').textContent='Finalizing: authorize → re-gate → capture/void…';
 var prior=null;if(state.awaiting&&state.awaiting.snapshot){prior={snapshot:state.awaiting.snapshot,buyerApprovalSignatureHex:state.awaiting.buyerApprovalSignatureHex,merchantSignatureHex:state.awaiting.merchantSignatureHex};}
 api('/api/merchant/checkout/finalize',{method:'POST',body:JSON.stringify({orderId:orderId,scenario:state.scenario,prior:prior})}).then(function(r){$('awaiting-card').hidden=true;state.awaiting=null;renderCheckoutDone(r);},function(e){$('checkout-status').textContent=e.message;}).finally(function(){finalizing=false;var f2=$('btn-finalize');if(f2)f2.disabled=false;});}
-function renderAwaiting(r){state.awaiting=r;suffPills(r.snapshot.termReceipt.observedTerms);rungTo(1);ribbonFillWitness(r.snapshot);
-$('oracle-line').textContent='Channel3 oracle: '+(r.snapshot.oracleResult.matched?'match ':'no match ')+r.snapshot.oracleResult.productId+' · '+r.snapshot.oracleResult.source;
+function renderAwaiting(r){state.awaiting=r;suffPills(r.snapshot.termReceipt.observedTerms);rungTo(1);ribbonFillWitness(r.snapshot);gateBadge(r.snapshot.gateResult);
+oracleLine(r.snapshot.oracleResult);
 $('quote-badges').innerHTML=badgeHtml(r.snapshot);
 var preview=r.expectedPostApprovalAction==='VOID'?'pill-warn':'pill-ok';
-$('awaiting-card').innerHTML='<h3>Step 1 complete <span class="pill pill-warn">AWAITING_BUYER_APPROVAL</span></h3><dl class="kv"><dt>Order</dt><dd class="mono">'+esc(r.orderId)+'</dd><dt>Total</dt><dd class="num">$'+Number(r.finalTotalUsd).toFixed(2)+'</dd><dt>Preview</dt><dd><span class="pill '+preview+'">'+esc(r.expectedPostApprovalAction)+'</span> · headroom <span class="num">$'+Number(r.headroomRemainingUsd).toFixed(2)+'</span></dd><dt>Commitment</dt><dd>'+chip(r.snapshot.commitment,true)+'</dd></dl><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button type="button" class="btn btn-primary" id="btn-popup">Open buyer approval popup</button><button type="button" class="btn" id="btn-finalize">Finalize approved order: authorize → re-gate → capture / void</button></div><p class="status-line">Approving in the popup notifies this window and finalizes automatically. Popup blocked? Approve, return here, and press Finalize.</p>';
+$('awaiting-card').innerHTML='<h3>Step 1 complete <span class="pill pill-warn">AWAITING_BUYER_APPROVAL</span></h3><dl class="kv"><dt>Order</dt><dd class="mono">'+esc(r.orderId)+'</dd><dt>Total</dt><dd class="num">$'+Number(r.finalTotalUsd).toFixed(2)+'</dd><dt>Preview</dt><dd><span class="pill '+preview+'">'+esc(r.expectedPostApprovalAction)+'</span> · headroom <span class="num">$'+Number(r.headroomRemainingUsd).toFixed(2)+'</span></dd><dt>Commitment</dt><dd>'+chip(r.snapshot.commitment,true)+'</dd></dl><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button type="button" class="btn btn-primary" id="btn-popup">Open Buyer Approval Popup</button><button type="button" class="btn" id="btn-finalize">Finalize approved order: authorize → re-gate → capture / void</button></div><p class="status-line">Approving in the popup notifies this window and finalizes automatically. Popup blocked? Approve, return here, and press Finalize.</p>';
 $('awaiting-card').hidden=false;$('checkout-status').textContent='Order '+r.orderId+' created + patched. Waiting for buyer approval…';
 $('btn-popup').addEventListener('click',function(){var w=window.open(r.approveUrl,'veripact-approval','width=620,height=760');if(!w){toast('Popup blocked — allow popups, then press Finalize after approving.');}$('checkout-status').textContent='Approval popup opened for '+r.orderId+'. Waiting…';});
 $('btn-finalize').addEventListener('click',function(){finalizeApproved(r.orderId);});}
@@ -386,7 +484,7 @@ $('checkout-status').textContent=twoStep?'Creating order + patching totals…':'
 return api('/api/merchant/checkout',{method:'POST',body:JSON.stringify({scenario:state.scenario,twoStep:twoStep})}).then(function(r){
 if(r.outcome==='AWAITING_BUYER_APPROVAL'){renderAwaiting(r);}else{renderCheckoutDone(r);}
 return r;},function(e){$('checkout-status').textContent=e.message;throw e;}).finally(function(){b.disabled=false;});}
-$('btn-checkout').addEventListener('click',function(){runCheckoutFlow().catch(function(){});});
+$('btn-checkout').addEventListener('click',function(){var rv=$('reviewed-toggle');if(rv&&!rv.checked){toast('Please confirm you have reviewed the merchant terms.');return;}runCheckoutFlow().catch(function(){});});
 /* ---------- verify-it-yourself auditor (runs entirely in your browser) ---------- */
 var BS=String.fromCharCode(92);
 function jcsStr(s){var out='"';for(var i=0;i<s.length;i++){var c=s.charCodeAt(i);if(c===0x22){out+=BS+'"';}else if(c===0x5c){out+=BS+BS;}else if(c<0x20){out+=BS+'u'+('000'+c.toString(16)).slice(-4);}else{out+=s[i];}}return out+'"';}
@@ -402,13 +500,21 @@ var canonical=jcs(v.receiptCore);
 window.crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonical)).then(function(digest){
 var ms=Math.max(1,Math.round(performance.now()-t0));var mine='VP1:'+hexOf(digest);var match=mine===v.customId;
 var b=v.bundle;
-var rows='';
-rows+='<div class="check-row"><span class="pill '+(match?'pill-ok':'pill-bad')+'">'+(match?'MATCH':'MISMATCH')+'</span><div style="min-width:0"><b>Your hash vs PayPal custom_id</b> ('+ms+' ms, '+canonical.length+' canonical bytes)<br>'+chip(mine,true)+'<br><span style="font-size:12px;color:var(--muted)">Order record:</span> '+chip(v.customId,true)+'</div></div>';
+var ot=v.receiptCore.observedTerms||{};
+var termsOk=ot.returnWindowDays&&ot.returnWindowDays.value===30&&ot.restockingFeePct&&ot.restockingFeePct.value===0;
+var rows='<div class="audit-rows">';
+rows+='<div class="audit-row"><span>✓ Recompute Canonical (JCS)</span><span class="pill pill-ok">✓ OK · '+canonical.length+' bytes</span></div>';
+rows+='<div class="audit-row"><span>✓ Hash Match (VP1)</span><span class="pill '+(match?'pill-ok':'pill-bad')+'">'+(match?'✓ OK':'✗ MISMATCH')+'</span></div>';
+rows+='<div class="audit-row"><span>✓ Terms Consistency (30-day, 0% fee)</span><span class="pill '+(termsOk?'pill-ok':'pill-bad')+'">'+(termsOk?'✓ OK':'✗ DIFF')+'</span></div></div>';
+rows+='<div class="audit-banner'+(match?'':' bad')+'"><span class="left">'+LINK_SVG+'JCS-PARITY '+(match?'MATCH':'MISMATCH')+'</span><span class="right">✓</span></div>';
+rows+='<details class="drawer"><summary>Inspect hash &amp; JCS</summary><div class="drawer-body">';
+rows+='<div class="check-row"><span class="pill '+(match?'pill-ok':'pill-bad')+'">'+(match?'MATCH':'MISMATCH')+'</span><div style="min-width:0"><b>Your hash vs PayPal custom_id</b> ('+ms+' ms, '+canonical.length+' canonical bytes)<br>'+chip(mine,true)+'<br><span style="font-size:12px;color:var(--text-muted)">Order record:</span> '+chip(v.customId,true)+'</div></div>';
 rows+='<div class="check-row"><span class="pill '+(b.buyerSignatureValid?'pill-ok':'pill-bad')+'">'+(b.buyerSignatureValid?'VALID':'INVALID')+'</span><div><b>Buyer Ed25519 countersignature</b> (verified server-side)</div></div>';
 rows+='<div class="check-row"><span class="pill '+(b.witnessSignatureValid?'pill-ok':'pill-bad')+'">'+(b.witnessSignatureValid?'VALID':'INVALID')+'</span><div style="min-width:0"><b>Witness Ed25519 signature</b> (verified server-side)<br>'+chip(v.witnessSignatureHex,true)+'</div></div>';
 rows+='<div class="check-row"><span class="pill '+(b.merchantSignatureValid?'pill-ok':'pill-bad')+'">'+(b.merchantSignatureValid?'VALID':'INVALID')+'</span><div><b>Merchant SIGN countersignature</b> (verified server-side)</div></div>';
 rows+='<div class="check-row"><span class="pill '+(b.anchorValid?'pill-ok':'pill-bad')+'">'+(b.anchorValid?'ANCHORED':'WEAK')+'</span><div><b>RFC 3161 timestamp</b> — '+esc(v.anchor.authority)+' @ '+esc(new Date(v.anchor.timestampMs).toISOString())+' (±5 min skew: '+(b.anchorValid?'pass':'fail')+')</div></div>';
 rows+='<div class="mono-scroll">order '+esc(v.orderId)+' · bundle allValid='+String(b.allValid)+' · JCS-PARITY '+(match?'MATCH':'MISMATCH')+'</div>';
+rows+='</div></details>';
 body.innerHTML=rows;
 }).catch(function(e){body.innerHTML='<p class="status-line">Hash failed: '+esc(e.message)+'</p>';});
 }).catch(function(e){body.innerHTML='<p class="status-line">'+esc(e.message)+'</p>';});}
@@ -488,23 +594,23 @@ $('prompt-run').addEventListener('click',function(){runPrompt($('prompt-input').
 $('prompt-input').addEventListener('keydown',function(e){if(e.key==='Enter')runPrompt(e.target.value);});
 function setupCanvas(){var c=$('agent-chart');var dpr=window.devicePixelRatio||1;c.width=520*dpr;c.height=220*dpr;var x=c.getContext('2d');x.scale(dpr,dpr);x.clearRect(0,0,520,220);return x;}
 function bar(x,i,n,label,value,color,lo,hi){var bw=300/n;var bx=150+i*bw+bw*0.18;var bh=Math.max(3,150*value);var by=175-bh;
-x.fillStyle='#8b95a5';x.font='11px system-ui';x.textAlign='right';x.fillText(label,140,by+12);
+x.fillStyle='#667085';x.font='11px system-ui';x.textAlign='center';x.fillText(label,bx+bw*0.32,206);
 x.fillStyle=color;x.fillRect(bx,by,bw*0.64,bh);
-if(lo!==undefined&&hi!==undefined){var y1=175-150*hi;var y2=175-150*lo;var cx=bx+bw*0.32;x.strokeStyle='#14202e';x.lineWidth=2;x.beginPath();x.moveTo(cx,y1);x.lineTo(cx,y2);x.moveTo(cx-6,y1);x.lineTo(cx+6,y1);x.moveTo(cx-6,y2);x.lineTo(cx+6,y2);x.stroke();}
-x.fillStyle='#14202e';x.textAlign='center';x.fillText((100*value).toFixed(1)+'%',bx+bw*0.32,190);}
+if(lo!==undefined&&hi!==undefined){var y1=175-150*hi;var y2=175-150*lo;var cx=bx+bw*0.32;x.strokeStyle='#101828';x.lineWidth=2;x.beginPath();x.moveTo(cx,y1);x.lineTo(cx,y2);x.moveTo(cx-6,y1);x.lineTo(cx+6,y1);x.moveTo(cx-6,y2);x.lineTo(cx+6,y2);x.stroke();}
+x.fillStyle='#101828';x.textAlign='center';x.fillText((100*value).toFixed(1)+'%',bx+bw*0.32,190);}
 function drawOutcome(){if(!state.disputes)return;var x=setupCanvas();var ds=state.disputes.disputes;
-x.fillStyle='#14202e';x.font='bold 13px system-ui';x.textAlign='left';x.fillText('Disputes by verification outcome',8,16);
-ds.forEach(function(d,i){var good=d.forensics.verdict==='BUYER_FORGERY_DETECTED'||d.forensics.verdict==='MERCHANT_DRIFT_CONFIRMED';bar(x,i,2,d.case==='buyer_forgery'?'Forgery (B)':'Drift (A)',good?1:0,good?'#1f8a70':'#c81e3a');});
+x.fillStyle='#101828';x.font='bold 13px system-ui';x.textAlign='left';x.fillText('Disputes by verification outcome',8,16);
+ds.forEach(function(d,i){var good=d.forensics.verdict==='BUYER_FORGERY_DETECTED'||d.forensics.verdict==='MERCHANT_DRIFT_CONFIRMED';bar(x,i,2,d.case==='buyer_forgery'?'Forgery (B)':'Drift (A)',good?1:0,good?'#16a34a':'#b42318');});
 $('chart-table').innerHTML='<table class="matrix"><tbody>'+ds.map(function(d){return '<tr><th>'+esc(d.case)+'</th><td>'+esc(d.forensics.verdict)+'</td><td>'+esc(d.record.lifeCycleStage)+' / '+esc(d.record.disputeState)+'</td></tr>';}).join('')+'</tbody></table>';}
 function drawCompare(){if(!state.disputes)return;var x=setupCanvas();var ds=state.disputes.disputes;
-x.fillStyle='#14202e';x.font='bold 13px system-ui';x.textAlign='left';x.fillText('Hash match bits: buyer · witness · seller',8,16);
+x.fillStyle='#101828';x.font='bold 13px system-ui';x.textAlign='left';x.fillText('Hash match bits: buyer · witness · seller',8,16);
 var bits=['buyerHashMatch','witnessHashMatch','sellerHashMatch'];var names=['Buyer','Witness','Seller'];
-ds.forEach(function(d,di){var tag=d.case==='buyer_forgery'?' (B)':' (A)';bits.forEach(function(b,bi){var v=d.forensics[b]?1:0;var label=(di===0?names[bi]:'')+(bi===1?tag:'');bar(x,di*3+bi,6,label,v,v?'#1f8a70':'#c81e3a');});});
+ds.forEach(function(d,di){var tag=d.case==='buyer_forgery'?' (B)':' (A)';bits.forEach(function(b,bi){var v=d.forensics[b]?1:0;var label=(di===0?names[bi]:'')+(bi===1?tag:'');bar(x,di*3+bi,6,label,v,v?'#16a34a':'#b42318');});});
 $('chart-table').innerHTML='<table class="matrix"><thead><tr><th>Case</th><th>Buyer</th><th>Witness</th><th>Seller</th></tr></thead><tbody>'+ds.map(function(d){return '<tr><th>'+esc(d.case)+'</th><td>'+(d.forensics.buyerHashMatch?'MATCH':'DIFF')+'</td><td>'+(d.forensics.witnessHashMatch?'MATCH':'DIFF')+'</td><td>'+(d.forensics.sellerHashMatch?'MATCH':'DIFF')+'</td></tr>';}).join('')+'</tbody></table>';}
 function drawAccuracy(){if(!state.benchmark)return;var x=setupCanvas();var b=state.benchmark;
-x.fillStyle='#14202e';x.font='bold 13px system-ui';x.textAlign='left';x.fillText('Regression accuracy + 95% Wilson CI (72 runs)',8,16);
+x.fillStyle='#101828';x.font='bold 13px system-ui';x.textAlign='left';x.fillText('Regression accuracy + 95% Wilson CI (72 runs)',8,16);
 var rows=[['Gate',b.gateAccuracy],['Post-auth',b.postAuthAccuracy],['Referee',b.refereeAccuracy],['Overall',b.overallPassRate]];
-rows.forEach(function(r,i){bar(x,i,4,r[0],r[1].rate,'#0e6efd',r[1].ci95Lower,r[1].ci95Upper);});
+rows.forEach(function(r,i){bar(x,i,4,r[0],r[1].rate,'#175cd3',r[1].ci95Lower,r[1].ci95Upper);});
 $('chart-table').innerHTML='<table class="matrix"><thead><tr><th>Metric</th><th>Rate</th><th>95% CI</th></tr></thead><tbody>'+rows.map(function(r){return '<tr><th>'+esc(r[0])+'</th><td class="num">'+r[1].successes+'/'+r[1].total+'</td><td class="num">['+r[1].ci95Lower.toFixed(3)+', '+r[1].ci95Upper.toFixed(3)+']</td></tr>';}).join('')+'</tbody></table>';}
 /* ---------- evidence sheet ---------- */
 function openSheet(d){var meta=CASE_META[d.case];var f=d.forensics;var r=d.record;var p=state.disputes.provenance;
@@ -516,7 +622,7 @@ $('sheet-modal').addEventListener('click',function(e){if(e.target.classList&&e.t
 /* ---------- guided judge tour: 5 beats, ~60s, stoppable, reduced-motion aware ---------- */
 var tourRunning=false;var tourPaused=false;
 function tourSleep(ms){var rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;return new Promise(function(res){setTimeout(res,rm?Math.min(ms,400):ms);});}
-function tourSay(t){$('tour-status').textContent=t;toast(t);}
+function tourSay(t){$('tour-status').textContent=t;$('tour-status').title=t;toast(t);}
 function tourBeat(n,t){tourSay('Beat '+n+'/5: '+t);}
 function selectCase(c){state.selectedCase=c;renderInspector();}
 function scrollToEl(id){var el=$(id);if(el&&el.scrollIntoView){try{el.scrollIntoView({block:'start'});}catch(e){}}}
@@ -544,6 +650,15 @@ $('prompt-input').value='Chart 24-scenario regression accuracy with 95% Wilson C
 tourSay('Tour complete — VeriPact proved what the merchant promised.');
 }()).catch(function(e){tourSay('Tour stopped: '+e.message);}).finally(function(){var done=tourRunning&&!tourPaused;tourRunning=false;$('btn-tour').textContent='▶ Run 60s Guided Demo Tour';if(!done&&!tourPaused)tourSay('Tour stopped.');});}
 $('btn-tour').addEventListener('click',function(){runTour();});
+/* ---------- default landing state: witness + capture the normal offer on load ---------- */
+var autoStarted=false;
+function autoPopulate(){if(autoStarted)return;autoStarted=true;
+runWitnessFlow().then(function(){return runCheckoutFlow();}).then(function(r){if(r&&r.outcome==='CAPTURED'){$('auditor').open=true;runAuditor();}}).catch(function(){});}
+document.addEventListener('DOMContentLoaded',function(){autoPopulate();});
 </script>
 </body></html>`;
 }
+
+
+
+

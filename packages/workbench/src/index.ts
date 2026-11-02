@@ -1,7 +1,7 @@
 /**
  * @veripact/workbench — single-process Node HTTP server (agent 04).
  * Route modules keep Rule 2 key boundaries: buyer (SELF), witness (WIT),
- * merchant (SIGN). Serves the Sequoia 2-view UI + AG Studio desk.
+ * merchant (SIGN). Serves the editorial-fintech 2-view UI + AG desk.
  */
 import { startWorkbenchServer } from './server';
 

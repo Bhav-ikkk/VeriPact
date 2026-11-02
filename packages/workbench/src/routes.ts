@@ -457,11 +457,11 @@ function handleSystemStatus(res: WorkbenchResponse): void {
   sendJson(res, 200, payload);
 }
 
-function handleStore(scenarioId: string, res: WorkbenchResponse): void {
+async function handleStore(scenarioId: string, res: WorkbenchResponse): Promise<void> {
   const scenario = asScenarioName(scenarioId);
   // SAMEORIGIN: the workbench embeds this preview in its own iframe; every
   // other surface keeps DENY (the approval popup is never framed).
-  sendHtml(res, 200, renderStorefront(scenario), 'SAMEORIGIN');
+  sendHtml(res, 200, await renderStorefront(scenario), 'SAMEORIGIN');
 }
 
 function isMandateSpec(value: unknown): value is MandateSpec {
@@ -1030,7 +1030,7 @@ export async function handleWorkbenchRequest(
       return;
     }
     if (method === 'GET' && pathname.startsWith('/store/')) {
-      handleStore(pathname.slice('/store/'.length), res);
+      await handleStore(pathname.slice('/store/'.length), res);
       return;
     }
     if (method === 'GET' && pathname === '/api/merchant/disputes') {
