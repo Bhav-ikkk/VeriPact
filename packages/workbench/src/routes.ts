@@ -725,8 +725,10 @@ async function handleDisputeAction(
 ): Promise<void> {
   const disputeId = body['disputeId'];
   const action = body['action'];
-  if (typeof disputeId !== 'string' || disputeId.length === 0) {
-    throw new HttpError(400, 'disputeId is required');
+  if (typeof disputeId !== 'string' || !ORDER_TOKEN_RE.test(disputeId)) {
+    // Token allowlist (mirrors orderId): disputeId is interpolated into live
+    // PayPal URL paths, so `..`, `/`, and control chars are rejected here.
+    throw new HttpError(400, 'disputeId must be a non-empty token (letters, digits, _ -)');
   }
   if (typeof action !== 'string') {
     throw new HttpError(400, 'action is required');
