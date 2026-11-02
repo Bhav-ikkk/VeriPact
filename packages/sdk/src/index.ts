@@ -4,3 +4,4 @@
  */
 export * from './scenarios';
 export * from './client';
+export * from './regression';

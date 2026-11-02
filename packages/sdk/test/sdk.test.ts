@@ -5,16 +5,22 @@ import {
   type MandateSpec,
 } from '@veripact/core';
 import { createSandboxReplayEngine, PayPalClient } from '@veripact/paypal-client';
+import { existsSync } from 'node:fs';
 import {
   buildDemoMandate,
   buildForensicNotes,
+  buildScenarioMandate,
   DISPUTE_CASE_NAMES,
   getScenario,
+  loadScenarios,
   resolveKeys,
+  runRegressionSuite,
   SCENARIO_NAMES,
   SDK_VERSION,
   VeriPactClient,
   verifyTransactionBundle,
+  wilsonConfidenceInterval95,
+  writeRegressionReport,
 } from '../src/index';
 
 const HEX = '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
@@ -230,4 +236,71 @@ describe('@veripact/sdk', () => {
     expect(notes).toContain('BUYER_FORGERY_DETECTED');
     expect(notes).toContain('ORD-VP-0001');
   });
+});
+
+describe('@veripact/sdk regression suite', () => {
+  it('computes exact 95% Wilson intervals', () => {
+    const perfect = wilsonConfidenceInterval95(72, 72);
+    expect(perfect.rate).toBe(1);
+    expect(perfect.lower).toBeCloseTo(0.949, 2);
+    expect(perfect.upper).toBe(1);
+    const half = wilsonConfidenceInterval95(36, 72);
+    expect(half.rate).toBe(0.5);
+    expect(half.lower).toBeLessThan(0.5);
+    expect(half.upper).toBeGreaterThan(0.5);
+    expect(wilsonConfidenceInterval95(0, 0)).toEqual({ rate: 0, lower: 0, upper: 0 });
+  });
+
+  it('loads 24 unique scenarios across three balanced groups', () => {
+    const scenarios = loadScenarios();
+    expect(scenarios).toHaveLength(24);
+    expect(new Set(scenarios.map((s) => s.scenarioId)).size).toBe(24);
+    const groups = scenarios.map((s) => s.group).sort();
+    expect(groups.filter((g) => g === 'benign')).toHaveLength(8);
+    expect(groups.filter((g) => g === 'drift')).toHaveLength(8);
+    expect(groups.filter((g) => g === 'adversarial')).toHaveLength(8);
+    const mandate = buildScenarioMandate(scenarios[0]);
+    expect(
+      verifyCanonicalPayload(
+        { ...mandate, buyerSignatureHex: '' },
+        mandate.buyerSignatureHex,
+        mandate.buyerPublicKeyHex,
+      ),
+    ).toBe(true);
+  });
+
+  it('passes every scenario in a single pass with a diagonal confusion matrix', async () => {
+    const report = await runRegressionSuite({ passes: 1 });
+    expect(report.failures).toEqual([]);
+    expect(report.runCount).toBe(24);
+    expect(report.gateConfusion['PROCEED']).toEqual({
+      PROCEED: 8,
+      ASK_HUMAN_DELTA: 0,
+      BLOCK: 0,
+    });
+    expect(report.gateConfusion['ASK_HUMAN_DELTA']).toEqual({
+      PROCEED: 0,
+      ASK_HUMAN_DELTA: 11,
+      BLOCK: 0,
+    });
+    expect(report.gateConfusion['BLOCK']).toEqual({ PROCEED: 0, ASK_HUMAN_DELTA: 0, BLOCK: 5 });
+    expect(report.gateAccuracy).toMatchObject({ successes: 24, total: 24 });
+    expect(report.postAuthAccuracy).toMatchObject({ successes: 19, total: 19 });
+    expect(report.refereeAccuracy).toMatchObject({ successes: 7, total: 7 });
+    expect(report.overallPassRate.rate).toBe(1);
+  });
+
+  it(
+    'runs 3 passes and writes the committed 72-run report',
+    { timeout: 120000 },
+    async () => {
+      const report = await runRegressionSuite({ passes: 3 });
+      expect(report.failures).toEqual([]);
+      expect(report.runCount).toBe(72);
+      expect(report.overallPassRate).toMatchObject({ successes: 72, total: 72, rate: 1 });
+      const path = writeRegressionReport(report);
+      expect(path.endsWith('regression_benchmark_report.json')).toBe(true);
+      expect(existsSync(path)).toBe(true);
+    },
+  );
 });

@@ -17,7 +17,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint .",
     "test": "tsc -b . && vitest run",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "start": "node packages/workbench/dist/index.js",
+    "regression": "tsc -b . && tsc -p scripts/tsconfig.json && node scripts/dist/run-regression.js",
+    "seed:sandbox": "tsc -b . && tsc -p scripts/tsconfig.json && node scripts/dist/seed-live-sandbox.js"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

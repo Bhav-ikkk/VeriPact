@@ -268,3 +268,8 @@ export function start(): void {
       );
   });
 }
+
+const entrypoint = process.argv[1] ?? '';
+if (entrypoint.endsWith('index.js')) {
+  start();
+}

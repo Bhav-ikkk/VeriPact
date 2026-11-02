@@ -1,0 +1,246 @@
+{
+  "generatedAtUtc": "2026-11-02T07:10:51.444Z",
+  "transportMode": "DETERMINISTIC_SANDBOX_REPLAY",
+  "scenarioCount": 24,
+  "passes": 3,
+  "runCount": 72,
+  "gateConfusion": {
+    "PROCEED": {
+      "PROCEED": 24,
+      "ASK_HUMAN_DELTA": 0,
+      "BLOCK": 0
+    },
+    "ASK_HUMAN_DELTA": {
+      "PROCEED": 0,
+      "ASK_HUMAN_DELTA": 33,
+      "BLOCK": 0
+    },
+    "BLOCK": {
+      "PROCEED": 0,
+      "ASK_HUMAN_DELTA": 0,
+      "BLOCK": 15
+    }
+  },
+  "gateAccuracy": {
+    "successes": 72,
+    "total": 72,
+    "rate": 1,
+    "ci95Lower": 0.9493470601886036,
+    "ci95Upper": 1
+  },
+  "postAuthAccuracy": {
+    "successes": 57,
+    "total": 57,
+    "rate": 1,
+    "ci95Lower": 0.936858991216536,
+    "ci95Upper": 0.9999999999999999
+  },
+  "refereeAccuracy": {
+    "successes": 21,
+    "total": 21,
+    "rate": 1,
+    "ci95Lower": 0.8453561767357979,
+    "ci95Upper": 0.9999999999999999
+  },
+  "overallPassRate": {
+    "successes": 72,
+    "total": 72,
+    "rate": 1,
+    "ci95Lower": 0.9493470601886036,
+    "ci95Upper": 1
+  },
+  "byGroup": {
+    "benign": {
+      "successes": 24,
+      "total": 24,
+      "rate": 1,
+      "ci95Lower": 0.8620194241710247,
+      "ci95Upper": 1
+    },
+    "drift": {
+      "successes": 24,
+      "total": 24,
+      "rate": 1,
+      "ci95Lower": 0.8620194241710247,
+      "ci95Upper": 1
+    },
+    "adversarial": {
+      "successes": 24,
+      "total": 24,
+      "rate": 1,
+      "ci95Lower": 0.8620194241710247,
+      "ci95Upper": 1
+    }
+  },
+  "failures": [],
+  "scenarios": [
+    {
+      "scenarioId": "B01",
+      "group": "benign",
+      "title": "Apex ProView 27 4K IPS Monitor",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "B02",
+      "group": "benign",
+      "title": "Zentra ErgoChair Pro",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "B03",
+      "group": "benign",
+      "title": "Vireo SoundBar Mini",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "B04",
+      "group": "benign",
+      "title": "Northloop Desk Lamp",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "B05",
+      "group": "benign",
+      "title": "Apex ProView 27 4K IPS Monitor",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "B06",
+      "group": "benign",
+      "title": "Zentra ErgoChair Pro",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "B07",
+      "group": "benign",
+      "title": "Vireo SoundBar Mini",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "B08",
+      "group": "benign",
+      "title": "Northloop Desk Lamp",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "D01",
+      "group": "drift",
+      "title": "Apex ProView 27 4K IPS Monitor",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "D02",
+      "group": "drift",
+      "title": "Zentra ErgoChair Pro",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "D03",
+      "group": "drift",
+      "title": "Vireo SoundBar Mini",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "D04",
+      "group": "drift",
+      "title": "Northloop Desk Lamp",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "D05",
+      "group": "drift",
+      "title": "Apex ProView 27 4K IPS Monitor",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "D06",
+      "group": "drift",
+      "title": "Zentra ErgoChair Pro",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "D07",
+      "group": "drift",
+      "title": "Apex ProView 27 4K IPS Monitor",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "D08",
+      "group": "drift",
+      "title": "Zentra ErgoChair Pro",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "A01",
+      "group": "adversarial",
+      "title": "Apex ProView 27 4K IPS Monitor",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "A02",
+      "group": "adversarial",
+      "title": "Apex ProView 27 4K IPS Monitor",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "A03",
+      "group": "adversarial",
+      "title": "Apex ProView 27 4K IPS Monitor",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "A04",
+      "group": "adversarial",
+      "title": "Apex ProView 27 4K IPS Monitor",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "A05",
+      "group": "adversarial",
+      "title": "Apex ProView 27 4K IPS Monitor",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "A06",
+      "group": "adversarial",
+      "title": "Apex ProView 27 4K IPS Monitor",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "A07",
+      "group": "adversarial",
+      "title": "Apex ProView 27 4K IPS Monitor",
+      "passes": 3,
+      "passed": 3
+    },
+    {
+      "scenarioId": "A08",
+      "group": "adversarial",
+      "title": "Vireo SoundBar Mini",
+      "passes": 3,
+      "passed": 3
+    }
+  ]
+}
