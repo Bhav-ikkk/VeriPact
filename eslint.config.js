@@ -4,7 +4,7 @@ const globals = require('globals');
 
 module.exports = tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**', '.agents/skills/**'],
+    ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**', '.agents/skills/**', '.vitest-tmp/**', '.tools/**'],
   },
   ...tseslint.configs.recommended,
   {

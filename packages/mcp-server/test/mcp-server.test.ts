@@ -158,6 +158,19 @@ describe('@veripact/mcp-server', () => {
     expect(containsKeyMaterial({ privateKey: 'abc' })).toBe(true);
     expect(containsKeyMaterial({ bundle: { clientSecret: 'x' } })).toBe(true);
     expect(containsKeyMaterial(null)).toBe(false);
+    // Break-it hardening: api/token spellings trip the guard too…
+    for (const name of ['apiKey', 'api_key', 'APIKEY', 'accessToken', 'auth_token', 'refreshToken']) {
+      expect(containsKeyMaterial({ scenario: 'normal', [name]: 'x' })).toBe(true);
+    }
+    // …while public hex material (safe to carry by design) still passes.
+    expect(
+      containsKeyMaterial({
+        orderId: 'ORD-VP-0001',
+        customId: `VP1:${HEX}`,
+        publicKeyHex: HEX,
+        signatureHex: 'ab'.repeat(64),
+      }),
+    ).toBe(false);
   });
 
   it('errors on key material, bad input, unknown tools and methods', async () => {

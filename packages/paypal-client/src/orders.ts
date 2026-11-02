@@ -235,6 +235,13 @@ export async function createAuthorizeOrder(
   if (input.commitment.length > 255) {
     throw new Error('paypal: commitment exceeds custom_id maxLength 255');
   }
+  if (
+    typeof input.itemTotalUsd !== 'number' ||
+    !Number.isFinite(input.itemTotalUsd) ||
+    input.itemTotalUsd < 0
+  ) {
+    throw new Error('paypal: itemTotalUsd must be a finite USD amount >= 0');
+  }
   const body = buildAuthorizeOrderBody({
     receiptSha256Hex: input.commitment.slice(4),
     description: input.description,

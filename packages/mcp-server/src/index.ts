@@ -105,7 +105,8 @@ function toolResult(payload: unknown): unknown {
   return { content: [{ type: 'text', text: JSON.stringify(payload) }] };
 }
 
-const KEY_MATERIAL_RE = /private[_-]?key|client[_-]?secret|password|passwd|secret[_-]?key|bearer/i;
+const KEY_MATERIAL_RE =
+  /private[_-]?key|client[_-]?secret|secret[_-]?key|api[_-]?key|access[_-]?token|auth[_-]?token|refresh[_-]?token|password|passwd|bearer/i;
 
 /**
  * Reject key material over stdin (agent-03 boundary): any argument KEY —

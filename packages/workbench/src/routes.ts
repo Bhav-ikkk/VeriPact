@@ -112,11 +112,14 @@ export interface WorkbenchResponse {
 export const MAX_BODY_BYTES = 1_000_000;
 
 /** Security headers applied to EVERY response. */
-export function securityHeaders(contentType: string): Record<string, string> {
+export function securityHeaders(
+  contentType: string,
+  frame: 'DENY' | 'SAMEORIGIN' = 'DENY',
+): Record<string, string> {
   return {
     'content-type': contentType,
     'x-content-type-options': 'nosniff',
-    'x-frame-options': 'DENY',
+    'x-frame-options': frame,
     'referrer-policy': 'no-referrer',
   };
 }
@@ -126,8 +129,13 @@ function sendJson(res: WorkbenchResponse, code: number, payload: unknown): void 
   res.end(JSON.stringify(payload));
 }
 
-function sendHtml(res: WorkbenchResponse, code: number, html: string): void {
-  res.writeHead(code, securityHeaders('text/html; charset=utf-8'));
+function sendHtml(
+  res: WorkbenchResponse,
+  code: number,
+  html: string,
+  frame: 'DENY' | 'SAMEORIGIN' = 'DENY',
+): void {
+  res.writeHead(code, securityHeaders('text/html; charset=utf-8', frame));
   res.end(html);
 }
 
@@ -451,7 +459,9 @@ function handleSystemStatus(res: WorkbenchResponse): void {
 
 function handleStore(scenarioId: string, res: WorkbenchResponse): void {
   const scenario = asScenarioName(scenarioId);
-  sendHtml(res, 200, renderStorefront(scenario));
+  // SAMEORIGIN: the workbench embeds this preview in its own iframe; every
+  // other surface keeps DENY (the approval popup is never framed).
+  sendHtml(res, 200, renderStorefront(scenario), 'SAMEORIGIN');
 }
 
 function isMandateSpec(value: unknown): value is MandateSpec {

@@ -91,7 +91,23 @@ interface ParsedElement {
   attrs: Record<string, string>;
   children: ParsedNode[];
   rawBody?: string;
+  /**
+   * Sticky hidden/sealed inheritance from ancestors flattened away by the
+   * nesting cap. Always false unless the cap engaged (pathological input);
+   * the walk ORs these in so deep content loses ancestry detail but never
+   * detection coverage (fail-closed: over-hidden, never over-visible).
+   */
+  cappedHiddenAbove: boolean;
+  cappedSealedAbove: boolean;
 }
+
+/**
+ * Maximum open-element nesting tracked exactly. Real pages nest dozens
+ * deep at most; beyond this the parser flattens ancestry (keeping every
+ * node visitable) so hostile deeply-nested input cannot turn the walk,
+ * path strings, or subtree re-scans quadratic.
+ */
+const MAX_NESTING_DEPTH = 256;
 
 interface ParsedText {
   kind: 'text';
@@ -185,8 +201,17 @@ function parseAttributes(
 }
 
 function parseHtml(html: string): ParsedElement {
-  const root: ParsedElement = { kind: 'element', tag: '#root', attrs: {}, children: [] };
+  const root: ParsedElement = {
+    kind: 'element',
+    tag: '#root',
+    attrs: {},
+    children: [],
+    cappedHiddenAbove: false,
+    cappedSealedAbove: false,
+  };
   const stack: ParsedElement[] = [root];
+  let cappedHiddenSticky = false;
+  let cappedSealedSticky = false;
   const current = (): ParsedElement => stack[stack.length - 1] ?? root;
   const pushText = (text: string): void => {
     if (text.length > 0) {
@@ -236,7 +261,14 @@ function parseHtml(html: string): ParsedElement {
     }
     const tag = openMatch[1].toLowerCase();
     const parsed = parseAttributes(html, lt + openMatch[0].length);
-    const el: ParsedElement = { kind: 'element', tag, attrs: parsed.attrs, children: [] };
+    const el: ParsedElement = {
+      kind: 'element',
+      tag,
+      attrs: parsed.attrs,
+      children: [],
+      cappedHiddenAbove: cappedHiddenSticky,
+      cappedSealedAbove: cappedSealedSticky,
+    };
     current().children.push(el);
     i = parsed.end;
     if (RAW_TEXT_ELEMENTS.has(tag)) {
@@ -253,6 +285,17 @@ function parseHtml(html: string): ParsedElement {
     }
     if (!parsed.selfClosing && !VOID_ELEMENTS.has(tag)) {
       stack.push(el);
+      while (stack.length > MAX_NESTING_DEPTH + 1) {
+        const popped = stack.pop();
+        if (popped && popped.tag !== '#root') {
+          if (popped.cappedHiddenAbove || ownHiddenReason(popped) !== undefined) {
+            cappedHiddenSticky = true;
+          }
+          if (popped.cappedSealedAbove || NON_RENDERED_ELEMENTS.has(popped.tag)) {
+            cappedSealedSticky = true;
+          }
+        }
+      }
     }
   }
   return root;
@@ -469,6 +512,9 @@ interface ElementState {
  * Deterministic, synchronous, offline — safe for unit tests and replays.
  */
 export function scanMerchantHtml(html: string): DomScanResult {
+  if (typeof html !== 'string') {
+    throw new Error('scanMerchantHtml: html must be a string');
+  }
   const root = parseHtml(html);
   const findings: HiddenDomFinding[] = [];
   const state = new Map<ParsedElement, ElementState>();
@@ -485,8 +531,10 @@ export function scanMerchantHtml(html: string): DomScanResult {
     const { el, path, hiddenAbove, sealedAbove } = frame;
     const isRoot = el.tag === '#root';
     const ownReason = isRoot ? undefined : ownHiddenReason(el);
-    const hidden = hiddenAbove || ownReason !== undefined;
-    const sealedHere = sealedAbove || NON_RENDERED_ELEMENTS.has(el.tag);
+    const inheritedHidden = hiddenAbove || el.cappedHiddenAbove;
+    const inheritedSealed = sealedAbove || el.cappedSealedAbove;
+    const hidden = inheritedHidden || ownReason !== undefined;
+    const sealedHere = inheritedSealed || NON_RENDERED_ELEMENTS.has(el.tag);
     const directText = el.children
       .map((c) => (c.kind === 'text' ? c.text : ''))
       .join(' ');
@@ -523,7 +571,7 @@ export function scanMerchantHtml(html: string): DomScanResult {
     }
 
     if (!isRoot && ownReason !== undefined) {
-      const subtree = subtreeText(el, state);
+      const subtree = subtreeText(el, state, true);
       findings.push({
         tag: el.tag,
         path,
@@ -582,7 +630,11 @@ export function scanMerchantHtml(html: string): DomScanResult {
   };
 }
 
-function subtreeText(el: ParsedElement, state: Map<ParsedElement, ElementState>): string {
+function subtreeText(
+  el: ParsedElement,
+  state: Map<ParsedElement, ElementState>,
+  includeConcealed: boolean,
+): string {
   const parts: string[] = [];
   const stack: ParsedElement[] = [el];
   while (stack.length > 0) {
@@ -595,7 +647,10 @@ function subtreeText(el: ParsedElement, state: Map<ParsedElement, ElementState>)
         parts.push(child.text);
       } else if (child.kind === 'element') {
         const st = state.get(child);
-        if (!st || (!st.hidden && !st.sealed)) {
+        // Findings must see through nested concealment (an injection one
+        // level down is still an injection); visible emission keeps the
+        // strict filter so hidden text never leaks into quotes.
+        if (includeConcealed || !st || (!st.hidden && !st.sealed)) {
           stack.push(child);
         }
       }
@@ -646,7 +701,7 @@ function emitVisibleBlocks(
       continue;
     }
     if (BLOCK_TAGS.has(el.tag)) {
-      const text = subtreeText(el, state);
+      const text = subtreeText(el, state, false);
       if (normalizeText(text)) {
         emit(el.tag, text);
         markCovered(el);

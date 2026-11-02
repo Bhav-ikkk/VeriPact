@@ -195,6 +195,23 @@ describe('@veripact/workbench red team', () => {
     );
   });
 
+  it('accepts a body at exactly the cap and rejects cap+1 byte', async () => {
+    const prefix = '{"scenario":"normal","pad":"';
+    const suffix = '"}';
+    const under = await post(
+      '/api/merchant/checkout',
+      undefined,
+      `${prefix}${'x'.repeat(MAX_BODY_BYTES - prefix.length - suffix.length)}${suffix}`,
+    );
+    expect(under.status).toBe(200);
+    const over = await post(
+      '/api/merchant/checkout',
+      undefined,
+      `${prefix}${'x'.repeat(MAX_BODY_BYTES - prefix.length - suffix.length + 1)}${suffix}`,
+    );
+    expect(over.status).toBe(413);
+  });
+
   it('handles prototype pollution and malformed JSON without polluting', async () => {
     const polluted = await post(
       '/api/merchant/checkout',
@@ -269,5 +286,36 @@ describe('@veripact/workbench red team', () => {
     expect(html).toContain('function esc(');
     expect(html).not.toContain('PRIVATE_KEY');
     expect(html).not.toContain('PAYPAL_CLIENT_SECRET');
+  });
+
+  it('frames same-origin storefront previews while denying everything else', async () => {
+    const store = await get('/store/normal');
+    expect(store.status).toBe(200);
+    expect(store.headers['x-frame-options']).toBe('SAMEORIGIN');
+    const app = await get('/');
+    expect(app.headers['x-frame-options']).toBe('DENY');
+    await post('/api/merchant/checkout', { scenario: 'normal', twoStep: true });
+    const popup = await get('/sandbox/paypal-checkout?token=ORD-VP-0001');
+    expect(popup.headers['x-frame-options']).toBe('DENY');
+  });
+
+  it('keeps fallback grid cells on one line with clipped hashes', () => {
+    const html = renderIndexPage();
+    expect(html).toContain('white-space:nowrap');
+    expect(html).toContain('.fallback-table .hash-chip{max-width:260px}');
+    expect(html).toContain('#ag-live-disputes-grid,#ag-regression-benchmark-grid{overflow-x:auto');
+  });
+
+  it('wraps inspector diff pills inside narrow columns', () => {
+    const html = renderIndexPage();
+    expect(html).toMatch(/\.diff-pill\{[^}]*white-space:normal[^}]*overflow-wrap:anywhere/);
+    expect(html).toMatch(/\.wit-pill\{[^}]*white-space:normal[^}]*overflow-wrap:anywhere/);
+  });
+
+  it('guards finalize against double-submit and resets on settle', () => {
+    const html = renderIndexPage();
+    expect(html).toContain('var finalizing=false;');
+    expect(html).toMatch(/function finalizeApproved\(orderId\)\{if\(finalizing\)return;finalizing=true;/);
+    expect(html).toMatch(/\.finally\(function\(\)\{finalizing=false;/);
   });
 });

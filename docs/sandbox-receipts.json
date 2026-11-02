@@ -1,21 +1,22 @@
 {
-  "generatedAtUtc": "2026-11-02T07:05:19.311Z",
+  "generatedAtUtc": "2026-11-02T12:09:22.693Z",
   "transportMode": "DETERMINISTIC_SANDBOX_REPLAY",
   "orders": [
-    {
-      "scenario": "normal",
-      "orderId": "ORD-VP-0001",
-      "customId": "VP1:7615e5ea63d4f8f79ea1055e5ccf5371c4524a6eacf25adab996a74dbc48f6f6",
-      "readBackCustomId": "VP1:7615e5ea63d4f8f79ea1055e5ccf5371c4524a6eacf25adab996a74dbc48f6f6",
-      "customIdMatch": true,
-      "finalTotalUsd": 297,
-      "status": "CREATED"
-    },
     {
       "scenario": "surcharge_void",
       "orderId": "ORD-VP-0002",
       "customId": "VP1:d1250b9a150c635d4715da05ba461598862ab7542af62c1d3cbe8ee7f3f19ebe",
       "finalTotalUsd": 340.5
+    },
+    {
+      "scenario": "normal",
+      "orderId": "ORD-VP-0001",
+      "authorizationId": "AUTH-VP-0001",
+      "captureId": "CAP-VP-0001",
+      "customId": "VP1:a99e4e467db931173cc2439658ae010f55bc468771bc145903dcf5e9bbf71696",
+      "finalTotalUsd": 297,
+      "transportMode": "DETERMINISTIC_SANDBOX_REPLAY",
+      "finalizedAtUtc": "2026-11-02T12:09:22.692Z"
     }
   ],
   "disputes": [

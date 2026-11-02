@@ -110,3 +110,42 @@ script query tokens (400, zero reflection), dispute-note handling +
 shapes (handled, prototype untouched), 5 canary secrets × 13 responses
 (zero leakage, fingerprints stay 16-hex), UI bundle (`esc` present, no
 secret names). Full gate: **156/156** tests green.
+
+## 6. Run 08 break-it addendum (2026-11-02, post-lock hardening)
+
+Adversarial re-test with a headless-Chromium probe (10 scripted UI +
+backend steps, all green) and a route/template/CLI/MCP fuzzer. Five
+real breaks found and fixed; each carries a committed regression
+test. Full gate after fixes: **166/166** tests green.
+
+- **DoS via deeply nested merchant HTML (fixed).** 100k nested `<div>`s
+  turned the scanner walk quadratic (hang). Fix: `MAX_NESTING_DEPTH =
+  256` parser cap with sticky fail-closed inheritance (`cappedHiddenAbove`
+  / `cappedSealedAbove`) — deep content loses ancestry detail but never
+  detection coverage. Proven no-op on shallow pages: every changed
+  branch is gated on depth > 256, and visible-block emission keeps the
+  strict concealed filter.
+- **Nested injection blind spot (fixed).** Findings text stopped at one
+  concealment level, so an injection nested inside a hidden element was
+  missed. Fix: `subtreeText(..., includeConcealed)` sees through nested
+  concealment for findings only; quote emission is unchanged.
+- **Unvalidated order totals (fixed).** `createAuthorizeOrder` accepted
+  `NaN` / `Infinity` / negative totals. Fix: finite `>= 0` guard;
+  `NaN` / `Infinity` / negatives / strings reject, `0` allowed.
+- **MCP key-material regex gap (fixed).** `apiKey` / `accessToken` /
+  `auth_token` / `refreshToken` spellings bypassed the stdin guard.
+  Fix: pattern widened; public hex material (`orderId`, `VP1:`
+  commitments, public keys, signatures) still passes by design.
+- **Exact body-cap boundary (locked in).** The 1MB cap previously had
+  only an over-cap test. Added: exactly 1,000,000 bytes → 200,
+  cap+1 → 413.
+- **Framing (no finding).** `/store/*` preview moved from `DENY` to
+  `SAMEORIGIN` so the workbench can iframe its own preview; all other
+  surfaces keep `DENY`, and the approval popup is never framed.
+- **Fuzz false alarms (documented, not fixed).** `VP1:` key-format
+  throws, JCS circular-input throws, TSA digest-mismatch rejects,
+  replay out-of-order transitions, and MCP unknown-shape errors are
+  all designed fail-closed behavior, asserted by the existing suite.
+
+Non-security UI fixes in the same run: fallback-grid wrapping,
+diff-pill overflow, finalize double-submit guard. No flow changes.

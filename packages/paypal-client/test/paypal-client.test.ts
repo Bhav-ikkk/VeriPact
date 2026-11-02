@@ -501,6 +501,22 @@ describe('@veripact/paypal-client', () => {
     }
   });
 
+  it('rejects non-finite or negative order totals', async () => {
+    const { client } = replayClient();
+    for (const total of [NaN, Infinity, -Infinity, -5, '279' as unknown as number]) {
+      await expect(
+        client.createAuthorizeOrder({ commitment: COMMITMENT, description: 't', itemTotalUsd: total }),
+      ).rejects.toThrow('itemTotalUsd must be a finite USD amount');
+    }
+    const zero = await client.createAuthorizeOrder({
+      commitment: COMMITMENT,
+      description: 'free item',
+      itemTotalUsd: 0,
+    });
+    expect(zero.status).toBe('CREATED');
+    expect(zero.amountBreakdown.itemTotalUsd).toBe(0);
+  });
+
   it('hot-reloads credentials dropped into disk mid-session', () => {
     const dir = mkdtempSync(join(tmpdir(), 'vp-env-'));
     try {

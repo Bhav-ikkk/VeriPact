@@ -104,7 +104,9 @@ background:var(--slate-bg);border:1px solid var(--line);border-radius:var(--r-sm
 .ag-shell{border:1px solid var(--line);border-radius:var(--r-lg);background:#fff;overflow:hidden}
 #ag-live-disputes-grid,#ag-regression-benchmark-grid{height:560px;width:100%}
 .fallback-table{width:100%;border-collapse:collapse;font-size:13px}
-.fallback-table th,.fallback-table td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.fallback-table th,.fallback-table td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap}
+.fallback-table .hash-chip{max-width:260px}
+#ag-live-disputes-grid,#ag-regression-benchmark-grid{overflow-x:auto;max-width:100%}
 .fallback-table th{font-size:11px;color:var(--muted);font-weight:600}
 .fallback-table tbody tr{cursor:pointer}
 .fallback-table tbody tr:hover{background:#f0f4fa}
@@ -162,11 +164,11 @@ min-width:26px;height:26px;display:flex;align-items:center;justify-content:cente
 .rb-badges .badge{max-width:100%;overflow:hidden;text-overflow:ellipsis}
 /* Term diff pills: readable at video distance */
 .diff-pill{display:inline-block;font-family:var(--mono);font-size:15px;font-weight:700;background:var(--crimson-bg);
-color:var(--crimson);border:2px solid var(--crimson);border-radius:10px;padding:6px 14px;margin:3px 8px 3px 0;
-font-variant-numeric:tabular-nums;white-space:nowrap}
+color:var(--crimson);border:2px solid var(--crimson);border-radius:10px;padding:6px 14px;margin:3px 8px 3px 0;max-width:100%;
+font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
 .wit-pill{display:inline-block;font-family:var(--mono);font-size:13px;font-weight:700;background:var(--emerald-bg);
-color:var(--emerald);border:2px solid var(--emerald);border-radius:10px;padding:5px 12px;margin:3px 8px 3px 0;
-font-variant-numeric:tabular-nums;white-space:nowrap}
+color:var(--emerald);border:2px solid var(--emerald);border-radius:10px;padding:5px 12px;margin:3px 8px 3px 0;max-width:100%;
+font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
 #tour-status{font-weight:600}
 @media (max-width:1080px){.split,.desk-grid,.inspector,.ribbon{grid-template-columns:minmax(0,1fr)}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
@@ -364,9 +366,11 @@ if(r.outcome==='CAPTURED'){html+='<button type="button" class="btn" id="btn-audi
 $('checkout-result').innerHTML=html;$('checkout-result').hidden=false;
 $('checkout-status').textContent='Gate: '+r.snapshot.gateResult.decision+' · Outcome: '+r.outcome;
 var ao=$('btn-audit-open');if(ao){ao.addEventListener('click',function(){$('auditor').open=true;runAuditor();});}}
-function finalizeApproved(orderId){$('checkout-status').textContent='Finalizing: authorize → re-gate → capture/void…';
+var finalizing=false;
+function finalizeApproved(orderId){if(finalizing)return;finalizing=true;var fb=$('btn-finalize');if(fb)fb.disabled=true;
+$('checkout-status').textContent='Finalizing: authorize → re-gate → capture/void…';
 var prior=null;if(state.awaiting&&state.awaiting.snapshot){prior={snapshot:state.awaiting.snapshot,buyerApprovalSignatureHex:state.awaiting.buyerApprovalSignatureHex,merchantSignatureHex:state.awaiting.merchantSignatureHex};}
-api('/api/merchant/checkout/finalize',{method:'POST',body:JSON.stringify({orderId:orderId,scenario:state.scenario,prior:prior})}).then(function(r){$('awaiting-card').hidden=true;state.awaiting=null;renderCheckoutDone(r);}).catch(function(e){$('checkout-status').textContent=e.message;});}
+api('/api/merchant/checkout/finalize',{method:'POST',body:JSON.stringify({orderId:orderId,scenario:state.scenario,prior:prior})}).then(function(r){$('awaiting-card').hidden=true;state.awaiting=null;renderCheckoutDone(r);},function(e){$('checkout-status').textContent=e.message;}).finally(function(){finalizing=false;var f2=$('btn-finalize');if(f2)f2.disabled=false;});}
 function renderAwaiting(r){state.awaiting=r;suffPills(r.snapshot.termReceipt.observedTerms);rungTo(1);ribbonFillWitness(r.snapshot);
 $('oracle-line').textContent='Channel3 oracle: '+(r.snapshot.oracleResult.matched?'match ':'no match ')+r.snapshot.oracleResult.productId+' · '+r.snapshot.oracleResult.source;
 $('quote-badges').innerHTML=badgeHtml(r.snapshot);
