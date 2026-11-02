@@ -5,10 +5,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   canonicalizeJson,
   COMMITMENT_PREFIX,
+  sha256Hex,
   verifyCanonicalPayload,
   type MandateSpec,
 } from '@veripact/core';
+import { VeriPactClient } from '@veripact/sdk';
 import {
+  clearPendingApprovalsMemory,
   handleWorkbenchRequest,
   renderApprovalPage,
   renderIndexPage,
@@ -16,6 +19,7 @@ import {
   ROUTES,
   WORKBENCH_VERSION,
   type HealthPayload,
+  type SystemStatusPayload,
   type WorkbenchResponse,
 } from '../src/index';
 
@@ -69,6 +73,7 @@ const ENV_VARS = [
 // hot-reload hook aims at an absent path so a repo .env stays unread.
 const ABSENT_ENV = join(process.cwd(), '.vitest-tmp', 'absent-credentials.env');
 const RECEIPTS_PATH = join(process.cwd(), 'docs', 'sandbox-receipts.json');
+const PENDING_PATH = join(process.cwd(), '.veripact-pending.json');
 
 const savedEnv: Record<string, string | undefined> = {};
 beforeEach(() => {
@@ -167,6 +172,15 @@ describe('@veripact/workbench', () => {
       'VERIPACT_ORDER_APPROVED',
       'Finalize approved order',
       'btn-popup',
+      'btn-tour',
+      'Run 60s Guided Demo Tour',
+      'pipeline-ribbon',
+      'rb-buyer-fp',
+      'tour-status',
+      'ContestedClaimInspectorWidget',
+      'diff-pill',
+      'JCS-PARITY',
+      'sameOrigin',
     ]) {
       expect(res.body).toContain(needle);
     }
@@ -657,5 +671,103 @@ describe('@veripact/workbench', () => {
     expect(json<{ error: string }>(fin).error).toContain('does not match the order custom_id');
     const badId = await post('/api/merchant/checkout/finalize', { orderId: '<oops>', scenario: 'normal' });
     expect(badId.status).toBe(400);
+  });
+
+  it('reports credential readiness with fingerprints and zero secrets', async () => {
+    const res = await get('/api/system/status');
+    expect(res.status).toBe(200);
+    const body = json<SystemStatusPayload>(res);
+    expect(body.transportMode).toBe('DETERMINISTIC_SANDBOX_REPLAY');
+    expect(body.hasPayPalCredentials).toBe(false);
+    expect(body.envFilePath).toBe(ABSENT_ENV);
+    expect(body.totalScenarios).toBe(24);
+    expect(body.regressionPassRate).toBe('72/72 (100%)');
+    // Independently recomputed from the same demo seeds (env is hermetic).
+    const keys = new VeriPactClient().keys;
+    expect(body.keyFingerprints).toEqual({
+      buyer: sha256Hex(keys.buyer.publicKeyHex).slice(0, 16),
+      witness: sha256Hex(keys.witness.publicKeyHex).slice(0, 16),
+      merchant: sha256Hex(keys.merchant.publicKeyHex).slice(0, 16),
+    });
+    expect(new Set(Object.values(body.keyFingerprints)).size).toBe(3);
+    expect(res.body).not.toMatch(/private|secret/i);
+    expect(JSON.stringify(body.keyFingerprints)).not.toMatch(/[0-9a-f]{32,}/);
+    expect(ROUTES).toContain('/api/system/status');
+  });
+
+  it('finalize survives a cleared in-memory map via the disk mirror', async () => {
+    const receiptsBefore = snapshotReceipts();
+    try {
+      const step1 = json<AwaitingBody>(
+        await post('/api/merchant/checkout', { scenario: 'normal', twoStep: true }),
+      );
+      await post('/api/sandbox/approve-order', { orderId: step1.orderId });
+      expect(existsSync(PENDING_PATH)).toBe(true);
+      clearPendingApprovalsMemory();
+      const fin = await post('/api/merchant/checkout/finalize', {
+        orderId: step1.orderId,
+        scenario: 'normal',
+      });
+      expect(fin.status).toBe(200);
+      const done = json<{ outcome: string; snapshot: { commitment: string } }>(fin);
+      expect(done.outcome).toBe('CAPTURED');
+      expect(done.snapshot.commitment).toBe(step1.snapshot['commitment']);
+    } finally {
+      restoreReceipts(receiptsBefore);
+      resetDemoState();
+    }
+  });
+
+  it('locks postMessage to the same origin on both popup and workbench', async () => {
+    await post('/api/merchant/checkout', { scenario: 'normal', twoStep: true });
+    const popup = await get('/sandbox/paypal-checkout?token=ORD-VP-0001');
+    expect(popup.status).toBe(200);
+    expect(popup.body).toContain('window.location.origin');
+    expect(popup.body).toContain('targetOrigin');
+    expect(popup.body).toContain('},targetOrigin)');
+    expect(popup.body).not.toContain("},'*')");
+    const app = renderIndexPage();
+    expect(app).toContain('e.origin===loc.origin');
+  });
+
+  it('ships 5 valid SVG screenshots referenced by the README', () => {
+    const names = [
+      '01-architecture-and-3-rung-ladder.svg',
+      '02-view1-witnessed-checkout-and-auditor.svg',
+      '03-view1-surcharge-void-and-dom-block.svg',
+      '04-view2-contested-dispute-desk.svg',
+      '05-regression-suite-wilson-ci.svg',
+    ];
+    const readme = readFileSync(join(process.cwd(), 'README.md'), 'utf8');
+    for (const name of names) {
+      const svg = readFileSync(join(process.cwd(), 'docs', 'screenshots', name), 'utf8');
+      expect(svg.startsWith('<svg ')).toBe(true);
+      expect(svg.trimEnd().endsWith('</svg>')).toBe(true);
+      const opens = (svg.match(/<[a-zA-Z][^>]*[^/]>/g) ?? []).length;
+      const closes = (svg.match(/<\/[a-zA-Z][^>]*>/g) ?? []).length;
+      expect(opens).toBeGreaterThan(0);
+      expect(opens).toBe(closes);
+      expect(readme).toContain(`docs/screenshots/${name}`);
+    }
+    const arch = readFileSync(
+      join(process.cwd(), 'docs', 'screenshots', names[0] as string),
+      'utf8',
+    );
+    expect(arch).toContain('RUNG 2');
+    const view1 = readFileSync(
+      join(process.cwd(), 'docs', 'screenshots', names[1] as string),
+      'utf8',
+    );
+    expect(view1).toContain('JCS-PARITY MATCH');
+    const desk = readFileSync(
+      join(process.cwd(), 'docs', 'screenshots', names[3] as string),
+      'utf8',
+    );
+    expect(desk).toContain('return_window_days: 60 vs 30');
+    const reg = readFileSync(
+      join(process.cwd(), 'docs', 'screenshots', names[4] as string),
+      'utf8',
+    );
+    expect(reg).toContain('72/72');
   });
 });

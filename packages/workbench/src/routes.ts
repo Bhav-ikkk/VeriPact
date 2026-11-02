@@ -15,11 +15,12 @@
  * buffering), JSON-only errors that never carry key material, and no
  * secret ever serialized into a response.
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import {
   deriveEd25519KeyPairFromSeed,
   evaluateContestedDispute,
+  sha256Hex,
   signCanonicalPayload,
   verifyCanonicalPayload,
   type MandateSpec,
@@ -27,6 +28,7 @@ import {
 import { createWitnessSnapshot } from '@veripact/witness-client';
 import {
   createSandboxReplayEngine,
+  defaultEnvFilePath,
   DisputeActionNotPermittedByHateoasError,
   PayPalClient,
   resolvePaypalCredentials,
@@ -41,6 +43,7 @@ import {
   defaultBenchmarkPaths,
   DISPUTE_CASE_NAMES,
   getScenario,
+  loadScenarios,
   runRegressionSuite,
   SCENARIO_NAMES,
   VeriPactClient,
@@ -70,6 +73,7 @@ export const ROUTES = [
   '/sandbox/paypal-checkout',
   '/api/verify',
   '/api/benchmark',
+  '/api/system/status',
   '/api/demo/reset',
 ];
 
@@ -277,9 +281,64 @@ function demoEngine(): SandboxReplayEngine | undefined {
  */
 const pendingApprovals = new Map<string, { scenario: ScenarioName } & PriorApprovalData>();
 
+/**
+ * Disk mirror of `pendingApprovals` (gitignored): a server restart mid-popup
+ * must never lose an awaiting checkout. Best-effort I/O — a corrupt or
+ * missing file falls through to re-witness, never to a 500. Holds witness
+ * snapshots + signatures only (no keys, no PayPal secrets).
+ */
+const PENDING_FILE = join(process.cwd(), '.veripact-pending.json');
+
+function savePendingApprovals(): void {
+  try {
+    writeFileSync(PENDING_FILE, JSON.stringify(Object.fromEntries(pendingApprovals)));
+  } catch {
+    // Best-effort: the in-memory map remains the primary store.
+  }
+}
+
+function loadPendingApproval(orderId: string): ({ scenario: ScenarioName } & PriorApprovalData) | undefined {
+  let doc: unknown;
+  try {
+    doc = JSON.parse(readFileSync(PENDING_FILE, 'utf8')) as unknown;
+  } catch {
+    return undefined;
+  }
+  if (doc === null || typeof doc !== 'object') {
+    return undefined;
+  }
+  const entry = (doc as Record<string, unknown>)[orderId];
+  if (entry === null || typeof entry !== 'object') {
+    return undefined;
+  }
+  const scenario = (entry as Record<string, unknown>)['scenario'];
+  if (typeof scenario !== 'string' || !(SCENARIO_NAMES as string[]).includes(scenario)) {
+    return undefined;
+  }
+  if (!isPriorApprovalData(entry)) {
+    return undefined;
+  }
+  const restored = { scenario: scenario as ScenarioName, ...entry };
+  pendingApprovals.set(orderId, restored);
+  return restored;
+}
+
 /** Reset shared replay state + pending approvals (tests + POST /api/demo/reset). */
 export function resetDemoState(): void {
   sharedEngine?.reset();
+  pendingApprovals.clear();
+  try {
+    rmSync(PENDING_FILE, { force: true });
+  } catch {
+    // Absent file is the common case; ignore.
+  }
+}
+
+/**
+ * Test hook: drop the in-memory map while keeping the disk mirror, so tests
+ * can prove finalize survives a simulated server restart mid-popup.
+ */
+export function clearPendingApprovalsMemory(): void {
   pendingApprovals.clear();
 }
 
@@ -327,6 +386,65 @@ function handleHealth(res: WorkbenchResponse): void {
     service: 'veripact-workbench',
     transportMode: paypalTransportMode(),
     version: WORKBENCH_VERSION,
+  };
+  sendJson(res, 200, payload);
+}
+
+/** Credential-readiness + suite metadata. Fingerprints of PUBLIC keys only. */
+export interface SystemStatusPayload {
+  transportMode: 'LIVE_PAYPAL_SANDBOX' | 'DETERMINISTIC_SANDBOX_REPLAY';
+  hasPayPalCredentials: boolean;
+  envFilePath: string;
+  keyFingerprints: { buyer: string; witness: string; merchant: string };
+  totalScenarios: number;
+  regressionPassRate: string;
+}
+
+function fingerprint16(publicKeyHex: string): string {
+  return sha256Hex(publicKeyHex).slice(0, 16);
+}
+
+function regressionPassRate(): string {
+  try {
+    const { reportPath } = defaultBenchmarkPaths();
+    const report = JSON.parse(readFileSync(reportPath, 'utf8')) as {
+      overallPassRate?: { successes?: unknown; total?: unknown; rate?: unknown };
+    };
+    const pass = report.overallPassRate;
+    if (
+      typeof pass?.successes === 'number' &&
+      typeof pass?.total === 'number' &&
+      typeof pass?.rate === 'number'
+    ) {
+      return `${pass.successes}/${pass.total} (${Math.round(pass.rate * 100)}%)`;
+    }
+  } catch {
+    // Missing/unreadable report: honest fallback, never a 500.
+  }
+  return 'unavailable';
+}
+
+/** GET /api/system/status — zero-key/BYOK readiness probe (no secrets). */
+function handleSystemStatus(res: WorkbenchResponse): void {
+  const keys = demoClient().keys;
+  const mode = paypalTransportMode();
+  let totalScenarios = 0;
+  try {
+    totalScenarios = loadScenarios().length;
+  } catch {
+    // Missing suite file: report 0 honestly, never a 500.
+  }
+  const payload: SystemStatusPayload = {
+    transportMode: mode === 'LIVE_PAYPAL_SANDBOX' ? 'LIVE_PAYPAL_SANDBOX' : 'DETERMINISTIC_SANDBOX_REPLAY',
+    hasPayPalCredentials: hasPaypalCredentials(),
+    envFilePath: defaultEnvFilePath(),
+    keyFingerprints: {
+      buyer: fingerprint16(keys.buyer.publicKeyHex),
+      witness: fingerprint16(keys.witness.publicKeyHex),
+      merchant: fingerprint16(keys.merchant.publicKeyHex),
+    },
+    totalScenarios,
+    regressionPassRate: regressionPassRate(),
   };
   sendJson(res, 200, payload);
 }
@@ -472,6 +590,7 @@ async function handleMerchantCheckout(
       buyerApprovalSignatureHex: result.buyerApprovalSignatureHex,
       merchantSignatureHex: result.merchantSignatureHex,
     });
+    savePendingApprovals();
   }
   sendJson(res, 200, { ...result, boundary: 'SIGN' });
 }
@@ -828,7 +947,7 @@ async function handleCheckoutFinalize(
   const scenarioName = body['scenario'] ?? body['scenarioId'];
   const scenario = asScenarioName(scenarioName);
   const echo = body['prior'];
-  const pending = pendingApprovals.get(orderId);
+  const pending = pendingApprovals.get(orderId) ?? loadPendingApproval(orderId);
   const prior: PriorApprovalData | undefined = isPriorApprovalData(echo)
     ? echo
     : pending !== undefined
@@ -841,6 +960,7 @@ async function handleCheckoutFinalize(
   const client = demoClient();
   const result = await client.completeApprovedCheckout({ orderId, scenario, prior });
   pendingApprovals.delete(orderId);
+  savePendingApprovals();
   let receiptsWarning: string | undefined;
   try {
     appendSandboxReceipt({
@@ -909,6 +1029,10 @@ export async function handleWorkbenchRequest(
       await handleBenchmark(res);
       return;
     }
+    if (method === 'GET' && pathname === '/api/system/status') {
+      handleSystemStatus(res);
+      return;
+    }
     if (method === 'GET' && pathname === '/sandbox/paypal-checkout') {
       await handleSandboxCheckout(req, res);
       return;
@@ -964,6 +1088,7 @@ export async function handleWorkbenchRequest(
       '/api/sandbox/approve-order',
       '/sandbox/paypal-checkout',
       '/api/demo/reset',
+      '/api/system/status',
       '/api/verify',
     ];
     if (knownPaths.includes(pathname) || pathname.startsWith('/store/')) {

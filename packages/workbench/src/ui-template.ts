@@ -149,7 +149,26 @@ canvas.chart{width:100%;height:220px;border:1px solid var(--line);border-radius:
 font-size:13px;padding:9px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .2s var(--spring);z-index:60}
 #toast.show{opacity:1}
 footer.app{max-width:1460px;margin:0 auto;padding:0 18px 26px;color:var(--muted);font-size:12px}
-@media (max-width:1080px){.split,.desk-grid,.inspector{grid-template-columns:minmax(0,1fr)}}
+/* Cryptographic pipeline ribbon: 3-rung stepper with live badges */
+.ribbon{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.ribbon-step{display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);
+border-radius:var(--r-md);padding:12px 14px;min-width:0}
+.rb-num{font-family:var(--mono);font-weight:700;font-size:13px;background:var(--muted);color:#fff;border-radius:8px;
+min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ribbon-step.on .rb-num{background:var(--emerald)}
+.ribbon-step.bad .rb-num{background:var(--crimson)}
+.ribbon-step b{font-size:13px}
+.rb-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.rb-badges .badge{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+/* Term diff pills: readable at video distance */
+.diff-pill{display:inline-block;font-family:var(--mono);font-size:15px;font-weight:700;background:var(--crimson-bg);
+color:var(--crimson);border:2px solid var(--crimson);border-radius:10px;padding:6px 14px;margin:3px 8px 3px 0;
+font-variant-numeric:tabular-nums;white-space:nowrap}
+.wit-pill{display:inline-block;font-family:var(--mono);font-size:13px;font-weight:700;background:var(--emerald-bg);
+color:var(--emerald);border:2px solid var(--emerald);border-radius:10px;padding:5px 12px;margin:3px 8px 3px 0;
+font-variant-numeric:tabular-nums;white-space:nowrap}
+#tour-status{font-weight:600}
+@media (max-width:1080px){.split,.desk-grid,.inspector,.ribbon{grid-template-columns:minmax(0,1fr)}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 @media (prefers-color-scheme:dark){
 :root{--bg:#0f141b;--panel:#161d27;--ink:#e8eef6;--muted:#9aa7bb;--line:#2a3444;--slate-bg:#1e2735}
@@ -180,9 +199,16 @@ body{background:#fff}
 <button type="button" id="tab-checkout" aria-pressed="true">Buyer Checkout</button>
 <button type="button" id="tab-desk" aria-pressed="false">Dispute Desk</button>
 </div>
+<button type="button" class="btn btn-primary" id="btn-tour">▶ Run 60s Guided Demo Tour</button>
 <button type="button" class="btn" id="btn-reset" title="Re-seed replay disputes and orders">Reset demo</button>
 </header>
 <main id="main">
+<nav id="pipeline-ribbon" class="ribbon" aria-label="Cryptographic evidence pipeline">
+<div class="ribbon-step" id="rb-1"><span class="rb-num" aria-hidden="true">1</span><div style="min-width:0"><b>SELF — Buyer mandate locked</b><div class="rb-badges"><span class="badge" id="rb-buyer-fp" title="Ed25519 buyer key fingerprint">buyer key fp …</span><span class="badge">ceiling $320.00</span></div></div></div>
+<div class="ribbon-step" id="rb-2"><span class="rb-num" aria-hidden="true">2</span><div style="min-width:0"><b>WIT — Independent HTTPS witness</b><div class="rb-badges"><span class="badge" id="rb-tsa">RFC 3161 …</span><span class="badge" id="rb-dom">DOM scan …</span><span class="badge" id="rb-ch3">Channel3 …</span></div></div></div>
+<div class="ribbon-step" id="rb-3"><span class="rb-num" aria-hidden="true">3</span><div style="min-width:0"><b>SIGN + PayPal custom_id anchor</b><div class="rb-badges"><span class="badge" id="rb-commit">VP1: …</span><span class="badge" id="rb-regate">re-gate …</span></div></div></div>
+</nav>
+<p id="tour-status" class="status-line" role="status" aria-live="polite"></p>
 <section id="view-checkout" aria-label="Buyer checkout and live receipt verifier">
 <div class="split">
 <div class="card">
@@ -247,7 +273,7 @@ body{background:#fff}
 <div class="ag-shell" id="regression-shell" hidden><div id="ag-regression-benchmark-grid" class="ag-theme-quartz" role="grid" aria-label="Regression benchmark grid"></div></div>
 <div id="matrix-wrap"></div>
 </div>
-<div class="inspector" id="inspector" aria-label="Contested claim inspector">
+<div class="inspector" id="inspector" data-widget="ContestedClaimInspectorWidget" aria-label="Contested claim inspector">
 <div class="insp-col" id="insp-buyer"><h2>Column 1 — Buyer claim &amp; submitted receipt</h2><p class="status-line">Loading dispute data…</p></div>
 <div class="insp-col" id="insp-witness"><h2>Column 2 — Witness provenance &amp; order anchor</h2><p class="status-line">Loading dispute data…</p></div>
 <div class="insp-col" id="insp-seller"><h2>Column 3 — Seller counter-claim &amp; PayPal actions</h2><p class="status-line">Loading dispute data…</p></div>
@@ -286,17 +312,28 @@ function api(path,opts){return fetch(path,Object.assign({headers:{'content-type'
 /* ---------- state ---------- */
 var state={scenario:'normal',witness:null,checkout:null,verify:null,disputes:null,selectedCase:'buyer_forgery',dataset:'live',benchmark:null,grids:{},engine:'native'};
 var CASE_META={
-buyer_forgery:{label:'Case B — Buyer forgery',buyerTerms:'60-day returns (self-signed SELF receipt)',sellerTerms:'Stands by witnessed terms',blurb:'The buyer edited local JSON to claim 60-day returns. Signature verifies (self-signed) but the hash cannot match the PayPal-anchored commitment.'},
-merchant_drift:{label:'Case A — Merchant drift',buyerTerms:'30-day free returns (matches witness)',sellerTerms:'14-day returns · 25% restocking fee',blurb:'The seller changed the return policy after purchase. The buyer receipt still matches; the seller counter-claim diverges.'}};
+buyer_forgery:{label:'Case B — Buyer forgery',buyerTerms:'60-day returns (self-signed SELF receipt)',sellerTerms:'Stands by witnessed terms',witnessed:'30-day returns · 0% fee',diffs:[{field:'return_window_days',left:'60',right:'30'}],blurb:'The buyer edited local JSON to claim 60-day returns. Signature verifies (self-signed) but the hash cannot match the PayPal-anchored commitment.'},
+merchant_drift:{label:'Case A — Merchant drift',buyerTerms:'30-day free returns (matches witness)',sellerTerms:'14-day returns · 25% restocking fee',witnessed:'30-day returns · 0% fee',diffs:[{field:'return_window_days',left:'30',right:'14'},{field:'restocking_fee_pct',left:'0%',right:'25%'}],blurb:'The seller changed the return policy after purchase. The buyer receipt still matches; the seller counter-claim diverges.'}};
 /* ---------- header + tabs ---------- */
 api('/health').then(function(h){var p=$('mode-pill');var live=h.transportMode==='LIVE_PAYPAL_SANDBOX';state.liveMode=live;p.textContent=live?'Live Sandbox':'Replay · deterministic';p.className='mode-pill '+(live?'mode-live':'mode-replay');if(live){$('twostep-toggle').checked=true;}}).catch(function(){});
-function showView(which){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');if(!c){ensureDesk();}}
+api('/api/system/status').then(function(s){$('rb-buyer-fp').textContent='buyer key fp '+s.keyFingerprints.buyer;$('rb-buyer-fp').title='Ed25519 buyer key fingerprint '+s.keyFingerprints.buyer+' · '+s.regressionPassRate+' regression';}).catch(function(){$('rb-buyer-fp').textContent='buyer key fp …';});
+/* ---------- pipeline ribbon (3-rung evidence stepper) ---------- */
+function ribbonTo(stage,bad){for(var i=1;i<=3;i++){var el=$('rb-'+i);el.className='ribbon-step'+(i<=stage?' on':'')+(bad&&i===stage?' bad':'');}}
+function ribbonFillWitness(s){ribbonTo(2,s.gateResult.decision==='BLOCK');
+var p=s.provenance||{};$('rb-tsa').textContent='RFC 3161 '+(p.tsaIssuer||'…');$('rb-tsa').title='Timestamp authority '+(p.tsaIssuer||'?')+' @ '+(p.tsaTimeUtc||'?');
+var integ=(s.termReceipt.observedTerms||{}).pageIntegrity;$('rb-dom').textContent=integ==='ADVERSARIAL_DOM'?'DOM scan ADVERSARIAL_DOM':'DOM scan CLEAN · 13 checks';
+var o=s.oracleResult||{};$('rb-ch3').textContent=(o.matched?'✓ ':'✗ ')+(o.productId||'…');$('rb-ch3').title='Channel3 oracle '+(o.source||'');}
+function ribbonFillCheckout(r){if(r.outcome==='BLOCKED_PRE_CHECKOUT'){ribbonTo(2,true);$('rb-regate').textContent='re-gate BLOCKED pre-checkout';return;}
+ribbonTo(3,false);var c=r.snapshot.commitment;$('rb-commit').textContent=c.slice(0,16)+'…';$('rb-commit').title='PayPal purchase_units[0].custom_id = '+c;
+$('rb-regate').textContent='$'+Number(r.finalTotalUsd).toFixed(2)+' '+(r.outcome==='CAPTURED'?'CAPTURED':'AUTO-VOIDED');}
+function showView(which){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');if(!c){ensureDesk().catch(function(){});}}
 $('tab-checkout').addEventListener('click',function(){showView('checkout');});
 $('tab-desk').addEventListener('click',function(){showView('desk');});
-$('btn-reset').addEventListener('click',function(){api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;refreshDesk();}).catch(function(e){toast(e.message);});});
+$('btn-reset').addEventListener('click',function(){api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);});});
 /* ---------- view 1 ---------- */
 var scnBtns=Array.prototype.slice.call(document.querySelectorAll('[data-scn]'));
-scnBtns.forEach(function(b){b.addEventListener('click',function(){state.scenario=b.getAttribute('data-scn');scnBtns.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});$('store-frame').src='/store/'+state.scenario;$('checkout-result').hidden=true;$('checkout-status').textContent='';});});
+function selectScenario(scn){state.scenario=scn;scnBtns.forEach(function(x){x.setAttribute('aria-pressed',x.getAttribute('data-scn')===scn?'true':'false');});$('store-frame').src='/store/'+scn;$('checkout-result').hidden=true;$('awaiting-card').hidden=true;$('checkout-status').textContent='';}
+scnBtns.forEach(function(b){b.addEventListener('click',function(){selectScenario(b.getAttribute('data-scn'));});});
 $('mutate-toggle').addEventListener('change',function(e){$('mutate-panel').hidden=!e.target.checked;});
 function suffPills(observed){var cells=$('suff-pills').children;function set(i,txt,cls){cells[i].querySelector('.pill').textContent=txt;cells[i].querySelector('.pill').className='pill '+cls;}
 var c=observed.condition.value||'?';set(0,(observed.itemTitle.value||'?').slice(0,34)+' · '+c,pillFor(observed.condition.status));
@@ -305,13 +342,14 @@ var st=observed.shippingUsd.status==='DETERMINATE'&&observed.taxUsd.status==='DE
 set(2,st,observed.shippingUsd.status==='DETERMINATE'&&observed.taxUsd.status==='DETERMINATE'?'pill-ok':'pill-warn');
 set(3,String(observed.returnWindowDays.value)+'d / '+String(observed.restockingFeePct.value)+'% fee',pillFor(observed.returnWindowDays.status));}
 function rungTo(stage){$('rung-wit').className='rung-step'+(stage>=1?' on':'');$('rung-sign').className='rung-step'+(stage>=2?' on':'');}
-$('btn-witness').addEventListener('click',function(){var b=this;b.disabled=true;$('checkout-status').textContent='Witnessing offer…';
-api('/api/witness/snapshot',{method:'POST',body:JSON.stringify({scenario:state.scenario})}).then(function(s){state.witness=s;suffPills(s.termReceipt.observedTerms);rungTo(1);
+function runWitnessFlow(){var b=$('btn-witness');b.disabled=true;$('checkout-status').textContent='Witnessing offer…';
+return api('/api/witness/snapshot',{method:'POST',body:JSON.stringify({scenario:state.scenario})}).then(function(s){state.witness=s;suffPills(s.termReceipt.observedTerms);rungTo(1);ribbonFillWitness(s);
 $('oracle-line').textContent='Channel3 oracle: '+(s.oracleResult.matched?'match ':'no match ')+s.oracleResult.productId+' · '+s.oracleResult.source;
 $('quote-badges').innerHTML=badgeHtml(s);
-$('checkout-status').textContent='Gate decision: '+s.gateResult.decision+' — '+s.gateResult.reasons.join('; ');}).catch(function(e){$('checkout-status').textContent=e.message;}).finally(function(){b.disabled=false;});});
+$('checkout-status').textContent='Gate decision: '+s.gateResult.decision+' — '+s.gateResult.reasons.join('; ');return s;},function(e){$('checkout-status').textContent=e.message;throw e;}).finally(function(){b.disabled=false;});}
+$('btn-witness').addEventListener('click',function(){runWitnessFlow().catch(function(){});});
 function badgeHtml(s){var terms=s.termReceipt.observedTerms;var out=[];['itemTitle','condition','basePriceUsd','shippingUsd','taxUsd','returnWindowDays','restockingFeePct'].forEach(function(k){var c=terms[k];if(c&&c.blockId){out.push('<span class="badge q" title="'+esc(c.verbatimQuote||'')+'">'+esc(c.blockId)+' · '+esc(k)+'</span>');}});return out.join('')||'<span class="badge">No verified quotes</span>';}
-function renderCheckoutDone(r){state.checkout=r;state.verify=null;suffPills(r.snapshot.termReceipt.observedTerms);rungTo(r.outcome==='BLOCKED_PRE_CHECKOUT'?1:2);
+function renderCheckoutDone(r){state.checkout=r;state.verify=null;suffPills(r.snapshot.termReceipt.observedTerms);rungTo(r.outcome==='BLOCKED_PRE_CHECKOUT'?1:2);ribbonFillWitness(r.snapshot);ribbonFillCheckout(r);
 $('oracle-line').textContent='Channel3 oracle: '+(r.snapshot.oracleResult.matched?'match ':'no match ')+r.snapshot.oracleResult.productId+' · '+r.snapshot.oracleResult.source;
 $('quote-badges').innerHTML=badgeHtml(r.snapshot);
 var cls=r.outcome==='CAPTURED'?'pill-ok':(r.outcome==='AUTO_VOIDED'?'pill-warn':'pill-bad');
@@ -329,7 +367,7 @@ var ao=$('btn-audit-open');if(ao){ao.addEventListener('click',function(){$('audi
 function finalizeApproved(orderId){$('checkout-status').textContent='Finalizing: authorize → re-gate → capture/void…';
 var prior=null;if(state.awaiting&&state.awaiting.snapshot){prior={snapshot:state.awaiting.snapshot,buyerApprovalSignatureHex:state.awaiting.buyerApprovalSignatureHex,merchantSignatureHex:state.awaiting.merchantSignatureHex};}
 api('/api/merchant/checkout/finalize',{method:'POST',body:JSON.stringify({orderId:orderId,scenario:state.scenario,prior:prior})}).then(function(r){$('awaiting-card').hidden=true;state.awaiting=null;renderCheckoutDone(r);}).catch(function(e){$('checkout-status').textContent=e.message;});}
-function renderAwaiting(r){state.awaiting=r;suffPills(r.snapshot.termReceipt.observedTerms);rungTo(1);
+function renderAwaiting(r){state.awaiting=r;suffPills(r.snapshot.termReceipt.observedTerms);rungTo(1);ribbonFillWitness(r.snapshot);
 $('oracle-line').textContent='Channel3 oracle: '+(r.snapshot.oracleResult.matched?'match ':'no match ')+r.snapshot.oracleResult.productId+' · '+r.snapshot.oracleResult.source;
 $('quote-badges').innerHTML=badgeHtml(r.snapshot);
 var preview=r.expectedPostApprovalAction==='VOID'?'pill-warn':'pill-ok';
@@ -337,13 +375,14 @@ $('awaiting-card').innerHTML='<h3>Step 1 complete <span class="pill pill-warn">A
 $('awaiting-card').hidden=false;$('checkout-status').textContent='Order '+r.orderId+' created + patched. Waiting for buyer approval…';
 $('btn-popup').addEventListener('click',function(){var w=window.open(r.approveUrl,'veripact-approval','width=620,height=760');if(!w){toast('Popup blocked — allow popups, then press Finalize after approving.');}$('checkout-status').textContent='Approval popup opened for '+r.orderId+'. Waiting…';});
 $('btn-finalize').addEventListener('click',function(){finalizeApproved(r.orderId);});}
-window.addEventListener('message',function(e){var d=e.data||{};if(d.type==='VERIPACT_ORDER_APPROVED'&&d.orderId&&state.awaiting&&d.orderId===state.awaiting.orderId){toast('Buyer approved '+d.orderId);finalizeApproved(d.orderId);}});
-$('btn-checkout').addEventListener('click',function(){var b=this;b.disabled=true;$('awaiting-card').hidden=true;$('checkout-result').hidden=true;
+window.addEventListener('message',function(e){var d=e.data||{};var loc=window.location||{};var sameOrigin=!loc.origin||loc.origin==='null'||e.origin===loc.origin;if(sameOrigin&&d.type==='VERIPACT_ORDER_APPROVED'&&d.orderId&&state.awaiting&&d.orderId===state.awaiting.orderId){toast('Buyer approved '+d.orderId);finalizeApproved(d.orderId);}});
+function runCheckoutFlow(){var b=$('btn-checkout');b.disabled=true;$('awaiting-card').hidden=true;$('checkout-result').hidden=true;
 var twoStep=$('twostep-toggle').checked||state.liveMode===true;
 $('checkout-status').textContent=twoStep?'Creating order + patching totals…':'Authorizing with PayPal…';
-api('/api/merchant/checkout',{method:'POST',body:JSON.stringify({scenario:state.scenario,twoStep:twoStep})}).then(function(r){
+return api('/api/merchant/checkout',{method:'POST',body:JSON.stringify({scenario:state.scenario,twoStep:twoStep})}).then(function(r){
 if(r.outcome==='AWAITING_BUYER_APPROVAL'){renderAwaiting(r);}else{renderCheckoutDone(r);}
-}).catch(function(e){$('checkout-status').textContent=e.message;}).finally(function(){b.disabled=false;});});
+return r;},function(e){$('checkout-status').textContent=e.message;throw e;}).finally(function(){b.disabled=false;});}
+$('btn-checkout').addEventListener('click',function(){runCheckoutFlow().catch(function(){});});
 /* ---------- verify-it-yourself auditor (runs entirely in your browser) ---------- */
 var BS=String.fromCharCode(92);
 function jcsStr(s){var out='"';for(var i=0;i<s.length;i++){var c=s.charCodeAt(i);if(c===0x22){out+=BS+'"';}else if(c===0x5c){out+=BS+BS;}else if(c<0x20){out+=BS+'u'+('000'+c.toString(16)).slice(-4);}else{out+=s[i];}}return out+'"';}
@@ -365,18 +404,18 @@ rows+='<div class="check-row"><span class="pill '+(b.buyerSignatureValid?'pill-o
 rows+='<div class="check-row"><span class="pill '+(b.witnessSignatureValid?'pill-ok':'pill-bad')+'">'+(b.witnessSignatureValid?'VALID':'INVALID')+'</span><div style="min-width:0"><b>Witness Ed25519 signature</b> (verified server-side)<br>'+chip(v.witnessSignatureHex,true)+'</div></div>';
 rows+='<div class="check-row"><span class="pill '+(b.merchantSignatureValid?'pill-ok':'pill-bad')+'">'+(b.merchantSignatureValid?'VALID':'INVALID')+'</span><div><b>Merchant SIGN countersignature</b> (verified server-side)</div></div>';
 rows+='<div class="check-row"><span class="pill '+(b.anchorValid?'pill-ok':'pill-bad')+'">'+(b.anchorValid?'ANCHORED':'WEAK')+'</span><div><b>RFC 3161 timestamp</b> — '+esc(v.anchor.authority)+' @ '+esc(new Date(v.anchor.timestampMs).toISOString())+' (±5 min skew: '+(b.anchorValid?'pass':'fail')+')</div></div>';
-rows+='<div class="mono-scroll">order '+esc(v.orderId)+' · bundle allValid='+String(b.allValid)+'</div>';
+rows+='<div class="mono-scroll">order '+esc(v.orderId)+' · bundle allValid='+String(b.allValid)+' · JCS-PARITY '+(match?'MATCH':'MISMATCH')+'</div>';
 body.innerHTML=rows;
 }).catch(function(e){body.innerHTML='<p class="status-line">Hash failed: '+esc(e.message)+'</p>';});
 }).catch(function(e){body.innerHTML='<p class="status-line">'+esc(e.message)+'</p>';});}
 $('auditor').addEventListener('toggle',function(e){if(e.target.open&&state.checkout&&state.checkout.outcome==='CAPTURED'&&!state.verify){runAuditor();}});
 /* ---------- view 2: dispute desk ---------- */
 var deskLoaded=false;
-function ensureDesk(){if(deskLoaded)return;deskLoaded=true;refreshDesk();}
+function ensureDesk(){if(deskLoaded)return Promise.resolve();deskLoaded=true;return refreshDesk();}
 function refreshDesk(){
-api('/api/merchant/disputes').then(function(d){state.disputes=d;mountLive();renderInspector();renderPresets();}).catch(function(e){toast(e.message);});
-api('/api/benchmark').then(function(b){state.benchmark=b;if(state.dataset==='regression')mountRegression();}).catch(function(){});
-}
+var p1=api('/api/merchant/disputes').then(function(d){state.disputes=d;mountLive();renderInspector();renderPresets();},function(e){toast(e.message);throw e;});
+var p2=api('/api/benchmark').then(function(b){state.benchmark=b;if(state.dataset==='regression')mountRegression();}).catch(function(){});
+return Promise.all([p1,p2]);}
 /* AG mount / remount: datasets switch by destroying and rebuilding the grid
    instance — data is never mutated in place (ag-dev guidance). */
 function destroyGrid(id){var g=state.grids[id];if(g&&g.destroy){try{g.destroy();}catch(e){}}delete state.grids[id];var c=$(id);if(c)c.innerHTML='';}
@@ -409,12 +448,13 @@ function currentCase(){return state.disputes.disputes.filter(function(d){return 
 function renderInspector(){if(!state.disputes)return;var d=currentCase()||state.disputes.disputes[0];if(!d)return;state.selectedCase=d.case;
 var meta=CASE_META[d.case];var f=d.forensics;var r=d.record;var p=state.disputes.provenance;
 var vcls=f.verdict==='BUYER_FORGERY_DETECTED'?'pill-bad':'pill-warn';
-$('insp-buyer').innerHTML='<h2>Column 1 — Buyer claim &amp; submitted receipt</h2><p><b>'+esc(meta.label)+'</b></p><p class="status-line">'+esc(meta.blurb)+'</p><dl class="kv"><dt>Buyer claims</dt><dd>'+esc(meta.buyerTerms)+'</dd><dt>Hash vs order</dt><dd>'+matchBadge(f.buyerHashMatch)+'</dd><dt>Buyer sig</dt><dd>'+matchBadge(f.buyerSignatureValid)+'</dd></dl>';
+function diffPills(){return meta.diffs.map(function(x){return '<span class="diff-pill">'+esc(x.field)+': '+esc(x.left)+' vs '+esc(x.right)+'</span>';}).join('');}
+$('insp-buyer').innerHTML='<h2>Column 1 — Buyer claim &amp; submitted receipt</h2><p><b>'+esc(meta.label)+'</b></p><p class="status-line">'+esc(meta.blurb)+'</p><p>'+diffPills()+'</p><dl class="kv"><dt>Buyer claims</dt><dd>'+esc(meta.buyerTerms)+'</dd><dt>Hash vs order</dt><dd>'+matchBadge(f.buyerHashMatch)+'</dd><dt>Buyer sig</dt><dd>'+matchBadge(f.buyerSignatureValid)+'</dd></dl>';
 var fp=(state.disputes.provenance.witnessPublicKeyHex||'').slice(0,16);
-$('insp-witness').innerHTML='<h2>Column 2 — Witness provenance &amp; order anchor</h2><dl class="kv"><dt>Fetched URL</dt><dd class="mono" style="overflow-wrap:anywhere">'+esc(p.fetchedUrl)+'</dd><dt>TLS</dt><dd>'+(p.tlsVerified?'<span class="pill pill-ok">verified</span>':'<span class="pill pill-warn">fixture (no TLS session)</span>')+'</dd><dt>HTTP</dt><dd class="num">'+esc(String(p.httpStatus))+'</dd><dt>WIT key fp</dt><dd class="mono">'+esc(fp)+'</dd><dt>TSA</dt><dd>'+esc(p.tsaIssuer)+' @ <span class="num">'+esc(p.tsaTimeUtc)+'</span></dd><dt>Channel3</dt><dd class="mono">'+esc(p.channel3ProductId||'—')+'</dd><dt>Order</dt><dd class="mono">'+esc(state.disputes.orderId)+'</dd><dt>custom_id</dt><dd>'+chip(state.disputes.customId,true)+'</dd><dt>Witness hash</dt><dd>'+matchBadge(f.witnessHashMatch)+' <span class="mono" style="font-size:12px">anchor '+(f.anchorTrusted?'trusted':'UNTRUSTED')+'</span></dd></dl>';
+$('insp-witness').innerHTML='<h2>Column 2 — Witness provenance &amp; order anchor</h2><p><span class="wit-pill">witnessed: '+esc(meta.witnessed)+'</span></p><dl class="kv"><dt>Fetched URL</dt><dd class="mono" style="overflow-wrap:anywhere">'+esc(p.fetchedUrl)+'</dd><dt>TLS</dt><dd>'+(p.tlsVerified?'<span class="pill pill-ok">verified</span>':'<span class="pill pill-warn">fixture (no TLS session)</span>')+'</dd><dt>HTTP</dt><dd class="num">'+esc(String(p.httpStatus))+'</dd><dt>WIT key fp</dt><dd class="mono">'+esc(fp)+'</dd><dt>TSA</dt><dd>'+esc(p.tsaIssuer)+' @ <span class="num">'+esc(p.tsaTimeUtc)+'</span></dd><dt>Channel3</dt><dd class="mono">'+esc(p.channel3ProductId||'—')+'</dd><dt>Order</dt><dd class="mono">'+esc(state.disputes.orderId)+'</dd><dt>custom_id</dt><dd>'+chip(state.disputes.customId,true)+'</dd><dt>Witness hash</dt><dd>'+matchBadge(f.witnessHashMatch)+' <span class="mono" style="font-size:12px">anchor '+(f.anchorTrusted?'trusted':'UNTRUSTED')+'</span></dd></dl>';
 var allowed=r.allowedActions||[];
 function btn(rel,label){var on=allowed.indexOf(rel)>=0;return '<button type="button" class="btn" data-act="'+rel+'" '+(on?'':'disabled title="Not advertised by PayPal HATEOAS"')+'>'+label+'</button>';}
-$('insp-seller').innerHTML='<h2>Column 3 — Seller counter-claim &amp; PayPal actions</h2><p><b>Seller claims:</b> '+esc(meta.sellerTerms)+'</p><p>Referee verdict <span class="pill '+vcls+'">'+esc(f.verdict)+'</span></p><dl class="kv"><dt>Seller hash</dt><dd>'+matchBadge(f.sellerHashMatch)+'</dd><dt>Dispute</dt><dd class="mono">'+esc(r.disputeId)+' · '+esc(r.lifeCycleStage)+' / '+esc(r.disputeState)+'</dd></dl><div class="action-stack" role="group" aria-label="PayPal dispute actions">'
+$('insp-seller').innerHTML='<h2>Column 3 — Seller counter-claim &amp; PayPal actions</h2><p><b>Seller claims:</b> '+esc(meta.sellerTerms)+'</p><p>'+diffPills()+'</p><p>Referee verdict <span class="pill '+vcls+'">'+esc(f.verdict)+'</span></p><dl class="kv"><dt>Seller hash</dt><dd>'+matchBadge(f.sellerHashMatch)+'</dd><dt>Dispute</dt><dd class="mono">'+esc(r.disputeId)+' · '+esc(r.lifeCycleStage)+' / '+esc(r.disputeState)+'</dd></dl><div class="action-stack" role="group" aria-label="PayPal dispute actions">'
 +btn('require-evidence','Require evidence')+btn('provide-evidence','Contest &amp; submit counter-evidence (OTHER)')+btn('escalate','Escalate to claim')+btn('accept-claim','Accept claim')+btn('adjudicate','Adjudicate in sandbox')+'<button type="button" class="btn" id="btn-resolve">Auto-resolve this case (full chain)</button><button type="button" class="btn" id="btn-sheet">Printable evidence sheet</button></div><div id="act-zone"></div>';
 Array.prototype.forEach.call($('insp-seller').querySelectorAll('[data-act]'),function(b){b.addEventListener('click',function(){disputeAction(d.record.disputeId,b.getAttribute('data-act'));});});
 $('btn-resolve').addEventListener('click',function(){api('/api/merchant/disputes/resolve',{method:'POST',body:JSON.stringify({case:d.case})}).then(function(){toast('Case resolved');refreshDesk();}).catch(function(e){toast(e.message);});});
@@ -469,6 +509,37 @@ $('sheet-modal').hidden=false;}
 $('sheet-close').addEventListener('click',function(){$('sheet-modal').hidden=true;});
 $('sheet-print').addEventListener('click',function(){window.print();});
 $('sheet-modal').addEventListener('click',function(e){if(e.target.classList&&e.target.classList.contains('modal-back'))$('sheet-modal').hidden=true;});
+/* ---------- guided judge tour: 5 beats, ~60s, stoppable, reduced-motion aware ---------- */
+var tourRunning=false;var tourPaused=false;
+function tourSleep(ms){var rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;return new Promise(function(res){setTimeout(res,rm?Math.min(ms,400):ms);});}
+function tourSay(t){$('tour-status').textContent=t;toast(t);}
+function tourBeat(n,t){tourSay('Beat '+n+'/5: '+t);}
+function selectCase(c){state.selectedCase=c;renderInspector();}
+function scrollToEl(id){var el=$(id);if(el&&el.scrollIntoView){try{el.scrollIntoView({block:'start'});}catch(e){}}}
+function runTour(){
+if(tourRunning){tourRunning=false;return Promise.resolve();}
+tourRunning=true;tourPaused=false;$('btn-tour').textContent='■ Stop guided tour';
+function alive(){return tourRunning;}
+function held(r){if(r&&r.outcome==='AWAITING_BUYER_APPROVAL'){tourPaused=true;tourRunning=false;tourSay('Tour paused: approve the buyer popup, then press Finalize.');return true;}return false;}
+return (async function(){
+tourBeat(1,'Normal checkout — witness, ASK_HUMAN_DELTA, $297 capture');showView('checkout');selectScenario('normal');$('twostep-toggle').checked=false;scrollToEl('view-checkout');
+await runWitnessFlow();if(!alive())return;await tourSleep(6000);
+var r1=await runCheckoutFlow();if(!alive()||held(r1))return;await tourSleep(6000);
+if(r1.outcome==='CAPTURED'){$('auditor').open=true;runAuditor();}
+await tourSleep(9000);if(!alive())return;
+tourBeat(2,'Hidden $55 surcharge — $340.50 auto-voided');selectScenario('surcharge_void');
+var r2=await runCheckoutFlow();if(!alive()||held(r2))return;await tourSleep(8000);
+tourBeat(3,'Hidden prompt injection — blocked pre-PayPal');selectScenario('adversarial_hidden_dom');
+await runCheckoutFlow();if(!alive())return;await tourSleep(8000);
+tourBeat(4,'Case B buyer forgery — SELLER_FAVOR');showView('desk');await ensureDesk();if(!alive())return;
+selectCase('buyer_forgery');scrollToEl('inspector');await tourSleep(5000);if(!alive())return;
+await api('/api/merchant/disputes/resolve',{method:'POST',body:JSON.stringify({case:'buyer_forgery'})});await refreshDesk();selectCase('buyer_forgery');await tourSleep(7000);if(!alive())return;
+tourBeat(5,'Case A merchant drift — BUYER_FAVOR + regression chart');
+await api('/api/merchant/disputes/resolve',{method:'POST',body:JSON.stringify({case:'merchant_drift'})});await refreshDesk();selectCase('merchant_drift');scrollToEl('inspector');await tourSleep(6000);if(!alive())return;
+$('prompt-input').value='Chart 24-scenario regression accuracy with 95% Wilson CIs';runPrompt($('prompt-input').value);scrollToEl('agent-chart');await tourSleep(8000);
+tourSay('Tour complete — VeriPact proved what the merchant promised.');
+}()).catch(function(e){tourSay('Tour stopped: '+e.message);}).finally(function(){var done=tourRunning&&!tourPaused;tourRunning=false;$('btn-tour').textContent='▶ Run 60s Guided Demo Tour';if(!done&&!tourPaused)tourSay('Tour stopped.');});}
+$('btn-tour').addEventListener('click',function(){runTour();});
 </script>
 </body></html>`;
 }

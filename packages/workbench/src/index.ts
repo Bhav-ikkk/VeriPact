@@ -7,6 +7,7 @@ import { startWorkbenchServer } from './server';
 
 export { createWorkbenchServer, startWorkbenchServer } from './server';
 export {
+  clearPendingApprovalsMemory,
   handleWorkbenchRequest,
   MAX_BODY_BYTES,
   readRungKey,
@@ -15,6 +16,7 @@ export {
   securityHeaders,
   WORKBENCH_VERSION,
   type HealthPayload,
+  type SystemStatusPayload,
   type WorkbenchRequest,
   type WorkbenchResponse,
 } from './routes';

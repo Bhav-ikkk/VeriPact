@@ -13,6 +13,28 @@ evidence instead of screenshots.
 Built for [Build What's Next with PayPal and
 AI](https://paypalaihackathon.devpost.com). Solo build + AI agents.
 
+## Visual Tour (60 Seconds)
+
+Press **▶ Run 60s Guided Demo Tour** in the workbench header, or record it
+headlessly with `npm run demo:record` (after `npx playwright install
+chromium` once). Every frame below is rendered from a live SDK run via
+`npm run assets:generate` — zero hand-typed numbers.
+
+![3-rung evidence ladder: SELF mandate, WIT witness, SIGN plus PayPal settlement](./docs/screenshots/01-architecture-and-3-rung-ladder.svg)
+*The 3-rung SELF → WIT → SIGN ladder into PayPal Orders v2 / Disputes v1.*
+
+![View 1 witnessed checkout: $297.00 CAPTURED with Verify-It-Yourself auditor](./docs/screenshots/02-view1-witnessed-checkout-and-auditor.svg)
+*View 1: ASK_HUMAN_DELTA ($41 headroom) → $297.00 CAPTURED, browser WebCrypto JCS-PARITY MATCH.*
+
+![View 1 edge cases: $340.50 auto-void and adversarial DOM block](./docs/screenshots/03-view1-surcharge-void-and-dom-block.svg)
+*Scenario 2 ($340.50 > $320 cap → AUTO-VOIDED) and Scenario 3 (ADVERSARIAL_DOM, zero PayPal calls).*
+
+![View 2 contested dispute desk with 3-column term inspector](./docs/screenshots/04-view2-contested-dispute-desk.svg)
+*View 2: Case B BUYER_FORGERY_DETECTED and Case A MERCHANT_DRIFT_CONFIRMED side by side.*
+
+![24-scenario regression suite: confusion matrix and Wilson CIs](./docs/screenshots/05-regression-suite-wilson-ci.svg)
+*72/72 runs, diagonal confusion matrix, honest 95% Wilson intervals.*
+
 ## Sandbox Receipts Strip
 
 `transport: DETERMINISTIC_SANDBOX_REPLAY` · regenerate with `npm run
@@ -94,10 +116,36 @@ npm run regression
 
 # 5. Live sandbox seeder (writes docs/sandbox-receipts.json)
 npm run seed:sandbox
+
+# 6. Visual assets (5 SVGs from live SDK data → docs/screenshots/)
+npm run assets:generate
+
+# 7. Demo recorder (Playwright 1920x1080 video + PNGs → videos/)
+npx playwright install chromium # once, on machines that allow sockets
+npm run demo:record
 ```
 
 One-click deploy: `render.yaml` builds the monorepo and starts the
 workbench (`npm ci && npm run build` → `npm start`).
+
+## Zero-Key Instant Evaluation vs Live PayPal Sandbox Mode
+
+**Zero-key (default — judges start here).** No accounts, no secrets:
+`npm install && npm run build && npm start`, open `:3000`, press
+**▶ Run 60s Guided Demo Tour**. Every PayPal call runs against the
+labeled `DETERMINISTIC_SANDBOX_REPLAY` engine; buyer approval happens in
+the zero-key popup (`/sandbox/paypal-checkout`). `GET /api/system/status`
+reports `transportMode`, credential presence, key fingerprints, and the
+`72/72 (100%)` regression rate — never secret values.
+
+**Live PayPal Sandbox (BYOK).** Drop `PAYPAL_CLIENT_ID` and
+`PAYPAL_CLIENT_SECRET` into `.env` (see `.env.example`) — the next
+checkout hot-swaps to `LIVE_PAYPAL_SANDBOX` with no restart: orders are
+created via Orders v2 AUTHORIZE, step 1 auto-returns
+`AWAITING_BUYER_APPROVAL` with PayPal's real `checkoutnow` approve link,
+you approve in the sandbox as the buyer, and Finalize runs
+authorize → re-gate → capture/void against the live order. Replay
+simulation is never invoked on live paths (`AGENTS.md` Rule 3).
 
 ## 24-Scenario Regression Results (72 Runs, 95% Wilson CIs)
 

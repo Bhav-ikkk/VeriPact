@@ -95,7 +95,7 @@ var hint=document.getElementById('approve-hint');
 hint.textContent='Approving…';
 fetch('/api/sandbox/approve-order',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({orderId:${orderIdJs}})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;});}).then(function(){
 document.getElementById('act').innerHTML='<div class="banner ok"><b>Approved! Return to the workbench.</b> Finalize there to authorize and capture.</div>';
-try{if(window.opener)window.opener.postMessage({type:'VERIPACT_ORDER_APPROVED',orderId:${orderIdJs}},'*');}catch(e){}
+try{if(window.opener){var targetOrigin=window.location.origin&&window.location.origin!=='null'?window.location.origin:'*';window.opener.postMessage({type:'VERIPACT_ORDER_APPROVED',orderId:${orderIdJs}},targetOrigin);}}catch(e){}
 setTimeout(function(){window.close();},1200);
 }).catch(function(e){hint.textContent=e.message;btn.disabled=false;});
 });

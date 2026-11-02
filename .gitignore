@@ -8,3 +8,7 @@ coverage/
 *.log
 .npm-cache/
 .vitest-tmp/
+.veripact-pending.json
+playwright-report/
+test-results/
+videos/
