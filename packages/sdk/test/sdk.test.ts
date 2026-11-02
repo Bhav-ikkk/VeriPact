@@ -20,6 +20,7 @@ import {
   getScenario,
   loadScenarios,
   resolveKeys,
+  resolveKeysLenient,
   runRegressionSuite,
   SCENARIO_NAMES,
   SDK_VERSION,
@@ -82,6 +83,26 @@ describe('@veripact/sdk', () => {
     expect(client.paypal.transportMode).toBe('DETERMINISTIC_SANDBOX_REPLAY');
     expect(client.keys.demoKeys).toBe(true);
     expect(client.keys.buyer.publicKeyHex).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('falls back per-rung on partial or malformed keys (lenient)', () => {
+    const demo = resolveKeys();
+    expect(demo.demoKeys).toBe(true);
+    process.env.BUYER_ED25519_PRIVATE_KEY = 'aa'.repeat(32);
+    process.env.WITNESS_ED25519_PRIVATE_KEY = 'not-hex';
+    const keys = resolveKeysLenient();
+    expect(keys.demoKeys).toBe(false);
+    expect(keys.buyer.publicKeyHex).toBe(
+      resolveKeys({
+        buyerPrivateKeyHex: 'aa'.repeat(32),
+        witnessPrivateKeyHex: 'bb'.repeat(32),
+        merchantPrivateKeyHex: 'cc'.repeat(32),
+      }).buyer.publicKeyHex,
+    );
+    expect(keys.witness.publicKeyHex).toBe(demo.witness.publicKeyHex);
+    expect(keys.merchant.publicKeyHex).toBe(demo.merchant.publicKeyHex);
+    const client = new VeriPactClient({ lenientKeys: true });
+    expect(client.keys.witness.publicKeyHex).toBe(demo.witness.publicKeyHex);
   });
 
   it('resolves explicit keys, refuses partial or malformed keys', () => {

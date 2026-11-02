@@ -7,9 +7,13 @@ import { startWorkbenchServer } from './server';
 
 export { createWorkbenchServer, startWorkbenchServer } from './server';
 export {
+  clearLiveAuthFailure,
   clearPendingApprovalsMemory,
   handleWorkbenchRequest,
+  isLiveAuthFailure,
+  isLiveFallbackEngaged,
   MAX_BODY_BYTES,
+  noteLiveAuthFailure,
   readRungKey,
   resetDemoState,
   ROUTES,

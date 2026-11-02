@@ -11,8 +11,12 @@ import {
 } from '@veripact/core';
 import { VeriPactClient } from '@veripact/sdk';
 import {
+  clearLiveAuthFailure,
   clearPendingApprovalsMemory,
   handleWorkbenchRequest,
+  isLiveAuthFailure,
+  isLiveFallbackEngaged,
+  noteLiveAuthFailure,
   renderApprovalPage,
   renderIndexPage,
   resetDemoState,
@@ -394,6 +398,80 @@ describe('@veripact/workbench', () => {
     expect((await get('/api/verify')).status).toBe(405);
     expect((await post('/health', {})).status).toBe(405);
     expect((await post('/store/normal', {})).status).toBe(405);
+  });
+
+  it('serves the SVG favicon on both icon routes (never 404)', async () => {
+    for (const path of ['/favicon.ico', '/favicon.svg']) {
+      const res = await get(path);
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('image/svg+xml');
+      expect(res.headers['cache-control']).toContain('max-age=86400');
+      expect(res.body).toContain('<svg');
+      expect(res.body).toContain('#175cd3');
+    }
+    expect(ROUTES).toContain('/favicon.ico');
+  });
+
+  it('falls back to demo keys on malformed rung values (never 500)', async () => {
+    process.env.WITNESS_ED25519_PRIVATE_KEY = 'your_key_here';
+    process.env.BUYER_ED25519_PRIVATE_KEY = '11'.repeat(32);
+    const snapshot = await post('/api/witness/snapshot', { scenario: 'normal' });
+    expect(snapshot.status).toBe(200);
+    expect(json<{ demoKeys: boolean }>(snapshot).demoKeys).toBe(true);
+    const checkout = await post('/api/merchant/checkout', { scenario: 'normal' });
+    expect(checkout.status).toBe(200);
+    expect(json<{ outcome: string }>(checkout).outcome).toBe('CAPTURED');
+  });
+
+  it('accepts scenarioId and defaults to normal when omitted', async () => {
+    const viaId = await post('/api/merchant/checkout', { scenarioId: 'surcharge_void' });
+    expect(viaId.status).toBe(200);
+    expect(json<{ outcome: string }>(viaId).outcome).toBe('AUTO_VOIDED');
+    const omitted = await post('/api/merchant/checkout', {});
+    expect(omitted.status).toBe(200);
+    expect(json<{ outcome: string }>(omitted).outcome).toBe('CAPTURED');
+    const verifyOmitted = await post('/api/verify', {});
+    expect(verifyOmitted.status).toBe(200);
+    expect((await post('/api/merchant/checkout', { scenario: 'nope' })).status).toBe(400);
+  });
+
+  it('treats an empty reset body as {} (never 500)', async () => {
+    expect((await post('/api/demo/reset', undefined, '')).status).toBe(200);
+    expect((await post('/api/demo/reset')).status).toBe(200);
+  });
+
+  it('latches to replay after a live-auth failure and unlatches on reset', async () => {
+    process.env.PAYPAL_CLIENT_ID = 'shaped-but-fake-client-id-1';
+    process.env.PAYPAL_CLIENT_SECRET = 'shaped-but-fake-client-secret-1';
+    expect((await get('/health')).body).toContain('LIVE_PAYPAL_SANDBOX');
+    expect(isLiveFallbackEngaged()).toBe(false);
+    expect(isLiveAuthFailure(new Error('paypal POST /v1/oauth2/token failed: HTTP 401'))).toBe(true);
+    expect(isLiveAuthFailure(new Error('fetch failed'))).toBe(true);
+    expect(isLiveAuthFailure(new Error('unknown scenario (expected one of normal)'))).toBe(false);
+    noteLiveAuthFailure();
+    expect(isLiveFallbackEngaged()).toBe(true);
+    const checkout = await post('/api/merchant/checkout', { scenario: 'normal' });
+    expect(checkout.status).toBe(200);
+    expect(json<{ outcome: string; transportMode: string }>(checkout)).toEqual(
+      expect.objectContaining({ outcome: 'CAPTURED', transportMode: 'DETERMINISTIC_SANDBOX_REPLAY' }),
+    );
+    expect((await get('/health')).body).toContain('DETERMINISTIC_SANDBOX_REPLAY');
+    expect((await post('/api/demo/reset', {})).status).toBe(200);
+    expect(isLiveFallbackEngaged()).toBe(false);
+    clearLiveAuthFailure();
+  });
+
+  it('scrubs placeholder PayPal credentials straight into replay', async () => {
+    process.env.PAYPAL_CLIENT_ID = 'your_client_id';
+    process.env.PAYPAL_CLIENT_SECRET = 'xxx';
+    expect((await get('/health')).body).toContain('DETERMINISTIC_SANDBOX_REPLAY');
+    const checkout = await post('/api/merchant/checkout', { scenario: 'normal' });
+    expect(checkout.status).toBe(200);
+    expect(json<{ transportMode: string }>(checkout).transportMode).toBe(
+      'DETERMINISTIC_SANDBOX_REPLAY',
+    );
+    // No live attempt was even made, so the fallback latch stays cold.
+    expect(isLiveFallbackEngaged()).toBe(false);
   });
 
   it('auditor JCS byte-matches server canonicalization (browser parity)', () => {

@@ -11,6 +11,7 @@ import {
   evaluateContestedDispute,
   formatCommitmentPrefix,
   generateEd25519KeyPair,
+  resolveRepoRoot,
   sha256Hex,
   signCanonicalPayload,
   verifyCanonicalPayload,
@@ -156,8 +157,16 @@ describe('@veripact/core', () => {
     expect(() => signCanonicalPayload(payload, 'bad')).toThrow(/64 lowercase hex/);
   });
 
+  it('resolves the monorepo root from any working directory', () => {
+    const root = resolveRepoRoot();
+    expect(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { workspaces?: unknown }).toHaveProperty(
+      'workspaces',
+    );
+    expect(root).toBe(process.cwd()); // vitest runs from the repo root
+  });
+
   it('verifies the live .veripact/mandates.json signature and rejects $0.01 drift', () => {
-    const root = process.cwd(); // vitest runs from the repo root
+    const root = resolveRepoRoot();
     const file = JSON.parse(readFileSync(join(root, '.veripact', 'mandates.json'), 'utf8')) as {
       mandate_hash: string;
       buyer_signature_hex: string;

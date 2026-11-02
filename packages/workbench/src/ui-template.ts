@@ -15,9 +15,8 @@ export function renderIndexPage(): string {
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VeriPact Workbench — Proving What the Merchant Promised</title>
-<link rel="preconnect" href="https://cdn.jsdelivr.net">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.9/styles/ag-grid.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.9/styles/ag-theme-quartz.css">
+<link rel="icon" type="image/svg+xml" href="/favicon.ico">
+<!-- Enterprise Data Grid: offline-first native engine (ag-grid-community@32.3.9 API-compatible mount contract, zero CDN fetches, zero console errors). The live AG Grid branch in mountAg() activates if window.agGrid is ever provided; container IDs and 560px rules are unchanged. -->
 <style>
 :root{
 --bg-canvas:#f8f9fb;--bg-surface:#ffffff;--bg-subtle:#f2f4f7;--bg-muted:#f9fafb;
@@ -77,7 +76,7 @@ main{max-width:1560px;margin:0 auto;padding:12px 20px 26px;display:flex;flex-dir
 .hash-chip.mid span{direction:rtl;text-align:left}
 .mono-scroll{overflow-x:auto;white-space:pre;font-family:var(--font-mono);font-size:12px;background:#101828;color:#e8eef6;border-radius:var(--radius-control);padding:10px 12px;max-width:100%}
 /* Tier B — connected 3-stage evidence pipeline */
-.ribbon{display:grid;grid-template-columns:230px minmax(0,1fr) 32px minmax(0,1fr) 32px minmax(0,1.1fr);align-items:center;gap:12px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:12px 20px;box-shadow:var(--shadow-card)}
+.ribbon{display:grid;grid-template-columns:200px minmax(0,1fr) 24px minmax(0,1fr) 24px minmax(0,1.1fr);align-items:center;gap:12px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:12px 20px;box-shadow:var(--shadow-card)}
 .rb-title{border-right:1px solid var(--border-subtle);padding-right:16px}
 .rb-title b{display:block;font-size:15px;font-weight:700}
 .rb-title span{font-size:12px;color:var(--text-muted)}
@@ -114,7 +113,9 @@ main{max-width:1560px;margin:0 auto;padding:12px 20px 26px;display:flex;flex-dir
 .dots{display:flex;gap:5px;flex-shrink:0}
 .dots i{width:9px;height:9px;border-radius:50%;background:var(--border-strong)}
 .urlbar{background:#fff;border:1px solid var(--border-subtle);border-radius:6px;padding:3px 10px;font-family:var(--font-mono);font-size:11.5px;color:#344054;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;min-width:0}
-.store-frame{width:100%;height:430px;border:0;background:#fff;display:block}
+.store-frame{width:100%;height:310px;border:0;background:#fff;display:block}
+details.tech-drawer{margin-top:12px}
+details.tech-drawer .badges{margin-top:0}
 .badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .badge{font-family:var(--font-mono);font-size:11px;background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:6px;padding:3px 8px;white-space:nowrap;color:var(--text-secondary);font-variant-numeric:tabular-nums}
 .badge.q{border-left:3px solid var(--accent-blue)}
@@ -132,10 +133,10 @@ main{max-width:1560px;margin:0 auto;padding:12px 20px 26px;display:flex;flex-dir
 .mandate-strip .big{font-size:24px;font-weight:800}
 .mandate-strip .mid{font-size:16px;font-weight:700}
 .mandate-strip span{font-size:12px;color:var(--text-muted)}
-.suff-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0 0}
-.suff{border:1px solid var(--border-subtle);border-radius:10px;padding:8px 10px;min-width:0}
-.suff b{display:block;font-size:11.5px;margin-bottom:4px;color:var(--text-secondary);font-weight:600}
-.suff .pill{white-space:normal;overflow-wrap:anywhere}
+.suff-grid{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 0}
+.suff{display:flex;align-items:baseline;gap:6px;min-width:0;font-size:11px;color:var(--text-muted)}
+.suff b{font-weight:600;white-space:nowrap}
+.suff .pill{font-size:11px;padding:1px 8px;white-space:normal;overflow-wrap:anywhere}
 /* SELF → WIT → SIGN step strip */
 .rung-flow{display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr) 24px minmax(0,1fr);align-items:center;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:12px 16px;box-shadow:var(--shadow-card)}
 .rung-step{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap;min-width:0}
@@ -163,7 +164,7 @@ main{max-width:1560px;margin:0 auto;padding:12px 20px 26px;display:flex;flex-dir
 .kv dt{color:var(--text-secondary)}
 .kv dd{margin:0;min-width:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 /* Tier D — outcome banner, transaction record, auditor */
-.tier-d{display:grid;grid-template-columns:0.85fr 1.15fr 1.15fr;gap:16px;align-items:stretch}
+.tier-d{display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.1fr) minmax(0,1.1fr);gap:16px;align-items:stretch}
 .outcome-banner{border-radius:var(--radius-card);padding:18px 20px;display:flex;align-items:center;gap:16px;border:1px solid;min-width:0;box-shadow:var(--shadow-card)}
 .outcome-banner[data-state="idle"]{background:var(--bg-surface);border-color:var(--border-subtle)}
 .outcome-banner[data-state="captured"]{background:linear-gradient(135deg,#ecfdf3 0%,#ffffff 85%);border-color:var(--status-success-border)}
@@ -238,11 +239,55 @@ canvas.chart{width:100%;height:220px;border:1px solid var(--border-subtle);borde
 .modal h2{font-size:16px}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--accent-charcoal);color:#fff;font-size:13px;padding:9px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .2s ease-out;z-index:60}
 #toast.show{opacity:1}
+/* Autopilot tour: spotlight ring + teleprompter */
+@keyframes tour-pulse{0%,100%{outline-color:#175cd3}50%{outline-color:#8ab4f8}}
+.tour-highlight{outline:3px solid #175cd3!important;outline-offset:3px;animation:tour-pulse 1.1s ease-in-out infinite}
+#demo-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent-charcoal);color:#fff;border-radius:12px;padding:10px 16px;display:flex;align-items:center;gap:12px;z-index:70;box-shadow:0 8px 24px rgba(16,24,40,.25);max-width:min(680px,92vw)}
+#demo-toast[hidden]{display:none}
+#demo-step{font-family:var(--font-mono);font-size:11px;font-weight:700;background:var(--accent-blue);border-radius:6px;padding:2px 8px;white-space:nowrap;flex-shrink:0}
+#demo-text{font-size:13px;font-weight:500;min-width:0}
+#demo-progress{width:90px;height:6px;background:#344054;border-radius:3px;overflow:hidden;flex-shrink:0}
+#demo-bar{display:block;height:100%;width:0;background:#3ddc97}
+#demo-stop{background:transparent;border:1px solid #475467;color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
+#demo-stop:hover{background:#253346}
 footer.app{max-width:1560px;margin:0 auto;padding:0 20px 26px;color:var(--text-muted);font-size:12px}
 /* Term diff pills: readable at video distance */
 .diff-pill{display:inline-block;font-family:var(--font-mono);font-size:15px;font-weight:700;background:var(--status-danger-bg);color:var(--status-danger-ink);border:2px solid var(--status-danger-ink);border-radius:10px;padding:6px 14px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
 .wit-pill{display:inline-block;font-family:var(--font-mono);font-size:13px;font-weight:700;background:var(--status-success-bg);color:var(--status-success-ink);border:2px solid var(--status-success-ink);border-radius:10px;padding:5px 12px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
-@media (max-width:1080px){.split,.desk-grid,.inspector,.tier-d{grid-template-columns:minmax(0,1fr)}.ribbon{grid-template-columns:minmax(0,1fr)}.rb-title{border-right:0;border-bottom:1px solid var(--border-subtle);padding:0 0 10px}.rb-connector{display:none}.topbar{height:auto;flex-wrap:wrap;padding:10px 16px}.view-switch{margin:0}.suff-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1280px){
+.brand .tagline,.brand .divider{display:none}
+#tour-status{display:none}
+.ribbon{grid-template-columns:repeat(3,minmax(0,1fr))}
+.rb-title{grid-column:1/-1;border-right:0;border-bottom:1px solid var(--border-subtle);padding:0 0 8px}
+.rb-connector{display:none}
+.split{gap:12px}
+.card{padding:12px 14px}
+.oracle-bar .left .sep,.oracle-bar .left span:last-child{display:none}
+.controls-row{grid-template-columns:minmax(0,1fr)}
+.tier-d{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+#checkout-outcome-banner{grid-column:1/-1}
+.mandate-strip .big{font-size:20px}
+.mandate-strip .mid{font-size:14px}
+}
+@media (max-width:960px){
+body{overflow-x:hidden}
+.topbar{height:auto;flex-wrap:wrap;padding:10px 16px;row-gap:8px}
+.view-switch{margin:0}
+#tour-status{max-width:none}
+main{padding:10px 12px 20px}
+.split,.desk-grid,.inspector,.tier-d{grid-template-columns:minmax(0,1fr)}
+.ribbon{grid-template-columns:minmax(0,1fr)}
+.rb-title{border-right:0;border-bottom:1px solid var(--border-subtle);padding:0 0 10px}
+.rb-connector{display:none}
+#checkout-outcome-banner{grid-column:auto}
+.card{max-width:100%}
+.controls-row{grid-template-columns:minmax(0,1fr)}
+.scn-grid{grid-template-columns:minmax(0,1fr)}
+.mandate-strip{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:10px}
+.mandate-strip>div+div{border-left:0}
+.mandate-strip>div:nth-child(even){border-left:1px solid var(--border-subtle)}
+.mandate-strip>div:nth-child(3){padding-left:0;text-align:left}
+}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 @media print{
 body{background:#fff}
@@ -287,9 +332,9 @@ body{background:#fff}
 </div>
 <div class="browser">
 <div class="browser-chrome"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="urlbar"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#15803d" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg><span id="store-url">https://store.example.com/product/APEX-27-4K-IPS</span></span></div>
-<iframe id="store-frame" class="store-frame" title="Synthetic merchant storefront" src="/store/normal"></iframe>
+<iframe id="store-frame" class="store-frame" title="Synthetic merchant storefront" src="/store/normal" scrolling="no"></iframe>
 </div>
-<h3>Visible quote badges</h3>
+<details class="drawer tech-drawer"><summary>Inspect extracted DOM quote blocks (B001–B005) &amp; drift simulation</summary><div class="drawer-body">
 <div id="quote-badges" class="badges" aria-live="polite"><span class="badge">Witness a scenario to pin quotes…</span></div>
 <label class="mutate"><input type="checkbox" id="mutate-toggle"><span><b>Post-purchase policy mutation preview.</b> Shows what a drifted policy (14-day returns, 25% restocking fee) would look like next to the witnessed terms. Illustrative only — re-run checkout to witness current terms.</span></label>
 <div id="mutate-panel" hidden><dl class="kv">
@@ -297,6 +342,7 @@ body{background:#fff}
 <dt>Mutated listing</dt><dd><span class="pill pill-bad">14-day returns · 25% fee</span></dd>
 <dt>Effect</dt><dd>Receipt hash would no longer match the PayPal order custom_id → MERCHANT_DRIFT_CONFIRMED. See the drift case on the Dispute Desk.</dd>
 </dl></div>
+</div></details>
 </div>
 <div class="stack">
 <div class="card">
@@ -379,7 +425,7 @@ body{background:#fff}
 <div class="no-print" style="display:flex;gap:8px;margin-top:14px"><button type="button" class="btn btn-primary" id="sheet-print">Print</button><button type="button" class="btn" id="sheet-close">Close</button></div>
 </div></div></div>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.9/dist/ag-grid-community.min.js" defer></script>
+<div id="demo-toast" hidden role="status" aria-live="polite"><span id="demo-step">STEP 1 / 6</span><span id="demo-text">Starting the guided tour…</span><span id="demo-progress" aria-hidden="true"><i id="demo-bar"></i></span><button type="button" id="demo-stop">Stop Tour</button></div>
 <script>
 'use strict';
 /* ---------- helpers ---------- */
@@ -434,7 +480,7 @@ function gateBadge(g){var el=$('gate-badge');if(!el||!g)return;var d=g.decision;
 if(d==='PROCEED'){el.textContent='✓ SUFFICIENT';el.className='pill pill-ok';}
 else if(d==='ASK_HUMAN_DELTA'){el.textContent='ASK_HUMAN_DELTA · $'+Number(g.headroomUsd||0).toFixed(2)+' headroom';el.className='pill pill-warn';}
 else{var r=String((g.reasons&&g.reasons[0])||d);var t=r.length>44?r.slice(0,44):r;if(r.length>44){var sp=t.lastIndexOf(' ');t=(sp>12?t.slice(0,sp):t)+' …';}el.textContent='✕ BLOCKED · '+t;el.className='pill pill-bad';}}
-function oracleLine(o){var el=$('oracle-line');el.textContent='Channel3 oracle: '+(o.matched?'match ':'no match ')+o.productId+' · '+o.source;el.className='pill '+(o.matched?'pill-ok':'pill-warn');}
+function oracleLine(o){var el=$('oracle-line');el.textContent=(o.matched?'✓ Policy aligned · ':'✗ No catalog match · ')+o.productId;el.title='Channel3 oracle: '+(o.matched?'match ':'no match ')+o.productId+' · '+o.source;el.className='pill '+(o.matched?'pill-ok':'pill-warn');}
 function rungTo(stage){$('rung-wit').className='rung-step'+(stage>=1?' on':'');$('rung-sign').className='rung-step'+(stage>=2?' on':'');}
 function runWitnessFlow(){var b=$('btn-witness');b.disabled=true;$('checkout-status').textContent='Witnessing offer…';
 return api('/api/witness/snapshot',{method:'POST',body:JSON.stringify({scenario:state.scenario})}).then(function(s){state.witness=s;suffPills(s.termReceipt.observedTerms);rungTo(1);ribbonFillWitness(s);gateBadge(s.gateResult);
@@ -619,37 +665,78 @@ $('sheet-modal').hidden=false;}
 $('sheet-close').addEventListener('click',function(){$('sheet-modal').hidden=true;});
 $('sheet-print').addEventListener('click',function(){window.print();});
 $('sheet-modal').addEventListener('click',function(e){if(e.target.classList&&e.target.classList.contains('modal-back'))$('sheet-modal').hidden=true;});
-/* ---------- guided judge tour: 5 beats, ~60s, stoppable, reduced-motion aware ---------- */
-var tourRunning=false;var tourPaused=false;
+/* ---------- visual autopilot tour: 6 narrated steps, spotlight + real clicks ---------- */
+var tourRunning=false;var tourPaused=false;var tourRingEl=null;
 function tourSleep(ms){var rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;return new Promise(function(res){setTimeout(res,rm?Math.min(ms,400):ms);});}
 function tourSay(t){$('tour-status').textContent=t;$('tour-status').title=t;toast(t);}
-function tourBeat(n,t){tourSay('Beat '+n+'/5: '+t);}
+function tourStep(n,label){tourSay('Step '+n+'/6: '+label);demoToast(n,6,label);}
 function selectCase(c){state.selectedCase=c;renderInspector();}
-function scrollToEl(id){var el=$(id);if(el&&el.scrollIntoView){try{el.scrollIntoView({block:'start'});}catch(e){}}}
+function tourScroll(el){if(!el||!el.scrollIntoView)return;var rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;try{el.scrollIntoView({behavior:rm?'auto':'smooth',block:'center'});}catch(e){}}
+function tourRing(el){tourUnring();if(!el||!el.classList)return;tourRingEl=el;el.classList.add('tour-highlight');}
+function tourUnring(){if(tourRingEl&&tourRingEl.classList)tourRingEl.classList.remove('tour-highlight');tourRingEl=null;}
+function demoToast(step,total,label){var t=$('demo-toast');t.hidden=false;$('demo-step').textContent='STEP '+step+' / '+total;$('demo-text').textContent=label;$('demo-bar').style.width=Math.round(100*step/total)+'%';$('demo-stop').textContent='Stop Tour';}
+function demoDone(label){$('demo-step').textContent='DONE';$('demo-text').textContent=label;$('demo-bar').style.width='100%';$('demo-stop').textContent='Dismiss';}
+function hideDemoToast(){$('demo-toast').hidden=true;}
+function tourWaitFor(cond,timeoutMs){var t0=Date.now();var limit=timeoutMs||12000;return new Promise(function(res,rej){(function poll(){if(!tourRunning&&!tourPaused){rej(new Error('__TOUR_ABORT__'));return;}var v=null;try{v=cond();}catch(e){rej(e);return;}if(v){res(v);return;}if(Date.now()-t0>limit){rej(new Error('tour timed out waiting for the page'));return;}setTimeout(poll,120);})();});}
+/* Spotlight an element, narrate it, let the eye land, then click it. */
+function highlightAndClick(el,label,pauseMs){if(!el)return Promise.resolve();tourScroll(el);tourRing(el);if(label)tourSay(label);return tourSleep(pauseMs||1400).then(function(){if(!tourRunning){tourUnring();return;}try{el.click();}catch(e){}return tourSleep(500);}).then(function(){tourUnring();});}
+/* Spotlight a display element (no click): scroll, ring, narrate, hold, release. */
+function highlightOnly(el,label,holdMs){if(!el)return Promise.resolve();tourScroll(el);tourRing(el);if(label)tourSay(label);return tourSleep(holdMs||2000).then(function(){tourUnring();});}
+function scnBtn(scn){for(var i=0;i<scnBtns.length;i++){if(scnBtns[i].getAttribute('data-scn')===scn)return scnBtns[i];}return null;}
+function caseRowEl(c){if(document.querySelector){var tr=document.querySelector('#ag-live-disputes-grid tr[data-row="'+c+'"]');if(tr)return tr;}var grid=$('ag-live-disputes-grid');if(grid&&grid.querySelectorAll){var rows=grid.querySelectorAll('[row-id]');for(var i=0;i<rows.length;i++){if(rows[i].getAttribute('row-id')===c)return rows[i];}}return null;}
+function firstPill(hostId){var host=$(hostId);if(host&&host.querySelector){var p=host.querySelector('.diff-pill,.pill');if(p)return p;}return host;}
 function runTour(){
 if(tourRunning){tourRunning=false;return Promise.resolve();}
 tourRunning=true;tourPaused=false;$('btn-tour').textContent='■ Stop guided tour';
 function alive(){return tourRunning;}
-function held(r){if(r&&r.outcome==='AWAITING_BUYER_APPROVAL'){tourPaused=true;tourRunning=false;tourSay('Tour paused: approve the buyer popup, then press Finalize.');return true;}return false;}
+function held(r){if(r&&r.outcome==='AWAITING_BUYER_APPROVAL'){tourPaused=true;tourRunning=false;tourUnring();tourSay('Tour paused: approve the buyer popup, then press Finalize.');demoDone('Paused — approve the buyer popup, then press Finalize.');return true;}return false;}
+function clickWitness(){var b=$('btn-witness');tourScroll(b);tourRing(b);return tourSleep(1300).then(function(){if(!tourRunning){tourUnring();return null;}b.click();tourUnring();return tourWaitFor(function(){return !$('btn-witness').disabled;});});}
+function clickCheckout(){var tok=state.checkout;var b=$('btn-checkout');tourScroll(b);tourRing(b);return tourSleep(1300).then(function(){if(!tourRunning){tourUnring();return null;}b.click();tourUnring();return tourWaitFor(function(){return state.checkout&&state.checkout!==tok?state.checkout:null;});});}
 return (async function(){
-tourBeat(1,'Normal checkout — witness, ASK_HUMAN_DELTA, $297 capture');showView('checkout');selectScenario('normal');$('twostep-toggle').checked=false;scrollToEl('view-checkout');
-await runWitnessFlow();if(!alive())return;await tourSleep(6000);
-var r1=await runCheckoutFlow();if(!alive()||held(r1))return;await tourSleep(6000);
+tourStep(1,'Normal checkout — witness, then capture $297.00');showView('checkout');$('twostep-toggle').checked=false;
+await highlightAndClick(scnBtn('normal'),'Scenario 1: normal checkout',1300);if(!alive())return;
+tourSay('Witnessing the offer — watch Stage 2 WIT turn green');await clickWitness();if(!alive())return;
+tourSay('Authorizing with PayPal — watch Stage 3 SIGN turn green');var r1=await clickCheckout();if(!alive()||held(r1))return;
 if(r1.outcome==='CAPTURED'){$('auditor').open=true;runAuditor();}
-await tourSleep(9000);if(!alive())return;
-tourBeat(2,'Hidden $55 surcharge — $340.50 auto-voided');selectScenario('surcharge_void');
-var r2=await runCheckoutFlow();if(!alive()||held(r2))return;await tourSleep(8000);
-tourBeat(3,'Hidden prompt injection — blocked pre-PayPal');selectScenario('adversarial_hidden_dom');
-await runCheckoutFlow();if(!alive())return;await tourSleep(8000);
-tourBeat(4,'Case B buyer forgery — SELLER_FAVOR');showView('desk');await ensureDesk();if(!alive())return;
-selectCase('buyer_forgery');scrollToEl('inspector');await tourSleep(5000);if(!alive())return;
-await api('/api/merchant/disputes/resolve',{method:'POST',body:JSON.stringify({case:'buyer_forgery'})});await refreshDesk();selectCase('buyer_forgery');await tourSleep(7000);if(!alive())return;
-tourBeat(5,'Case A merchant drift — BUYER_FAVOR + regression chart');
-await api('/api/merchant/disputes/resolve',{method:'POST',body:JSON.stringify({case:'merchant_drift'})});await refreshDesk();selectCase('merchant_drift');scrollToEl('inspector');await tourSleep(6000);if(!alive())return;
-$('prompt-input').value='Chart 24-scenario regression accuracy with 95% Wilson CIs';runPrompt($('prompt-input').value);scrollToEl('agent-chart');await tourSleep(8000);
-tourSay('Tour complete — VeriPact proved what the merchant promised.');
-}()).catch(function(e){tourSay('Tour stopped: '+e.message);}).finally(function(){var done=tourRunning&&!tourPaused;tourRunning=false;$('btn-tour').textContent='▶ Run 60s Guided Demo Tour';if(!done&&!tourPaused)tourSay('Tour stopped.');});}
+await highlightOnly($('checkout-outcome-banner'),'Purchase Captured — $297.00 anchored to PayPal',2200);if(!alive())return;
+await highlightOnly($('auditor'),'Verify it yourself — your browser recomputed JCS-PARITY MATCH',2200);if(!alive())return;
+tourStep(2,'Hidden $55 surcharge — $340.50 auto-voided');
+await highlightAndClick(scnBtn('surcharge_void'),'Scenario 2: hidden freight surcharge',1300);if(!alive())return;
+tourSay('Authorizing — the re-gate will void this order');var r2=await clickCheckout();if(!alive()||held(r2))return;
+await highlightOnly($('checkout-outcome-banner'),'Authorization Auto-Voided — $340.50 exceeded the $320.00 cap',2400);if(!alive())return;
+tourStep(3,'Hidden prompt injection — blocked before PayPal');
+await highlightAndClick(scnBtn('adversarial_hidden_dom'),'Scenario 3: concealed injection payload',1300);if(!alive())return;
+tourSay('Witnessing — the DOM scan flags the hidden node');await clickWitness();if(!alive())return;
+tourSay('Authorizing — blocked pre-checkout, zero PayPal calls');var r3=await clickCheckout();if(!alive()||held(r3))return;
+await highlightOnly($('checkout-outcome-banner'),'Blocked Pre-Checkout — ADVERSARIAL_DOM detected',2400);if(!alive())return;
+tourStep(4,'Back to green, then Case B buyer forgery');
+await highlightAndClick(scnBtn('normal'),'Restoring the flagship captured state',1200);if(!alive())return;
+await clickWitness();if(!alive())return;var r4=await clickCheckout();if(!alive()||held(r4))return;
+await highlightAndClick($('tab-desk'),'Opening the Dispute Desk',1200);if(!alive())return;
+await ensureDesk();if(!alive())return;
+await highlightOnly(caseRowEl('buyer_forgery'),'Case B: the buyer forged a 60-day receipt',2000);if(!alive())return;
+selectCase('buyer_forgery');
+await highlightOnly(firstPill('insp-buyer'),'return_window_days: 60 vs 30 — the anchor disagrees',2200);if(!alive())return;
+var d4=state.disputes;await highlightAndClick($('btn-resolve'),'Resolving the full evidence chain',1400);if(!alive())return;
+await tourWaitFor(function(){return state.disputes&&state.disputes!==d4;});selectCase('buyer_forgery');if(!alive())return;
+await highlightOnly(firstPill('insp-seller'),'BUYER_FORGERY_DETECTED — decided for the seller',2400);if(!alive())return;
+tourStep(5,'Case A merchant drift — decided for the buyer');
+await highlightOnly(caseRowEl('merchant_drift'),'Case A: the seller changed the policy after purchase',2000);if(!alive())return;
+selectCase('merchant_drift');
+await highlightOnly(firstPill('insp-seller'),'return_window_days: 30 vs 14 — the seller drifted',2200);if(!alive())return;
+var d5=state.disputes;await highlightAndClick($('btn-resolve'),'Resolving the drift case',1400);if(!alive())return;
+await tourWaitFor(function(){return state.disputes&&state.disputes!==d5;});selectCase('merchant_drift');if(!alive())return;
+await highlightOnly(firstPill('insp-seller'),'MERCHANT_DRIFT_CONFIRMED — decided for the buyer',2400);if(!alive())return;
+tourStep(6,'Regression suite — 72 runs, Wilson 95% CIs');
+await highlightAndClick($('ds-regression'),'Switching to the 24-scenario regression suite',1300);if(!alive())return;
+var presets=$('preset-list').children;await highlightAndClick(presets[2],'Charting accuracy with 95% Wilson intervals',1400);if(!alive())return;
+await tourSleep(800);if(!alive())return;
+await highlightOnly($('agent-chart'),'72 of 72 runs green — Gate, Post-auth, Referee, Overall',2200);if(!alive())return;
+await highlightOnly($('matrix-wrap'),'Confusion matrix: 24 PROCEED, 33 ASK_HUMAN_DELTA, 15 BLOCK',2200);if(!alive())return;
+tourSay('Tour complete — VeriPact proved what the merchant promised.');demoDone('Tour complete — VeriPact proved what the merchant promised.');
+}()).catch(function(e){tourUnring();if(e.message!=='__TOUR_ABORT__')tourSay('Tour stopped: '+e.message);}).finally(function(){var done=tourRunning&&!tourPaused;tourRunning=false;tourUnring();$('btn-tour').textContent='▶ Run 60s Guided Demo Tour';if(!done&&!tourPaused){tourSay('Tour stopped.');hideDemoToast();}});}
 $('btn-tour').addEventListener('click',function(){runTour();});
+$('demo-stop').addEventListener('click',function(){if(tourRunning){runTour();}else{hideDemoToast();}});
 /* ---------- default landing state: witness + capture the normal offer on load ---------- */
 var autoStarted=false;
 function autoPopulate(){if(autoStarted)return;autoStarted=true;

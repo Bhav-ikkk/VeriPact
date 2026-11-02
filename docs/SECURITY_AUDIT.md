@@ -149,3 +149,40 @@ test. Full gate after fixes: **166/166** tests green.
 
 Non-security UI fixes in the same run: fallback-grid wrapping,
 diff-pill overflow, finalize double-submit guard. No flow changes.
+
+## 7. Run 10 availability-hardening addendum (2026-11-02)
+
+The founder's browser showed 500s from environment state, not logic
+bugs. Verified throw sites: malformed rung keys in `process.env`
+(`readRungKey` 500), partial 1-of-3 keys (`resolveKeys` 500),
+placeholder or dead PayPal credentials (live-mode 401 → 500), and an
+unreadable `.env` path (`EISDIR`/EACCES → 500 on every credential
+route). All closed; clean checkouts behaved identically before/after.
+
+- **Per-rung demo fallback (workbench only).** `readRungKey` and the
+  new `resolveKeysLenient` warn to stderr and engage the demo seed
+  for malformed/missing rungs. The strict `resolveKeys` refusal is
+  UNCHANGED for SDK/CLI/MCP embedders (locked tests pin it) — only
+  the always-on demo server opts into `lenientKeys: true`.
+  `deriveEd25519KeyPairFromSeed` stays strict (pure primitive).
+- **Placeholder scrubbing.** `isPlaceholderCredential` (`your_`,
+  `replace_`, `<…>`, `xxx`, …) filters the human-edited layers
+  (process env, `.env` file) in `resolvePaypalCredentials` and in
+  the workbench's explicit pass-through. Explicit options bypass the
+  filter (programmer intent; locked tests pin short values). No
+  length rule by design — the 401 fallback below catches the rest.
+- **Live → replay latch.** A live-auth/transport failure
+  (`isLiveAuthFailure`: 401/`invalid_client`/DNS/refused/timeout/
+  `fetch failed`) retries the operation once in deterministic replay
+  and latches the whole workbench to replay until credentials change
+  or demo-reset. The latch stores only a SHA-256 of the pair, never
+  the pair; 4xx/referee errors never trigger it.
+- **Repo-root paths.** New `resolveRepoRoot()` (walk up to
+  `workspaces` root or `benchmark/` markers) anchors `.env`,
+  receipts, pending file, and benchmark paths — the server starts
+  from any cwd. Unreadable `.env` now reads as absent.
+- **Favicon + CDN.** `/favicon.ico` + `/favicon.svg` serve the
+  V-emblem SVG (kills the 404); external jsdelivr tags are removed
+  (offline-first native grid, zero console errors). The AG Grid
+  mount branch stays as a progressive enhancement if
+  `window.agGrid` ever exists.

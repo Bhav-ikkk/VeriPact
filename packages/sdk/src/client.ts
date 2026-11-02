@@ -121,6 +121,53 @@ export function resolveKeys(explicit: ExplicitKeys = {}): VeriPactKeys {
   };
 }
 
+function lenientRung(
+  rung: 'buyer' | 'witness' | 'merchant',
+  seed: string | undefined,
+  fallback: string,
+): { keys: RungKeys; demo: boolean } {
+  if (seed !== undefined && seed !== '' && SEED_RE.test(seed)) {
+    return { keys: keypairFromSeed(seed, rung), demo: false };
+  }
+  if (seed !== undefined && seed !== '') {
+    console.warn(
+      `veripact: ignoring malformed ${rung} private key (expected 64 lowercase hex) — demo seed engaged`,
+    );
+  }
+  return { keys: keypairFromSeed(fallback, rung), demo: true };
+}
+
+/**
+ * Lenient per-rung key resolution for the always-on demo server: missing,
+ * empty, or malformed rung values warn and fall back to that rung's
+ * deterministic demo seed instead of throwing. `demoKeys` stays honest
+ * (true only when every rung is demo). Embedders keep strict
+ * `resolveKeys`; only the workbench opts into leniency.
+ */
+export function resolveKeysLenient(explicit: ExplicitKeys = {}): VeriPactKeys {
+  const buyer = lenientRung(
+    'buyer',
+    explicit.buyerPrivateKeyHex ?? process.env['BUYER_ED25519_PRIVATE_KEY'],
+    DEMO_BUYER_SEED,
+  );
+  const witness = lenientRung(
+    'witness',
+    explicit.witnessPrivateKeyHex ?? process.env['WITNESS_ED25519_PRIVATE_KEY'],
+    DEMO_WITNESS_SEED,
+  );
+  const merchant = lenientRung(
+    'merchant',
+    explicit.merchantPrivateKeyHex ?? process.env['MERCHANT_ED25519_PRIVATE_KEY'],
+    DEMO_MERCHANT_SEED,
+  );
+  return {
+    buyer: buyer.keys,
+    witness: witness.keys,
+    merchant: merchant.keys,
+    demoKeys: buyer.demo && witness.demo && merchant.demo,
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /* Witnessed checkout flow                                              */
 /* ------------------------------------------------------------------ */
@@ -384,6 +431,12 @@ export interface VeriPactClientOptions {
   paypal?: PayPalClientOptions;
   witness?: WitnessClientDeps;
   keys?: ExplicitKeys;
+  /**
+   * Opt into per-rung demo fallback for missing/malformed keys (the
+   * workbench demo server). Default false: strict `resolveKeys` still
+   * refuses partial or malformed configuration loudly.
+   */
+  lenientKeys?: boolean;
 }
 
 /**
@@ -399,7 +452,8 @@ export class VeriPactClient {
   readonly keys: VeriPactKeys;
 
   constructor(options: VeriPactClientOptions = {}) {
-    this.keys = resolveKeys(options.keys);
+    this.keys =
+      options.lenientKeys === true ? resolveKeysLenient(options.keys) : resolveKeys(options.keys);
     this.paypal = new PayPalClient(options.paypal ?? {});
     this.witness = options.witness ? new WitnessClient(options.witness) : null;
   }

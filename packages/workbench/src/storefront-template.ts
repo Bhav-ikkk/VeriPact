@@ -101,9 +101,9 @@ export async function renderStorefront(scenario: ScenarioName): Promise<string> 
   const badges = await fixtureBadges(scenario);
   const annotation =
     scenario === 'surcharge_void'
-      ? '<p class="notice warn"><b>Callback preview:</b> a +$55.00 freight surcharge resolves at authorization — watch the re-gate void this order.</p>'
+      ? '<p class="notice warn"><b>Callback preview:</b> +$55.00 freight at authorization.</p>'
       : scenario === 'adversarial_hidden_dom'
-        ? '<p class="notice bad"><b>Concealed payload present.</b> This page hides an instruction node from human readers — the witness flags it pre-checkout.</p>'
+        ? '<p class="notice bad"><b>Concealed payload</b> — witness flags it pre-checkout.</p>'
         : '';
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -111,30 +111,32 @@ export async function renderStorefront(scenario: ScenarioName): Promise<string> 
 <title>${copy.heading} — Apex Display Co.</title>
 <style>
 body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;background:#fff;color:#101828;font-size:14px}
-.store{padding:16px;max-width:760px}
-.crumb{font-size:11.5px;color:#667085;margin:0 0 10px}
-.showcase{display:grid;grid-template-columns:290px minmax(0,1fr);gap:18px;align-items:start}
+.store{padding:12px 14px;max-width:760px}
+.crumb{font-size:11px;color:#667085;margin:0 0 6px}
+.showcase{display:grid;grid-template-columns:minmax(150px,250px) minmax(0,1fr);gap:12px;align-items:start}
 .visual{display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px;align-items:start}
 .thumbs{display:flex;flex-direction:column;gap:6px}
 .thumbs span{border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;display:block;line-height:0}
-.hero{border:1px solid #e5e7eb;border-radius:10px;padding:10px;background:#f8f9fb}
-.sku{font-size:18px;font-weight:800;margin:0;color:#101828}
-.name{font-size:13.5px;color:#475467;margin:2px 0 8px}
-.price{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;margin:0 0 8px}
-.condline{font-size:12.5px;color:#344054;margin:0 0 10px}
-.bullets{list-style:none;margin:0 0 10px;padding:0;font-size:12.5px;color:#344054;display:flex;flex-direction:column;gap:5px}
+.hero{border:1px solid #e5e7eb;border-radius:10px;padding:6px;background:#f8f9fb}
+.sku{font-size:16px;font-weight:800;margin:0;color:#101828}
+.name{font-size:13px;color:#475467;margin:0 0 4px}
+.price{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;margin:0 0 5px}
+.condline{font-size:12px;color:#344054;margin:0 0 6px}
+.bullets{list-style:none;margin:0 0 6px;padding:0;font-size:12px;color:#344054;display:flex;flex-direction:column;gap:3px}
 .bullets .tick{color:#15803d;font-weight:700}
-.newbadge{display:inline-block;background:#dcfce7;color:#15803d;font-weight:700;font-size:11.5px;border-radius:6px;padding:1px 8px}
-.qbadge{font-family:'JetBrains Mono','SFMono-Regular',Consolas,monospace;font-size:10.5px;background:#f2f4f7;border:1px solid #e5e7eb;border-left:3px solid #175cd3;border-radius:5px;padding:1px 6px;white-space:nowrap;color:#344054}
-.ship{font-size:12.5px;color:#475467;margin:0 0 10px}
-.notice{font-size:12px;border-radius:8px;padding:8px 10px;margin:0 0 10px}
+.newbadge{display:inline-block;background:#dcfce7;color:#15803d;font-weight:700;font-size:11px;border-radius:6px;padding:1px 8px}
+.qbadge{font-family:'JetBrains Mono','SFMono-Regular',Consolas,monospace;font-size:10px;background:#f2f4f7;border:1px solid #e5e7eb;border-left:3px solid #175cd3;border-radius:5px;padding:1px 6px;white-space:nowrap;color:#344054}
+.ship{font-size:12px;color:#475467;margin:0 0 6px}
+.notice{font-size:11.5px;border-radius:8px;padding:6px 8px;margin:0 0 6px}
 .notice.warn{background:#fffaeb;border:1px solid #fedf89;color:#b54708}
 .notice.bad{background:#fef3f2;border:1px solid #fecdca;color:#b42318}
 .cta{display:flex;gap:10px;margin-top:4px}
-.cta button{font-size:13.5px;padding:10px 18px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
+.cta button{font-size:12.5px;padding:7px 14px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
 .buy{background:#182230;color:#fff}
 .cart{background:#f2f4f7;color:#101828;border:1px solid #e5e7eb}
-.fixture{margin:12px 0 0;font-size:11.5px;color:#667085}
+.fixture{margin:8px 0 0;font-size:11px;color:#667085}
+@media (max-width:640px){.store{zoom:.88}}
+@media (max-width:480px){.store{zoom:.78}}
 </style></head>
 <body><main class="store">
 <p class="crumb">Apex Display Co. / Monitors / 4K IPS</p>

@@ -11,6 +11,7 @@ import {
   createSandboxReplayEngine,
   defaultEnvFilePath,
   DisputeActionNotPermittedByHateoasError,
+  isPlaceholderCredential,
   isSandboxBaseUrl,
   orderLinksFor,
   PAYPAL_SANDBOX_BASE_URL,
@@ -496,6 +497,47 @@ describe('@veripact/paypal-client', () => {
         clientId: '',
         clientSecret: '',
       });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('ignores placeholder credentials in env and disk layers, never explicit', () => {
+    expect(isPlaceholderCredential('your_client_id_here')).toBe(true);
+    expect(isPlaceholderCredential('xxx')).toBe(true);
+    expect(isPlaceholderCredential('<paste-secret>')).toBe(true);
+    expect(isPlaceholderCredential('replace_me')).toBe(true);
+    expect(isPlaceholderCredential('')).toBe(true);
+    expect(isPlaceholderCredential('AVk3_realshaped-secret_9Q')).toBe(false);
+    const dir = mkdtempSync(join(tmpdir(), 'vp-env-'));
+    try {
+      const file = join(dir, '.env');
+      writeFileSync(file, 'PAYPAL_CLIENT_ID=your_client_id\nPAYPAL_CLIENT_SECRET=xxx\n');
+      process.env.PAYPAL_CLIENT_ID = '<id>';
+      process.env.PAYPAL_CLIENT_SECRET = 'replace_secret';
+      expect(resolvePaypalCredentials({}, file)).toEqual({ clientId: '', clientSecret: '' });
+      // Explicit options are programmer intent: no filtering.
+      expect(
+        resolvePaypalCredentials({ clientId: 'your_client_id', clientSecret: 'xxx' }, file),
+      ).toEqual({ clientId: 'your_client_id', clientSecret: 'xxx' });
+      // Real-shaped values at every layer still resolve.
+      delete process.env.PAYPAL_CLIENT_ID;
+      delete process.env.PAYPAL_CLIENT_SECRET;
+      writeFileSync(file, 'PAYPAL_CLIENT_ID=disk-live-id-1\nPAYPAL_CLIENT_SECRET=disk-live-secret-1\n');
+      expect(resolvePaypalCredentials({}, file)).toEqual({
+        clientId: 'disk-live-id-1',
+        clientSecret: 'disk-live-secret-1',
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('treats an unreadable .env path as absent (never throws)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'vp-env-'));
+    try {
+      expect(readDotEnvFile(dir)).toEqual({});
+      expect(resolvePaypalCredentials({}, dir)).toEqual({ clientId: '', clientSecret: '' });
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

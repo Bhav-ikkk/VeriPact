@@ -109,7 +109,12 @@ export {
   DisputeActionNotPermittedByHateoasError,
   toHateoasActionMap,
 } from './disputes';
-export { defaultEnvFilePath, readDotEnvFile, resolvePaypalCredentials } from './env';
+export {
+  defaultEnvFilePath,
+  isPlaceholderCredential,
+  readDotEnvFile,
+  resolvePaypalCredentials,
+} from './env';
 export type { ExplicitPayPalCredentials, ResolvedPayPalCredentials } from './env';
 export { orderLinksFor } from './sandbox-replay';
 export type {

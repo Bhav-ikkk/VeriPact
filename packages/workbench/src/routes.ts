@@ -15,11 +15,12 @@
  * buffering), JSON-only errors that never carry key material, and no
  * secret ever serialized into a response.
  */
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import {
   deriveEd25519KeyPairFromSeed,
   evaluateContestedDispute,
+  repoPath,
   sha256Hex,
   signCanonicalPayload,
   verifyCanonicalPayload,
@@ -30,6 +31,7 @@ import {
   createSandboxReplayEngine,
   defaultEnvFilePath,
   DisputeActionNotPermittedByHateoasError,
+  isPlaceholderCredential,
   PayPalClient,
   resolvePaypalCredentials,
   type SandboxReplayEngine,
@@ -44,6 +46,7 @@ import {
   DISPUTE_CASE_NAMES,
   getScenario,
   loadScenarios,
+  resolveKeysLenient,
   runRegressionSuite,
   SCENARIO_NAMES,
   VeriPactClient,
@@ -61,6 +64,8 @@ export const WORKBENCH_VERSION = '0.1.0';
 export const ROUTES = [
   '/health',
   '/',
+  '/favicon.ico',
+  '/favicon.svg',
   '/store/:scenarioId',
   '/api/buyer/mandate',
   '/api/witness/snapshot',
@@ -220,7 +225,10 @@ type Rung = 'buyer' | 'witness' | 'merchant';
 /**
  * Read exactly one rung's private key: env var wins, deterministic demo
  * seed otherwise. Each route calls this ONLY for the rung(s) it needs —
- * grep the call sites to audit the isolation boundary.
+ * grep the call sites to audit the isolation boundary. A missing, empty,
+ * or malformed value warns and falls back to that rung's demo seed: the
+ * demo server stays up on half-edited environments (the strict refusal
+ * lives on in `resolveKeys` for SDK embedders).
  */
 export function readRungKey(rung: Rung): {
   publicKeyHex: string;
@@ -238,7 +246,11 @@ export function readRungKey(rung: Rung): {
   const raw = process.env[varName];
   const seed = raw !== undefined && raw !== '' ? raw : fallback;
   if (!/^[0-9a-f]{64}$/.test(seed)) {
-    throw new HttpError(500, `server key misconfigured for rung ${rung}`);
+    console.warn(
+      `veripact: ignoring malformed ${varName} (expected 64 lowercase hex) — demo seed engaged`,
+    );
+    const pair = deriveEd25519KeyPairFromSeed(fallback);
+    return { publicKeyHex: pair.publicKeyHex, privateKeyHex: pair.privateKeyHex, demoKeys: true };
   }
   const pair = deriveEd25519KeyPairFromSeed(seed);
   return { publicKeyHex: pair.publicKeyHex, privateKeyHex: pair.privateKeyHex, demoKeys: seed === fallback };
@@ -246,11 +258,87 @@ export function readRungKey(rung: Rung): {
 
 /** Credential-aware PayPal mode label (no network calls). */
 function paypalTransportMode(): string {
+  if (liveFallbackEngaged()) {
+    return 'DETERMINISTIC_SANDBOX_REPLAY';
+  }
   const client = new PayPalClient({
-    clientId: process.env['PAYPAL_CLIENT_ID'],
-    clientSecret: process.env['PAYPAL_CLIENT_SECRET'],
+    clientId: scrubEnvCredential(process.env['PAYPAL_CLIENT_ID']),
+    clientSecret: scrubEnvCredential(process.env['PAYPAL_CLIENT_SECRET']),
   });
   return client.transportMode;
+}
+
+/* ------------------------------------------------------------------ */
+/* Live → replay fallback latch                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * SHA-256 of the credential pair that already failed live auth. While set
+ * (and while the pair is unchanged) every route serves deterministic
+ * replay instead of retrying a broken live mode on each click.
+ */
+let liveAuthFailedStamp: string | null = null;
+
+function credentialStamp(): string {
+  const resolved = resolvePaypalCredentials({});
+  return sha256Hex(`${resolved.clientId}\n${resolved.clientSecret}`);
+}
+
+/**
+ * True when the CURRENT credential pair already failed live auth. Fresh
+ * credentials (or a demo reset) unlatch automatically and earn one new
+ * live attempt.
+ */
+function liveFallbackEngaged(): boolean {
+  if (liveAuthFailedStamp === null) {
+    return false;
+  }
+  if (credentialStamp() !== liveAuthFailedStamp) {
+    liveAuthFailedStamp = null;
+    return false;
+  }
+  return true;
+}
+
+/** True when an error looks like PayPal auth (401) or transport failure. */
+export function isLiveAuthFailure(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /HTTP 401|invalid_client|unauthorized|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT|EHOSTUNREACH|ENETUNREACH|fetch failed|getaddrinfo|socket hang up|self[ -]signed|CERT_/i.test(
+    message,
+  );
+}
+
+/** Test hooks: drive and observe the fallback latch deterministically. */
+export function noteLiveAuthFailure(): void {
+  liveAuthFailedStamp = credentialStamp();
+}
+
+export function clearLiveAuthFailure(): void {
+  liveAuthFailedStamp = null;
+}
+
+export function isLiveFallbackEngaged(): boolean {
+  return liveFallbackEngaged();
+}
+
+/**
+ * Run a PayPal-touching operation; on live-auth/transport failure, latch
+ * replay mode and retry the whole operation once against the deterministic
+ * engine. Non-auth errors (400s, referee mismatches, bugs) propagate.
+ */
+async function withLiveFallback<T>(op: () => Promise<T>): Promise<T> {
+  try {
+    return await op();
+  } catch (e) {
+    if (liveFallbackEngaged() || !isLiveAuthFailure(e)) {
+      throw e;
+    }
+    console.warn(
+      `veripact: live PayPal auth failed (${e instanceof Error ? e.message : String(e).slice(0, 120)}) — retrying once in deterministic replay`,
+    );
+    noteLiveAuthFailure();
+    return op();
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -260,6 +348,11 @@ function paypalTransportMode(): string {
 let sharedEngine: SandboxReplayEngine | null = null;
 
 function hasPaypalCredentials(): boolean {
+  // Latched replay (after a live-auth failure) reports no credentials so
+  // the UI, the mode pill, and demo-reset all follow the fallback.
+  if (liveFallbackEngaged()) {
+    return false;
+  }
   // Disk-aware (hot-swap): `.env` credentials count even before a restart.
   const resolved = resolvePaypalCredentials({});
   return resolved.clientId !== '' && resolved.clientSecret !== '';
@@ -295,7 +388,7 @@ const pendingApprovals = new Map<string, { scenario: ScenarioName } & PriorAppro
  * missing file falls through to re-witness, never to a 500. Holds witness
  * snapshots + signatures only (no keys, no PayPal secrets).
  */
-const PENDING_FILE = join(process.cwd(), '.veripact-pending.json');
+const PENDING_FILE = repoPath('.veripact-pending.json');
 
 function savePendingApprovals(): void {
   try {
@@ -333,12 +426,15 @@ function loadPendingApproval(orderId: string): ({ scenario: ScenarioName } & Pri
 
 /** Reset shared replay state + pending approvals (tests + POST /api/demo/reset). */
 export function resetDemoState(): void {
-  sharedEngine?.reset();
+  // Fresh engine instance (never a live-mode reset call): identical
+  // observable state, zero dependence on the previous engine's mode.
+  sharedEngine = createSandboxReplayEngine();
   pendingApprovals.clear();
+  clearLiveAuthFailure();
   try {
-    rmSync(PENDING_FILE, { force: true });
+    unlinkSync(PENDING_FILE);
   } catch {
-    // Absent file is the common case; ignore.
+    // Absent or unreadable file: nothing to clear, never a 500.
   }
 }
 
@@ -350,13 +446,27 @@ export function clearPendingApprovalsMemory(): void {
   pendingApprovals.clear();
 }
 
+/**
+ * Scrub a human-edited credential before it becomes an explicit option:
+ * placeholders must never flip a client into live mode (explicit options
+ * bypass the env-layer filter by design, so the workbench filters first).
+ */
+function scrubEnvCredential(value: string | undefined): string | undefined {
+  if (value === undefined || value === '' || isPlaceholderCredential(value)) {
+    return undefined;
+  }
+  return value;
+}
+
 /** Demo SDK client bound to the shared engine (replay) or live PayPal. */
 function demoClient(): VeriPactClient {
   return new VeriPactClient({
+    lenientKeys: true,
     paypal: {
-      clientId: process.env['PAYPAL_CLIENT_ID'],
-      clientSecret: process.env['PAYPAL_CLIENT_SECRET'],
+      clientId: scrubEnvCredential(process.env['PAYPAL_CLIENT_ID']),
+      clientSecret: scrubEnvCredential(process.env['PAYPAL_CLIENT_SECRET']),
       replay: demoEngine(),
+      ...(liveFallbackEngaged() ? { mode: 'replay' as const } : {}),
     },
   });
 }
@@ -364,9 +474,10 @@ function demoClient(): VeriPactClient {
 /** Demo PayPal client for granular dispute actions (same shared engine). */
 function demoPayPal(): PayPalClient {
   return new PayPalClient({
-    clientId: process.env['PAYPAL_CLIENT_ID'],
-    clientSecret: process.env['PAYPAL_CLIENT_SECRET'],
+    clientId: scrubEnvCredential(process.env['PAYPAL_CLIENT_ID']),
+    clientSecret: scrubEnvCredential(process.env['PAYPAL_CLIENT_SECRET']),
     replay: demoEngine(),
+    ...(liveFallbackEngaged() ? { mode: 'replay' as const } : {}),
   });
 }
 
@@ -375,6 +486,20 @@ function asScenarioName(value: unknown): ScenarioName {
     return value as ScenarioName;
   }
   throw new HttpError(400, `unknown scenario (expected one of ${SCENARIO_NAMES.join(', ')})`);
+}
+
+/**
+ * Scenario selector for witness/checkout/verify bodies: accepts both
+ * `scenario` and `scenarioId`, defaulting to `normal` when omitted so a
+ * parameter-name mismatch degrades to the flagship demo, never a 400.
+ * Explicit unknown values still 400.
+ */
+function asRequestScenario(body: Record<string, unknown>): ScenarioName {
+  const value = body['scenario'] ?? body['scenarioId'];
+  if (value === undefined || value === null) {
+    return 'normal';
+  }
+  return asScenarioName(value);
 }
 
 function asDisputeCase(value: unknown): DisputeCaseName {
@@ -434,7 +559,9 @@ function regressionPassRate(): string {
 
 /** GET /api/system/status — zero-key/BYOK readiness probe (no secrets). */
 function handleSystemStatus(res: WorkbenchResponse): void {
-  const keys = demoClient().keys;
+  // Keys only: resolve leniently without touching PayPal at all, so this
+  // readiness probe can never 500 on key or credential state.
+  const keys = resolveKeysLenient();
   const mode = paypalTransportMode();
   let totalScenarios = 0;
   try {
@@ -455,6 +582,22 @@ function handleSystemStatus(res: WorkbenchResponse): void {
     regressionPassRate: regressionPassRate(),
   };
   sendJson(res, 200, payload);
+}
+
+/** Two-tone VeriPact V-check emblem (same geometry as the header logo). */
+const FAVICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 26" fill="none">' +
+  '<path d="M3 8l7.5 10" stroke="#182230" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>' +
+  '<path d="M10.5 18L23 5" stroke="#175cd3" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>' +
+  '</svg>';
+
+/** GET /favicon.ico + /favicon.svg — SVG emblem (kills the 404 console error). */
+function handleFavicon(res: WorkbenchResponse): void {
+  res.writeHead(200, {
+    ...securityHeaders('image/svg+xml; charset=utf-8'),
+    'cache-control': 'public, max-age=86400',
+  });
+  res.end(FAVICON_SVG);
 }
 
 async function handleStore(scenarioId: string, res: WorkbenchResponse): Promise<void> {
@@ -544,7 +687,7 @@ async function handleWitnessSnapshot(
   body: Record<string, unknown>,
   res: WorkbenchResponse,
 ): Promise<void> {
-  const scenario = asScenarioName(body['scenario']);
+  const scenario = asRequestScenario(body);
   const witness = readRungKey('witness');
   const page = getScenario(scenario);
   const snapshot = await createWitnessSnapshot({
@@ -582,7 +725,7 @@ async function handleMerchantCheckout(
   body: Record<string, unknown>,
   res: WorkbenchResponse,
 ): Promise<void> {
-  const scenario = asScenarioName(body['scenario']);
+  const scenario = asRequestScenario(body);
   const client = demoClient();
   const result = await client.runWitnessedCheckoutFlow({
     scenario,
@@ -702,7 +845,7 @@ async function handleDisputeResolve(
  * `receiptCore` and live `custom_id` read-back the browser auditor needs.
  */
 async function handleVerify(body: Record<string, unknown>, res: WorkbenchResponse): Promise<void> {
-  const scenario = asScenarioName(body['scenario']);
+  const scenario = asRequestScenario(body);
   const client = demoClient();
   const checkout = await client.runWitnessedCheckoutFlow({ scenario });
   if (checkout.outcome !== 'CAPTURED' || checkout.orderId === undefined) {
@@ -921,7 +1064,7 @@ function isPriorApprovalData(value: unknown): value is PriorApprovalData {
 
 /** Append (or refresh by orderId) one entry in docs/sandbox-receipts.json. */
 function appendSandboxReceipt(entry: Record<string, unknown>): void {
-  const path = join(process.cwd(), 'docs', 'sandbox-receipts.json');
+  const path = repoPath('docs', 'sandbox-receipts.json');
   let doc: { generatedAtUtc: string; transportMode: unknown; orders: unknown[]; notes?: string } = {
     generatedAtUtc: new Date().toISOString(),
     transportMode: entry['transportMode'] ?? 'UNKNOWN',
@@ -1029,12 +1172,16 @@ export async function handleWorkbenchRequest(
       sendHtml(res, 200, renderIndexPage());
       return;
     }
+    if (method === 'GET' && (pathname === '/favicon.ico' || pathname === '/favicon.svg')) {
+      handleFavicon(res);
+      return;
+    }
     if (method === 'GET' && pathname.startsWith('/store/')) {
       await handleStore(pathname.slice('/store/'.length), res);
       return;
     }
     if (method === 'GET' && pathname === '/api/merchant/disputes') {
-      await handleMerchantDisputes(res);
+      await withLiveFallback(() => handleMerchantDisputes(res));
       return;
     }
     if (method === 'GET' && pathname === '/api/benchmark') {
@@ -1046,7 +1193,7 @@ export async function handleWorkbenchRequest(
       return;
     }
     if (method === 'GET' && pathname === '/sandbox/paypal-checkout') {
-      await handleSandboxCheckout(req, res);
+      await withLiveFallback(() => handleSandboxCheckout(req, res));
       return;
     }
     if (method === 'POST' && pathname === '/api/buyer/mandate') {
@@ -1058,15 +1205,18 @@ export async function handleWorkbenchRequest(
       return;
     }
     if (method === 'POST' && pathname === '/api/merchant/checkout') {
-      await handleMerchantCheckout(parseJsonBody(await readBody(req)), res);
+      const body = parseJsonBody(await readBody(req));
+      await withLiveFallback(() => handleMerchantCheckout(body, res));
       return;
     }
     if (method === 'POST' && pathname === '/api/merchant/disputes/resolve') {
-      await handleDisputeResolve(parseJsonBody(await readBody(req)), res);
+      const body = parseJsonBody(await readBody(req));
+      await withLiveFallback(() => handleDisputeResolve(body, res));
       return;
     }
     if (method === 'POST' && pathname === '/api/merchant/disputes/action') {
-      await handleDisputeAction(parseJsonBody(await readBody(req)), res);
+      const body = parseJsonBody(await readBody(req));
+      await withLiveFallback(() => handleDisputeAction(body, res));
       return;
     }
     if (method === 'POST' && pathname === '/api/demo/reset') {
@@ -1075,20 +1225,25 @@ export async function handleWorkbenchRequest(
       return;
     }
     if (method === 'POST' && pathname === '/api/sandbox/approve-order') {
-      await handleSandboxApprove(parseJsonBody(await readBody(req)), res);
+      const body = parseJsonBody(await readBody(req));
+      await withLiveFallback(() => handleSandboxApprove(body, res));
       return;
     }
     if (method === 'POST' && pathname === '/api/merchant/checkout/finalize') {
-      await handleCheckoutFinalize(parseJsonBody(await readBody(req)), res);
+      const body = parseJsonBody(await readBody(req));
+      await withLiveFallback(() => handleCheckoutFinalize(body, res));
       return;
     }
     if (method === 'POST' && pathname === '/api/verify') {
-      await handleVerify(parseJsonBody(await readBody(req)), res);
+      const body = parseJsonBody(await readBody(req));
+      await withLiveFallback(() => handleVerify(body, res));
       return;
     }
     const knownPaths = [
       '/health',
       '/',
+      '/favicon.ico',
+      '/favicon.svg',
       '/api/merchant/disputes',
       '/api/benchmark',
       '/api/buyer/mandate',
@@ -1110,6 +1265,9 @@ export async function handleWorkbenchRequest(
     sendJson(res, 404, { error: 'not found' });
   } catch (e) {
     if (e instanceof HttpError) {
+      if (e.status >= 500) {
+        logServerError(req, e);
+      }
       sendJson(res, e.status, { error: e.message });
       return;
     }
@@ -1117,6 +1275,22 @@ export async function handleWorkbenchRequest(
       sendJson(res, 409, { error: e.message });
       return;
     }
+    logServerError(req, e);
     sendJson(res, 500, { error: e instanceof Error ? e.message : 'internal error' });
+  }
+}
+
+/** Diagnostic stderr log for 5xx outcomes (message + short stack, never secrets). */
+function logServerError(req: WorkbenchRequest, e: unknown): void {
+  const path = (req.url ?? '/').split('?')[0];
+  const message = e instanceof Error ? e.message : String(e);
+  console.error(`veripact: ${req.method ?? '?'} ${path} failed: ${message}`);
+  if (process.env['NODE_ENV'] !== 'production' && e instanceof Error && typeof e.stack === 'string') {
+    console.error(
+      e.stack
+        .split('\n')
+        .slice(0, 4)
+        .join('\n'),
+    );
   }
 }

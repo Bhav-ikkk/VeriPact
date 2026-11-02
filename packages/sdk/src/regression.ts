@@ -14,6 +14,7 @@ import { dirname, join } from 'node:path';
 import {
   deriveEd25519KeyPairFromSeed,
   evaluateContestedDispute,
+  resolveRepoRoot,
   signCanonicalPayload,
   type DisputeVerdict,
   type GateDecision,
@@ -63,10 +64,7 @@ export const REGRESSION_PASSES_DEFAULT = 3;
 
 /** Resolve benchmark file paths (repo-root aware, test + server safe). */
 export function defaultBenchmarkPaths(): { scenariosPath: string; reportPath: string } {
-  const candidates = [
-    process.cwd(),
-    join(__dirname, '..', '..', '..'),
-  ];
+  const candidates = [process.cwd(), resolveRepoRoot()];
   for (const root of candidates) {
     if (existsSync(join(root, 'benchmark', 'scenarios', 'scenarios.json'))) {
       return {

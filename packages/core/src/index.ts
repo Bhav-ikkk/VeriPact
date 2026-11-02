@@ -18,6 +18,8 @@ import {
   COMMITMENT_PREFIX,
 } from './crypto';
 
+export { repoPath, resolveRepoRoot } from './paths';
+
 export {
   canonicalizeJson,
   computeCommitment,

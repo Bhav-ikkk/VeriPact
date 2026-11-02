@@ -5,6 +5,7 @@
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false,
+    "lib": ["ES2022", "DOM"],
     "outDir": "dist",
     "rootDir": ".",
     "types": ["node"]
