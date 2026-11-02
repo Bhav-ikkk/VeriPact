@@ -25,32 +25,53 @@ Validate with `formatCommitmentPrefix(sha256Hex)` from `@veripact/sdk`
 ```bash
 veripact --help
 veripact --version
-veripact witness --url <storefront-url> --mandate <mandate.json>
-veripact verify --receipt <term-receipt.json> --order <paypal-order-id>
-veripact dispute --case <contested-case.json>
+veripact witness --scenario <normal|surcharge_void|adversarial_hidden_dom> [--json]
+veripact checkout --scenario <normal|surcharge_void|adversarial_hidden_dom> [--json]
+veripact audit-dispute --case <buyer_forgery|merchant_drift> [--json]
+veripact verify --scenario <normal> [--json]
 ```
+
+- `witness` snapshots a scenario storefront (hidden-DOM scan, verified
+  quotes, Channel3 cross-check, TSA anchor). Zero PayPal calls.
+- `checkout` runs the bilateral guarded flow: snapshot → gate → AUTHORIZE →
+  patch → authorize → post-approval re-gate → `CAPTURED` | `AUTO_VOIDED` |
+  `BLOCKED_PRE_CHECKOUT`.
+- `audit-dispute` referees the contested case against the PayPal-anchored
+  commitment and drives the dispute to `RESOLVED` via HATEOAS-gated actions.
+- `verify` re-verifies a captured bundle: commitment recompute, `custom_id`
+  exact match, buyer/witness/merchant signatures, TSA anchor (±5 min skew).
 
 Keys come from environment variables only (`BUYER_*`, `WITNESS_*`,
 `MERCHANT_*`, `PAYPAL_*` — see `.env.example`). Never pass key material
-as CLI flags.
+as CLI flags. Without env keys every command runs fully offline on
+deterministic demo fixtures (results carry `demoKeys: true`).
 
 ## MCP usage (stdio JSON-RPC 2.0)
 
 Server: `@veripact/mcp-server`. Methods: `initialize`, `tools/list`,
 `tools/call`. Tools:
 
-| Tool | Purpose |
-|---|---|
-| `witness_terms` | Witness merchant terms at a URL against a mandate |
-| `verify_receipt` | Verify a receipt against a PayPal order `custom_id` |
-| `format_commitment` | Format/validate a `VP1:` commitment from a sha256 hex digest |
+| Tool | Arguments | Purpose |
+|---|---|---|
+| `veripact_witness_offer` | `{ scenario }` | Witness a scenario storefront (no PayPal calls) |
+| `veripact_execute_guarded_checkout` | `{ scenario }` | Run a guarded witnessed checkout |
+| `veripact_verify_order_receipt` | `{ scenario }` or `{ bundle }` | Verify a bundle (demo or explicit `TransactionBundleInput`) |
+| `veripact_adjudicate_contested_dispute` | `{ case }` | Audit a contested dispute to `RESOLVED` |
+
+`scenario` ∈ `normal | surcharge_void | adversarial_hidden_dom`;
+`case` ∈ `buyer_forgery | merchant_drift`. Results arrive as
+`content[0].text` JSON. Key material is never accepted over stdin —
+arguments carrying private-key/secret keys are rejected.
 
 ## Honesty contract
 
 - A timestamp proves hash existence at time T plus independent witness
   observation. It never proves content truth.
-- Live mode calls the real PayPal Sandbox. Fixtures labeled `REPLAY`
-  are deterministic test data, never live evidence.
+- Live mode calls the real PayPal Sandbox. Responses labeled
+  `DETERMINISTIC_SANDBOX_REPLAY` (or fixtures labeled `REPLAY`) are
+  deterministic test data, never live evidence.
+- Every SDK/CLI/MCP result carries `transportMode` and `demoKeys` labels.
 
-Status: v0.1.0 foundation skeleton — interfaces and smoke tests are real;
-networked PayPal/TSA/Channel3 calls land in Prompts #2–#6.
+Status: v1.0.0 — CLI, MCP tools, bilateral checkout, and dispute audit are
+production against the PayPal Sandbox (live) or the deterministic replay
+engine (offline). Workbench UI and benchmark harness land in later prompts.
