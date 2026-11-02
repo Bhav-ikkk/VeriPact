@@ -126,7 +126,11 @@ export function resolveKeys(explicit: ExplicitKeys = {}): VeriPactKeys {
 /* ------------------------------------------------------------------ */
 
 /** Checkout flow outcome. */
-export type CheckoutOutcome = 'BLOCKED_PRE_CHECKOUT' | 'CAPTURED' | 'AUTO_VOIDED';
+export type CheckoutOutcome =
+  | 'BLOCKED_PRE_CHECKOUT'
+  | 'AWAITING_BUYER_APPROVAL'
+  | 'CAPTURED'
+  | 'AUTO_VOIDED';
 
 export interface CheckoutFlowInput {
   /** Canonical scenario (fixtures) — or custom page fields below. */
@@ -136,6 +140,14 @@ export interface CheckoutFlowInput {
   mandate?: MandateSpec;
   /** Shipping/tax the PayPal callback resolves (scenario default). */
   callbackTotals?: { shippingUsd: number; taxUsd: number };
+  /**
+   * Two-step mode: stop after order create + PATCH with
+   * `AWAITING_BUYER_APPROVAL` (no auto-approve, no authorize yet) and let
+   * the buyer approve via `approveUrl`, then `completeApprovedCheckout`.
+   * Default false (1-click auto-approve in replay). Live mode always
+   * returns AWAITING while the order status is CREATED.
+   */
+  twoStepApproval?: boolean;
 }
 
 export interface CheckoutFlowResult {
@@ -155,6 +167,33 @@ export interface CheckoutFlowResult {
   voidReason?: string;
   addendum?: CaptureAddendum;
   addendumSignatureHex?: string;
+  /** Buyer-approval URL (AWAITING step; replay popup or live checkoutnow). */
+  approveUrl?: string;
+  /** Re-gate preview computed at AWAITING time (deterministic). */
+  expectedPostApprovalAction?: 'CAPTURE' | 'VOID';
+  headroomRemainingUsd?: number;
+}
+
+/** Prior step-1 evidence echoed back so step 2 needs no re-witness. */
+export interface PriorApprovalData {
+  snapshot: WitnessSnapshotOutput;
+  buyerApprovalSignatureHex: string;
+  merchantSignatureHex: string;
+}
+
+/** Input for `completeApprovedCheckout` (step 2 of two-step approval). */
+export interface CompleteCheckoutInput {
+  orderId: string;
+  /** Canonical scenario (also accepted as `scenarioId`). */
+  scenario?: ScenarioName;
+  scenarioId?: string;
+  /**
+   * Replay only: run `simulatePayerApproval` before authorize (default
+   * true). Set false when the popup already approved the order.
+   */
+  approveInReplay?: boolean;
+  /** Step-1 evidence (browser echo or server pending map). */
+  prior?: PriorApprovalData;
 }
 
 interface ResolvedCheckoutPage {
@@ -455,6 +494,34 @@ export class VeriPactClient {
       shippingUsd: page.callbackTotals.shippingUsd,
       taxUsd: page.callbackTotals.taxUsd,
     });
+    // Two-step gate: explicit flag, or live orders still awaiting approval.
+    // Either way we return BEFORE approve/authorize with a deterministic
+    // re-gate preview — never simulate approval on the live path.
+    let liveCreated = false;
+    if (this.paypal.transportMode === 'LIVE_PAYPAL_SANDBOX') {
+      liveCreated = (await this.paypal.getOrder(order.orderId)).status === 'CREATED';
+    }
+    if (input.twoStepApproval === true || liveCreated) {
+      const preview = evaluatePostApprovalReGate(page.mandate, snapshot.termReceipt, {
+        itemTotalUsd: basePriceUsd,
+        shippingUsd: page.callbackTotals.shippingUsd,
+        taxUsd: page.callbackTotals.taxUsd,
+        finalTotalUsd: patched.finalTotalUsd,
+      });
+      const approveUrl =
+        order.approveUrl ?? (await this.paypal.getOrder(order.orderId)).approveUrl;
+      return {
+        ...base,
+        outcome: 'AWAITING_BUYER_APPROVAL',
+        buyerApprovalSignatureHex,
+        merchantSignatureHex,
+        orderId: order.orderId,
+        approveUrl,
+        finalTotalUsd: patched.finalTotalUsd,
+        expectedPostApprovalAction: preview.action,
+        headroomRemainingUsd: preview.headroomRemainingUsd,
+      };
+    }
     if (this.paypal.transportMode === 'DETERMINISTIC_SANDBOX_REPLAY') {
       this.paypal.simulatePayerApproval(order.orderId);
     }
@@ -506,6 +573,102 @@ export class VeriPactClient {
       authorizationId,
       captureId: capture.captureId,
       finalTotalUsd: patched.finalTotalUsd,
+      addendum,
+      addendumSignatureHex,
+    };
+  }
+
+  /**
+   * Step 2 of two-step approval: authorize an already buyer-approved order,
+   * re-gate, and capture or void. Replay callers can fold the approval in
+   * (`approveInReplay`, default true); live callers approve at PayPal first.
+   * Pass step-1 `prior` evidence (or let the workbench pending map supply
+   * it) so the returned bundle verifies without a re-witness.
+   */
+  async completeApprovedCheckout(input: CompleteCheckoutInput): Promise<CheckoutFlowResult> {
+    const scenarioName = input.scenario ?? input.scenarioId;
+    if (scenarioName === undefined) {
+      throw new Error('veripact: completeApprovedCheckout requires scenario (or scenarioId)');
+    }
+    const page = getScenario(scenarioName);
+    const prior = input.prior;
+    const snapshot = prior?.snapshot ?? (await this.snapshotPage(page.listingUrl, page.html, page.mandate));
+    const buyerApprovalSignatureHex =
+      prior?.buyerApprovalSignatureHex ??
+      signCanonicalPayload(snapshot.receiptCore, this.keys.buyer.privateKeyHex);
+    const merchantSignatureHex =
+      prior?.merchantSignatureHex ??
+      signCanonicalPayload(snapshot.receiptCore, this.keys.merchant.privateKeyHex);
+    // Verify echoed step-1 evidence against the live order record BEFORE
+    // authorizing: only the receipt bound into custom_id may complete.
+    const precheck = await this.paypal.getOrder(input.orderId);
+    if (
+      prior !== undefined &&
+      computeCommitment(prior.snapshot.receiptCore) !== precheck.customId
+    ) {
+      throw new Error('veripact: step-1 receipt does not match the order custom_id');
+    }
+    if (
+      this.paypal.transportMode === 'DETERMINISTIC_SANDBOX_REPLAY' &&
+      input.approveInReplay !== false
+    ) {
+      try {
+        this.paypal.simulatePayerApproval(input.orderId);
+      } catch (e) {
+        // Already approved (e.g. via the popup) — proceed to authorize.
+        if (!(e instanceof Error) || !e.message.includes('only CREATED orders can be approved')) {
+          throw e;
+        }
+      }
+    }
+    const authorized = await this.paypal.authorizeOrder(input.orderId);
+    const authorizationId = authorized.authorizationId;
+    if (authorizationId === undefined) {
+      throw new Error(`veripact: authorize returned no authorization id (${input.orderId})`);
+    }
+    // Re-gate from the patched order breakdown (source of truth).
+    const order = await this.paypal.getOrder(input.orderId);
+    const regate = evaluatePostApprovalReGate(page.mandate, snapshot.termReceipt, {
+      itemTotalUsd: order.amountBreakdown.itemTotalUsd,
+      shippingUsd: order.amountBreakdown.shippingUsd,
+      taxUsd: order.amountBreakdown.taxUsd,
+      finalTotalUsd: order.amountBreakdown.totalUsd,
+    });
+    const base: CheckoutFlowResult = {
+      outcome: 'AUTO_VOIDED',
+      scenario: page.name,
+      transportMode: this.paypal.transportMode,
+      demoKeys: this.keys.demoKeys,
+      snapshot,
+      buyerApprovalSignatureHex,
+      merchantSignatureHex,
+      orderId: input.orderId,
+      authorizationId,
+      finalTotalUsd: order.amountBreakdown.totalUsd,
+    };
+    if (regate.action === 'VOID') {
+      await this.paypal.voidAuthorization({ authorizationId });
+      return { ...base, voidReason: regate.reason };
+    }
+    const addendum: CaptureAddendum = {
+      authorizationId,
+      capturedTotalUsd: order.amountBreakdown.totalUsd,
+      mandateCeilingUsd: page.mandate.constraints.maxAllInPriceUsd,
+      decision: 'CAPTURE',
+      decidedAtUtc: new Date().toISOString(),
+    };
+    const addendumSha256 = sha256Hex(canonicalizeJson(addendum));
+    const addendumSignatureHex = signCanonicalPayload(addendum, this.keys.merchant.privateKeyHex);
+    const capture = await this.paypal.captureAuthorizationExact({
+      authorizationId,
+      addendumSha256,
+      amountUsd: order.amountBreakdown.totalUsd,
+      noteToPayer: 'VeriPact Verified Capture',
+    });
+    return {
+      ...base,
+      outcome: 'CAPTURED',
+      captureId: capture.captureId,
       addendum,
       addendumSignatureHex,
     };

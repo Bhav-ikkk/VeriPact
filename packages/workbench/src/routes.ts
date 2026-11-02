@@ -15,7 +15,8 @@
  * buffering), JSON-only errors that never carry key material, and no
  * secret ever serialized into a response.
  */
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import {
   deriveEd25519KeyPairFromSeed,
   evaluateContestedDispute,
@@ -28,6 +29,7 @@ import {
   createSandboxReplayEngine,
   DisputeActionNotPermittedByHateoasError,
   PayPalClient,
+  resolvePaypalCredentials,
   type SandboxReplayEngine,
 } from '@veripact/paypal-client';
 import {
@@ -43,8 +45,10 @@ import {
   SCENARIO_NAMES,
   VeriPactClient,
   type DisputeCaseName,
+  type PriorApprovalData,
   type ScenarioName,
 } from '@veripact/sdk';
+import { renderApprovalPage } from './approval-template';
 import { renderIndexPage } from './ui-template';
 import { renderStorefront } from './storefront-template';
 
@@ -61,6 +65,9 @@ export const ROUTES = [
   '/api/merchant/disputes',
   '/api/merchant/disputes/resolve',
   '/api/merchant/disputes/action',
+  '/api/merchant/checkout/finalize',
+  '/api/sandbox/approve-order',
+  '/sandbox/paypal-checkout',
   '/api/verify',
   '/api/benchmark',
   '/api/demo/reset',
@@ -241,10 +248,9 @@ function paypalTransportMode(): string {
 let sharedEngine: SandboxReplayEngine | null = null;
 
 function hasPaypalCredentials(): boolean {
-  return (
-    (process.env['PAYPAL_CLIENT_ID'] ?? '') !== '' &&
-    (process.env['PAYPAL_CLIENT_SECRET'] ?? '') !== ''
-  );
+  // Disk-aware (hot-swap): `.env` credentials count even before a restart.
+  const resolved = resolvePaypalCredentials({});
+  return resolved.clientId !== '' && resolved.clientSecret !== '';
 }
 
 /**
@@ -264,9 +270,17 @@ function demoEngine(): SandboxReplayEngine | undefined {
   return sharedEngine;
 }
 
-/** Reset shared replay state (tests + POST /api/demo/reset). */
+/**
+ * Step-1 evidence awaiting buyer approval (orderId → snapshot + signatures),
+ * so finalize can complete without a re-witness even when the caller cannot
+ * echo step-1 data back. Cleared on reset alongside the replay engine.
+ */
+const pendingApprovals = new Map<string, { scenario: ScenarioName } & PriorApprovalData>();
+
+/** Reset shared replay state + pending approvals (tests + POST /api/demo/reset). */
 export function resetDemoState(): void {
   sharedEngine?.reset();
+  pendingApprovals.clear();
 }
 
 /** Demo SDK client bound to the shared engine (replay) or live PayPal. */
@@ -442,7 +456,23 @@ async function handleMerchantCheckout(
 ): Promise<void> {
   const scenario = asScenarioName(body['scenario']);
   const client = demoClient();
-  const result = await client.runWitnessedCheckoutFlow({ scenario });
+  const result = await client.runWitnessedCheckoutFlow({
+    scenario,
+    twoStepApproval: body['twoStep'] === true,
+  });
+  if (
+    result.outcome === 'AWAITING_BUYER_APPROVAL' &&
+    result.orderId !== undefined &&
+    result.buyerApprovalSignatureHex !== undefined &&
+    result.merchantSignatureHex !== undefined
+  ) {
+    pendingApprovals.set(result.orderId, {
+      scenario,
+      snapshot: result.snapshot,
+      buyerApprovalSignatureHex: result.buyerApprovalSignatureHex,
+      merchantSignatureHex: result.merchantSignatureHex,
+    });
+  }
   sendJson(res, 200, { ...result, boundary: 'SIGN' });
 }
 
@@ -633,6 +663,207 @@ function handleDemoReset(res: WorkbenchResponse): void {
   sendJson(res, 200, { ok: true });
 }
 
+const ORDER_TOKEN_RE = /^[A-Za-z0-9_-]+$/;
+
+function asOrderId(value: unknown): string {
+  if (typeof value === 'string' && ORDER_TOKEN_RE.test(value)) {
+    return value;
+  }
+  throw new HttpError(400, 'orderId must be a non-empty token (letters, digits, _ -)');
+}
+
+/**
+ * GET /sandbox/paypal-checkout?token=<orderId> — replay buyer-approval
+ * popup. Live mode 302-redirects to PayPal's own approve URL instead.
+ */
+async function handleSandboxCheckout(req: WorkbenchRequest, res: WorkbenchResponse): Promise<void> {
+  const token = new URL(req.url ?? '/', 'http://localhost').searchParams.get('token') ?? '';
+  if (!ORDER_TOKEN_RE.test(token)) {
+    res.writeHead(400, securityHeaders('text/html; charset=utf-8'));
+    res.end(
+      renderApprovalPage({
+        orderId: 'invalid-token',
+        orderStatus: 'UNKNOWN',
+        description: '',
+        itemTotalUsd: 0,
+        shippingUsd: 0,
+        taxUsd: 0,
+        finalTotalUsd: 0,
+        customId: '',
+        transportMode: '',
+        scenario: 'custom',
+        alreadyApproved: false,
+        error: 'Missing or malformed ?token=<orderId>.',
+      }),
+    );
+    return;
+  }
+  const paypal = demoPayPal();
+  let order;
+  try {
+    order = await paypal.getOrder(token);
+  } catch {
+    res.writeHead(404, securityHeaders('text/html; charset=utf-8'));
+    res.end(
+      renderApprovalPage({
+        orderId: token,
+        orderStatus: 'UNKNOWN',
+        description: '',
+        itemTotalUsd: 0,
+        shippingUsd: 0,
+        taxUsd: 0,
+        finalTotalUsd: 0,
+        customId: '',
+        transportMode: paypal.transportMode,
+        scenario: 'custom',
+        alreadyApproved: false,
+        error: `Order ${token} was not found on ${paypal.transportMode}.`,
+      }),
+    );
+    return;
+  }
+  if (
+    paypal.transportMode === 'LIVE_PAYPAL_SANDBOX' &&
+    order.approveUrl !== undefined &&
+    order.approveUrl.startsWith('https://')
+  ) {
+    res.writeHead(302, { ...securityHeaders('text/plain; charset=utf-8'), location: order.approveUrl });
+    res.end('Continue to PayPal sandbox approval.');
+    return;
+  }
+  sendHtml(res, 200, renderApprovalPage({
+    orderId: order.orderId,
+    orderStatus: order.status,
+    description: order.description ?? 'VeriPact witnessed checkout',
+    itemTotalUsd: order.amountBreakdown.itemTotalUsd,
+    shippingUsd: order.amountBreakdown.shippingUsd,
+    taxUsd: order.amountBreakdown.taxUsd,
+    finalTotalUsd: order.amountBreakdown.totalUsd,
+    customId: order.customId,
+    transportMode: order.transportMode,
+    scenario: 'custom',
+    alreadyApproved: order.status !== 'CREATED',
+  }));
+}
+
+/** POST /api/sandbox/approve-order — replay buyer approval (idempotent). */
+async function handleSandboxApprove(
+  body: Record<string, unknown>,
+  res: WorkbenchResponse,
+): Promise<void> {
+  const orderId = asOrderId(body['orderId']);
+  const paypal = demoPayPal();
+  if (paypal.transportMode !== 'DETERMINISTIC_SANDBOX_REPLAY') {
+    throw new HttpError(400, 'live orders approve at PayPal, not via the sandbox popup');
+  }
+  let order;
+  try {
+    order = await paypal.getOrder(orderId);
+  } catch {
+    throw new HttpError(404, `order not found: ${orderId}`);
+  }
+  if (order.status !== 'CREATED') {
+    sendJson(res, 200, { ok: true, orderId, status: order.status, already: true });
+    return;
+  }
+  paypal.simulatePayerApproval(orderId);
+  sendJson(res, 200, { ok: true, orderId, status: 'APPROVED', already: false });
+}
+
+function isPriorApprovalData(value: unknown): value is PriorApprovalData {
+  if (value === null || typeof value !== 'object') {
+    return false;
+  }
+  const p = value as Record<string, unknown>;
+  const snapshot = p['snapshot'] as Record<string, unknown> | undefined;
+  return (
+    snapshot !== null &&
+    typeof snapshot === 'object' &&
+    snapshot['receiptCore'] !== undefined &&
+    typeof snapshot['commitment'] === 'string' &&
+    typeof p['buyerApprovalSignatureHex'] === 'string' &&
+    (p['buyerApprovalSignatureHex'] as string).length > 0 &&
+    typeof p['merchantSignatureHex'] === 'string' &&
+    (p['merchantSignatureHex'] as string).length > 0
+  );
+}
+
+/** Append (or refresh by orderId) one entry in docs/sandbox-receipts.json. */
+function appendSandboxReceipt(entry: Record<string, unknown>): void {
+  const path = join(process.cwd(), 'docs', 'sandbox-receipts.json');
+  let doc: { generatedAtUtc: string; transportMode: unknown; orders: unknown[]; notes?: string } = {
+    generatedAtUtc: new Date().toISOString(),
+    transportMode: entry['transportMode'] ?? 'UNKNOWN',
+    orders: [],
+  };
+  try {
+    const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<typeof doc>;
+    if (Array.isArray(parsed.orders)) {
+      doc = { ...doc, ...parsed, orders: parsed.orders };
+    }
+  } catch {
+    // Missing or corrupt file: start fresh below.
+  }
+  doc.orders = [
+    ...doc.orders.filter(
+      (o) => (o as { orderId?: string }).orderId !== (entry['orderId'] as string),
+    ),
+    entry,
+  ];
+  doc.generatedAtUtc = new Date().toISOString();
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(doc, null, 2)}\n`, 'utf8');
+}
+
+/**
+ * POST /api/merchant/checkout/finalize — step 2: authorize the approved
+ * order, re-gate, capture/void, and refresh the receipts file. Prior
+ * evidence resolves browser echo → server pending map → re-witness.
+ */
+async function handleCheckoutFinalize(
+  body: Record<string, unknown>,
+  res: WorkbenchResponse,
+): Promise<void> {
+  const orderId = asOrderId(body['orderId']);
+  const scenarioName = body['scenario'] ?? body['scenarioId'];
+  const scenario = asScenarioName(scenarioName);
+  const echo = body['prior'];
+  const pending = pendingApprovals.get(orderId);
+  const prior: PriorApprovalData | undefined = isPriorApprovalData(echo)
+    ? echo
+    : pending !== undefined
+      ? {
+        snapshot: pending.snapshot,
+        buyerApprovalSignatureHex: pending.buyerApprovalSignatureHex,
+        merchantSignatureHex: pending.merchantSignatureHex,
+      }
+      : undefined;
+  const client = demoClient();
+  const result = await client.completeApprovedCheckout({ orderId, scenario, prior });
+  pendingApprovals.delete(orderId);
+  let receiptsWarning: string | undefined;
+  try {
+    appendSandboxReceipt({
+      scenario,
+      orderId,
+      authorizationId: result.authorizationId,
+      captureId: result.captureId,
+      voidStatus: result.outcome === 'AUTO_VOIDED' ? 'VOIDED' : undefined,
+      customId: result.snapshot.commitment,
+      finalTotalUsd: result.finalTotalUsd,
+      transportMode: result.transportMode,
+      finalizedAtUtc: new Date().toISOString(),
+    });
+  } catch (e) {
+    receiptsWarning = e instanceof Error ? e.message : 'receipts update failed';
+  }
+  sendJson(res, 200, {
+    ...result,
+    boundary: 'SIGN',
+    ...(receiptsWarning !== undefined ? { receiptsWarning } : {}),
+  });
+}
+
 /** GET /api/benchmark — serve the committed 72-run report from disk. */
 async function handleBenchmark(res: WorkbenchResponse): Promise<void> {
   const { reportPath } = defaultBenchmarkPaths();
@@ -678,6 +909,10 @@ export async function handleWorkbenchRequest(
       await handleBenchmark(res);
       return;
     }
+    if (method === 'GET' && pathname === '/sandbox/paypal-checkout') {
+      await handleSandboxCheckout(req, res);
+      return;
+    }
     if (method === 'POST' && pathname === '/api/buyer/mandate') {
       handleBuyerMandate(parseJsonBody(await readBody(req)), res);
       return;
@@ -703,6 +938,14 @@ export async function handleWorkbenchRequest(
       handleDemoReset(res);
       return;
     }
+    if (method === 'POST' && pathname === '/api/sandbox/approve-order') {
+      await handleSandboxApprove(parseJsonBody(await readBody(req)), res);
+      return;
+    }
+    if (method === 'POST' && pathname === '/api/merchant/checkout/finalize') {
+      await handleCheckoutFinalize(parseJsonBody(await readBody(req)), res);
+      return;
+    }
     if (method === 'POST' && pathname === '/api/verify') {
       await handleVerify(parseJsonBody(await readBody(req)), res);
       return;
@@ -717,6 +960,9 @@ export async function handleWorkbenchRequest(
       '/api/merchant/checkout',
       '/api/merchant/disputes/resolve',
       '/api/merchant/disputes/action',
+      '/api/merchant/checkout/finalize',
+      '/api/sandbox/approve-order',
+      '/sandbox/paypal-checkout',
       '/api/demo/reset',
       '/api/verify',
     ];

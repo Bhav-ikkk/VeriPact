@@ -44,6 +44,7 @@ import {
   type ProvideEvidenceInput,
   type RequireEvidenceAction,
 } from './disputes';
+import { resolvePaypalCredentials } from './env';
 import {
   fetchAccessToken,
   nodeHttpTransport,
@@ -108,6 +109,9 @@ export {
   DisputeActionNotPermittedByHateoasError,
   toHateoasActionMap,
 } from './disputes';
+export { defaultEnvFilePath, readDotEnvFile, resolvePaypalCredentials } from './env';
+export type { ExplicitPayPalCredentials, ResolvedPayPalCredentials } from './env';
+export { orderLinksFor } from './sandbox-replay';
 export type {
   AdjudicationOutcome,
   AmountBreakdown,
@@ -164,6 +168,12 @@ export interface PayPalClientOptions {
   httpTransport?: HttpTransport;
   replay?: SandboxReplayEngine;
   timeoutMs?: number;
+  /**
+   * `.env` path for hot-reload credential fallback. Defaults to
+   * `VERIPACT_ENV_FILE` or `<cwd>/.env`. Tests point this at an absent
+   * file to stay hermetic.
+   */
+  envFilePath?: string;
 }
 
 /** In-session authorization states observed by this client instance. */
@@ -199,8 +209,15 @@ export class PayPalClient implements PayPalApi {
       throw new Error(`refusing non-sandbox PayPal host: ${baseUrl}`);
     }
     this.baseUrl = baseUrl;
-    this.clientId = options.clientId ?? '';
-    this.clientSecret = options.clientSecret ?? '';
+    // Hot-reload: explicit options → process env → `.env` on disk, resolved
+    // fresh at every construction so dropping credentials into `.env`
+    // later flips the next client to live mode without a restart.
+    const resolved = resolvePaypalCredentials(
+      { clientId: options.clientId, clientSecret: options.clientSecret },
+      options.envFilePath,
+    );
+    this.clientId = resolved.clientId;
+    this.clientSecret = resolved.clientSecret;
     const mode = options.mode ?? 'auto';
     if (mode === 'live' && !this.hasCredentials()) {
       throw new Error('paypal: live mode requires PAYPAL_CLIENT_ID + PAYPAL_CLIENT_SECRET');

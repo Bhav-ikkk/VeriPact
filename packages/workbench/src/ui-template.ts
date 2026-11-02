@@ -218,7 +218,9 @@ body{background:#fff}
 <button type="button" class="btn" id="btn-witness">Witness this offer</button>
 <button type="button" class="btn btn-primary" id="btn-checkout">Authorize &amp; verify with PayPal</button>
 </div>
+<label class="mutate" style="margin-top:8px"><input type="checkbox" id="twostep-toggle"><span><b>Step-by-step buyer popup approval.</b> Creates the order, opens the buyer approval popup, then finalizes authorize → re-gate → capture/void. Automatic in live sandbox mode.</span></label>
 <p id="checkout-status" class="status-line" aria-live="polite"></p>
+<div id="awaiting-card" class="result" hidden></div>
 <div id="checkout-result" class="result" hidden></div>
 </div>
 <div class="card">
@@ -287,7 +289,7 @@ var CASE_META={
 buyer_forgery:{label:'Case B — Buyer forgery',buyerTerms:'60-day returns (self-signed SELF receipt)',sellerTerms:'Stands by witnessed terms',blurb:'The buyer edited local JSON to claim 60-day returns. Signature verifies (self-signed) but the hash cannot match the PayPal-anchored commitment.'},
 merchant_drift:{label:'Case A — Merchant drift',buyerTerms:'30-day free returns (matches witness)',sellerTerms:'14-day returns · 25% restocking fee',blurb:'The seller changed the return policy after purchase. The buyer receipt still matches; the seller counter-claim diverges.'}};
 /* ---------- header + tabs ---------- */
-api('/health').then(function(h){var p=$('mode-pill');var live=h.transportMode==='LIVE_PAYPAL_SANDBOX';p.textContent=live?'Live Sandbox':'Replay · deterministic';p.className='mode-pill '+(live?'mode-live':'mode-replay');}).catch(function(){});
+api('/health').then(function(h){var p=$('mode-pill');var live=h.transportMode==='LIVE_PAYPAL_SANDBOX';state.liveMode=live;p.textContent=live?'Live Sandbox':'Replay · deterministic';p.className='mode-pill '+(live?'mode-live':'mode-replay');if(live){$('twostep-toggle').checked=true;}}).catch(function(){});
 function showView(which){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');if(!c){ensureDesk();}}
 $('tab-checkout').addEventListener('click',function(){showView('checkout');});
 $('tab-desk').addEventListener('click',function(){showView('desk');});
@@ -309,8 +311,7 @@ $('oracle-line').textContent='Channel3 oracle: '+(s.oracleResult.matched?'match 
 $('quote-badges').innerHTML=badgeHtml(s);
 $('checkout-status').textContent='Gate decision: '+s.gateResult.decision+' — '+s.gateResult.reasons.join('; ');}).catch(function(e){$('checkout-status').textContent=e.message;}).finally(function(){b.disabled=false;});});
 function badgeHtml(s){var terms=s.termReceipt.observedTerms;var out=[];['itemTitle','condition','basePriceUsd','shippingUsd','taxUsd','returnWindowDays','restockingFeePct'].forEach(function(k){var c=terms[k];if(c&&c.blockId){out.push('<span class="badge q" title="'+esc(c.verbatimQuote||'')+'">'+esc(c.blockId)+' · '+esc(k)+'</span>');}});return out.join('')||'<span class="badge">No verified quotes</span>';}
-$('btn-checkout').addEventListener('click',function(){var b=this;b.disabled=true;$('checkout-status').textContent='Authorizing with PayPal…';
-api('/api/merchant/checkout',{method:'POST',body:JSON.stringify({scenario:state.scenario})}).then(function(r){state.checkout=r;suffPills(r.snapshot.termReceipt.observedTerms);rungTo(r.outcome==='BLOCKED_PRE_CHECKOUT'?1:2);
+function renderCheckoutDone(r){state.checkout=r;state.verify=null;suffPills(r.snapshot.termReceipt.observedTerms);rungTo(r.outcome==='BLOCKED_PRE_CHECKOUT'?1:2);
 $('oracle-line').textContent='Channel3 oracle: '+(r.snapshot.oracleResult.matched?'match ':'no match ')+r.snapshot.oracleResult.productId+' · '+r.snapshot.oracleResult.source;
 $('quote-badges').innerHTML=badgeHtml(r.snapshot);
 var cls=r.outcome==='CAPTURED'?'pill-ok':(r.outcome==='AUTO_VOIDED'?'pill-warn':'pill-bad');
@@ -324,7 +325,24 @@ html+='<dt>PayPal mode</dt><dd class="mono">'+esc(r.transportMode)+'</dd></dl>';
 if(r.outcome==='CAPTURED'){html+='<button type="button" class="btn" id="btn-audit-open">Verify it yourself ↓</button>';}
 $('checkout-result').innerHTML=html;$('checkout-result').hidden=false;
 $('checkout-status').textContent='Gate: '+r.snapshot.gateResult.decision+' · Outcome: '+r.outcome;
-var ao=$('btn-audit-open');if(ao){ao.addEventListener('click',function(){$('auditor').open=true;runAuditor();});}
+var ao=$('btn-audit-open');if(ao){ao.addEventListener('click',function(){$('auditor').open=true;runAuditor();});}}
+function finalizeApproved(orderId){$('checkout-status').textContent='Finalizing: authorize → re-gate → capture/void…';
+var prior=null;if(state.awaiting&&state.awaiting.snapshot){prior={snapshot:state.awaiting.snapshot,buyerApprovalSignatureHex:state.awaiting.buyerApprovalSignatureHex,merchantSignatureHex:state.awaiting.merchantSignatureHex};}
+api('/api/merchant/checkout/finalize',{method:'POST',body:JSON.stringify({orderId:orderId,scenario:state.scenario,prior:prior})}).then(function(r){$('awaiting-card').hidden=true;state.awaiting=null;renderCheckoutDone(r);}).catch(function(e){$('checkout-status').textContent=e.message;});}
+function renderAwaiting(r){state.awaiting=r;suffPills(r.snapshot.termReceipt.observedTerms);rungTo(1);
+$('oracle-line').textContent='Channel3 oracle: '+(r.snapshot.oracleResult.matched?'match ':'no match ')+r.snapshot.oracleResult.productId+' · '+r.snapshot.oracleResult.source;
+$('quote-badges').innerHTML=badgeHtml(r.snapshot);
+var preview=r.expectedPostApprovalAction==='VOID'?'pill-warn':'pill-ok';
+$('awaiting-card').innerHTML='<h3>Step 1 complete <span class="pill pill-warn">AWAITING_BUYER_APPROVAL</span></h3><dl class="kv"><dt>Order</dt><dd class="mono">'+esc(r.orderId)+'</dd><dt>Total</dt><dd class="num">$'+Number(r.finalTotalUsd).toFixed(2)+'</dd><dt>Preview</dt><dd><span class="pill '+preview+'">'+esc(r.expectedPostApprovalAction)+'</span> · headroom <span class="num">$'+Number(r.headroomRemainingUsd).toFixed(2)+'</span></dd><dt>Commitment</dt><dd>'+chip(r.snapshot.commitment,true)+'</dd></dl><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button type="button" class="btn btn-primary" id="btn-popup">Open buyer approval popup</button><button type="button" class="btn" id="btn-finalize">Finalize approved order: authorize → re-gate → capture / void</button></div><p class="status-line">Approving in the popup notifies this window and finalizes automatically. Popup blocked? Approve, return here, and press Finalize.</p>';
+$('awaiting-card').hidden=false;$('checkout-status').textContent='Order '+r.orderId+' created + patched. Waiting for buyer approval…';
+$('btn-popup').addEventListener('click',function(){var w=window.open(r.approveUrl,'veripact-approval','width=620,height=760');if(!w){toast('Popup blocked — allow popups, then press Finalize after approving.');}$('checkout-status').textContent='Approval popup opened for '+r.orderId+'. Waiting…';});
+$('btn-finalize').addEventListener('click',function(){finalizeApproved(r.orderId);});}
+window.addEventListener('message',function(e){var d=e.data||{};if(d.type==='VERIPACT_ORDER_APPROVED'&&d.orderId&&state.awaiting&&d.orderId===state.awaiting.orderId){toast('Buyer approved '+d.orderId);finalizeApproved(d.orderId);}});
+$('btn-checkout').addEventListener('click',function(){var b=this;b.disabled=true;$('awaiting-card').hidden=true;$('checkout-result').hidden=true;
+var twoStep=$('twostep-toggle').checked||state.liveMode===true;
+$('checkout-status').textContent=twoStep?'Creating order + patching totals…':'Authorizing with PayPal…';
+api('/api/merchant/checkout',{method:'POST',body:JSON.stringify({scenario:state.scenario,twoStep:twoStep})}).then(function(r){
+if(r.outcome==='AWAITING_BUYER_APPROVAL'){renderAwaiting(r);}else{renderCheckoutDone(r);}
 }).catch(function(e){$('checkout-status').textContent=e.message;}).finally(function(){b.disabled=false;});});
 /* ---------- verify-it-yourself auditor (runs entirely in your browser) ---------- */
 var BS=String.fromCharCode(92);

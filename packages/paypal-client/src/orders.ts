@@ -139,6 +139,14 @@ export interface OrderRecord {
   authorizationId?: string;
   createTimeIso: string;
   amountBreakdown: AmountBreakdown;
+  /**
+   * Buyer-approval URL from the order HATEOAS links (`approve` /
+   * `payer-action` rel). Live: PayPal's `checkoutnow` URL. Replay: the
+   * workbench approval popup path. Absent once no approval is needed.
+   */
+  approveUrl?: string;
+  /** Purchase-unit description as recorded by PayPal (popup display). */
+  description?: string;
 }
 
 /** Raw order JSON subset we parse (live shape and replay shape). */
@@ -150,6 +158,7 @@ interface RawOrderJson {
   purchase_units?: Array<{
     reference_id?: string;
     custom_id?: string;
+    description?: string;
     amount?: {
       currency_code?: string;
       value?: string;
@@ -164,6 +173,7 @@ interface RawOrderJson {
     };
   }>;
   authorization_id?: string;
+  links?: Array<{ rel?: string; href?: string; method?: string }>;
 }
 
 /** Parse live/replay order JSON into the normalized `OrderRecord`. */
@@ -175,6 +185,9 @@ export function parseOrderRecord(mode: TransportMode, json: RawOrderJson): Order
   const itemTotalUsd = Number(breakdown?.item_total?.value ?? '0');
   const shippingUsd = Number(breakdown?.shipping?.value ?? '0');
   const taxUsd = Number(breakdown?.tax_total?.value ?? '0');
+  const approveLink = (json.links ?? []).find(
+    (l) => (l.rel === 'approve' || l.rel === 'payer-action') && typeof l.href === 'string',
+  );
   return {
     transportMode: mode,
     orderId: json.id,
@@ -182,6 +195,8 @@ export function parseOrderRecord(mode: TransportMode, json: RawOrderJson): Order
     customId: unit?.custom_id ?? '',
     authorizationId: unit?.payments?.authorizations?.[0]?.id ?? json.authorization_id,
     createTimeIso: json.create_time ?? json.createTime ?? '',
+    approveUrl: approveLink?.href,
+    description: unit?.description,
     amountBreakdown: {
       currencyCode,
       itemTotalUsd,

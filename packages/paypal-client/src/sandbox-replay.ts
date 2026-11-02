@@ -43,6 +43,31 @@ export interface ReplayOrderRecord {
   create_time: string;
   update_time: string;
   authorization_id?: string;
+  links: DisputeLink[];
+}
+
+/**
+ * Order HATEOAS links. `CREATED` orders advertise the buyer-approval popup
+ * (the replay twin of PayPal's `checkoutnow` approve link); approved and
+ * completed orders only carry `self`.
+ */
+export function orderLinksFor(order: Pick<ReplayOrderRecord, 'id' | 'status'>): DisputeLink[] {
+  const self: DisputeLink = {
+    rel: 'self',
+    href: `https://api-m.sandbox.paypal.com/v2/checkout/orders/${order.id}`,
+    method: 'GET',
+  };
+  if (order.status !== 'CREATED') {
+    return [self];
+  }
+  return [
+    self,
+    {
+      rel: 'approve',
+      href: `/sandbox/paypal-checkout?token=${order.id}`,
+      method: 'GET',
+    },
+  ];
 }
 
 export interface ReplayAuthorizationRecord {
@@ -283,9 +308,10 @@ export class SandboxReplayEngine {
         ],
         create_time: nowIso(),
         update_time: nowIso(),
+        links: [],
       };
       this.orders.set(order.id, order);
-      return structuredClone(order);
+      return this.stamped(order);
     });
     return { order: value, replayed };
   }
@@ -295,6 +321,12 @@ export class SandboxReplayEngine {
     if (order === undefined) {
       throw new Error(`replay: order not found: ${orderId}`);
     }
+    return this.stamped(order);
+  }
+
+  /** Refresh HATEOAS links for the current status and return a safe clone. */
+  private stamped(order: ReplayOrderRecord): ReplayOrderRecord {
+    order.links = orderLinksFor(order);
     return structuredClone(order);
   }
 
@@ -341,7 +373,7 @@ export class SandboxReplayEngine {
     }
     order.status = 'APPROVED';
     order.update_time = nowIso();
-    return structuredClone(order);
+    return this.stamped(order);
   }
 
   authorizeOrder(
@@ -377,7 +409,7 @@ export class SandboxReplayEngine {
       order.update_time = nowIso();
       this.authorizations.set(authorization.id, authorization);
       return {
-        order: structuredClone(order),
+        order: this.stamped(order),
         authorization: structuredClone(authorization),
       };
     },

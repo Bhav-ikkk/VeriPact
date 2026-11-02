@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { join } from 'node:path';
 import { SDK_VERSION } from '@veripact/sdk';
 import { CLI_NAME, CLI_VERSION, run } from '../src/index';
 
@@ -6,7 +7,12 @@ const KEY_VARS = [
   'BUYER_ED25519_PRIVATE_KEY',
   'WITNESS_ED25519_PRIVATE_KEY',
   'MERCHANT_ED25519_PRIVATE_KEY',
+  'PAYPAL_CLIENT_ID',
+  'PAYPAL_CLIENT_SECRET',
+  'VERIPACT_ENV_FILE',
 ] as const;
+
+const ABSENT_ENV = join(process.cwd(), '.vitest-tmp', 'absent-credentials.env');
 
 const savedEnv: Record<string, string | undefined> = {};
 beforeEach(() => {
@@ -14,6 +20,7 @@ beforeEach(() => {
     savedEnv[key] = process.env[key];
     delete process.env[key];
   }
+  process.env.VERIPACT_ENV_FILE = ABSENT_ENV;
 });
 afterEach(() => {
   for (const key of KEY_VARS) {

@@ -20,6 +20,7 @@ export {
 } from './routes';
 export { renderIndexPage } from './ui-template';
 export { renderStorefront } from './storefront-template';
+export { renderApprovalPage, type ApprovalPageData } from './approval-template';
 
 const entrypoint = process.argv[1] ?? '';
 if (entrypoint.endsWith('index.js')) {

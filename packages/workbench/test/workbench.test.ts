@@ -1,3 +1,5 @@
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createContext, runInContext } from 'node:vm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -8,6 +10,7 @@ import {
 } from '@veripact/core';
 import {
   handleWorkbenchRequest,
+  renderApprovalPage,
   renderIndexPage,
   resetDemoState,
   ROUTES,
@@ -59,7 +62,13 @@ const ENV_VARS = [
   'MERCHANT_ED25519_PRIVATE_KEY',
   'PAYPAL_CLIENT_ID',
   'PAYPAL_CLIENT_SECRET',
+  'VERIPACT_ENV_FILE',
 ] as const;
+
+// Hermetic env: no ambient keys may flip routes into live mode, and the
+// hot-reload hook aims at an absent path so a repo .env stays unread.
+const ABSENT_ENV = join(process.cwd(), '.vitest-tmp', 'absent-credentials.env');
+const RECEIPTS_PATH = join(process.cwd(), 'docs', 'sandbox-receipts.json');
 
 const savedEnv: Record<string, string | undefined> = {};
 beforeEach(() => {
@@ -67,6 +76,7 @@ beforeEach(() => {
     savedEnv[key] = process.env[key];
     delete process.env[key];
   }
+  process.env.VERIPACT_ENV_FILE = ABSENT_ENV;
   resetDemoState();
 });
 afterEach(() => {
@@ -82,6 +92,36 @@ afterEach(() => {
 
 function json<T>(res: CapturedResponse): T {
   return JSON.parse(res.body) as T;
+}
+
+// Finalize tests refresh the committed receipts file; snapshot + restore it
+// so every run leaves the working tree byte-identical.
+function snapshotReceipts(): string | null {
+  try {
+    return readFileSync(RECEIPTS_PATH, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+function restoreReceipts(snapshot: string | null): void {
+  if (snapshot === null) {
+    rmSync(RECEIPTS_PATH, { force: true });
+  } else {
+    writeFileSync(RECEIPTS_PATH, snapshot);
+  }
+}
+
+interface AwaitingBody {
+  outcome: string;
+  orderId: string;
+  approveUrl: string;
+  finalTotalUsd: number;
+  expectedPostApprovalAction: string;
+  headroomRemainingUsd: number;
+  snapshot: Record<string, unknown>;
+  buyerApprovalSignatureHex: string;
+  merchantSignatureHex: string;
 }
 
 describe('@veripact/workbench', () => {
@@ -122,6 +162,11 @@ describe('@veripact/workbench', () => {
       'Chart 24-scenario regression accuracy with 95% Wilson CIs',
       'ag-grid-community@32.3.9',
       'window.crypto.subtle',
+      'twostep-toggle',
+      'awaiting-card',
+      'VERIPACT_ORDER_APPROVED',
+      'Finalize approved order',
+      'btn-popup',
     ]) {
       expect(res.body).toContain(needle);
     }
@@ -365,7 +410,7 @@ describe('@veripact/workbench', () => {
         createElement: () => elementStub(),
         body: elementStub(),
       },
-      window: {},
+      window: { addEventListener: () => undefined, open: () => null },
       navigator: {},
       fetch: () => Promise.reject(new Error('no net')),
       performance: { now: () => 0 },
@@ -408,5 +453,209 @@ describe('@veripact/workbench', () => {
       const browser = runInContext('jcs(CASE)', ctx) as string;
       expect([name, browser]).toEqual([name, canonicalizeJson(value)]);
     }
+  });
+
+  it('two-step checkout returns AWAITING and registers the approval popup', async () => {
+    const res = await post('/api/merchant/checkout', { scenario: 'normal', twoStep: true });
+    expect(res.status).toBe(200);
+    const step1 = json<AwaitingBody>(res);
+    expect(step1.outcome).toBe('AWAITING_BUYER_APPROVAL');
+    expect(step1.orderId).toBe('ORD-VP-0001');
+    expect(step1.approveUrl).toBe('/sandbox/paypal-checkout?token=ORD-VP-0001');
+    expect(step1.finalTotalUsd).toBe(297);
+    expect(step1.expectedPostApprovalAction).toBe('CAPTURE');
+    expect(step1.headroomRemainingUsd).toBe(23);
+    expect(step1.snapshot['commitment']).toMatch(/^VP1:[0-9a-f]{64}$/);
+    expect(ROUTES).toContain('/sandbox/paypal-checkout');
+    expect(ROUTES).toContain('/api/merchant/checkout/finalize');
+    expect(ROUTES).toContain('/api/sandbox/approve-order');
+  });
+
+  it('serves the zero-key approval popup with totals and commitment', async () => {
+    await post('/api/merchant/checkout', { scenario: 'normal', twoStep: true });
+    const res = await get('/sandbox/paypal-checkout?token=ORD-VP-0001');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('text/html');
+    for (const needle of [
+      'VeriPact Deterministic Sandbox Buyer Approval — Zero-Key Mode',
+      'ORD-VP-0001',
+      'VeriPact witnessed checkout',
+      '$279.00',
+      '$11.50',
+      '$6.50',
+      '$297.00',
+      'VP1:',
+      'Approve Order Hold as Buyer',
+      'VERIPACT_ORDER_APPROVED',
+      '/api/sandbox/approve-order',
+    ]) {
+      expect(res.body).toContain(needle);
+    }
+    const badToken = await get('/sandbox/paypal-checkout?token=%3Cscript%3E');
+    expect(badToken.status).toBe(400);
+    expect(badToken.body).toContain('Cannot load order.');
+    const missing = await get('/sandbox/paypal-checkout');
+    expect(missing.status).toBe(400);
+    const unknown = await get('/sandbox/paypal-checkout?token=ORD-VP-9999');
+    expect(unknown.status).toBe(404);
+    expect(unknown.body).toContain('was not found on');
+  });
+
+  it('approval popup renderer escapes hostile tokens and totals', () => {
+    const html = renderApprovalPage({
+      orderId: '"><script>alert(1)</script>',
+      orderStatus: 'CREATED',
+      description: 'x',
+      itemTotalUsd: 279,
+      shippingUsd: 11.5,
+      taxUsd: 6.5,
+      finalTotalUsd: 297,
+      customId: 'VP1:abc',
+      transportMode: 'DETERMINISTIC_SANDBOX_REPLAY',
+      scenario: 'custom',
+      alreadyApproved: false,
+    });
+    expect(html).not.toContain('<script>alert(1)</script>');
+    expect(html).toContain('\\u003cscript>alert(1)\\u003c/script>');
+    const done = renderApprovalPage({
+      orderId: 'ORD-VP-0001',
+      orderStatus: 'APPROVED',
+      description: 'x',
+      itemTotalUsd: 279,
+      shippingUsd: 11.5,
+      taxUsd: 6.5,
+      finalTotalUsd: 297,
+      customId: 'VP1:abc',
+      transportMode: 'DETERMINISTIC_SANDBOX_REPLAY',
+      scenario: 'custom',
+      alreadyApproved: true,
+    });
+    expect(done).toContain('Already approved.');
+    expect(done).not.toContain('<button');
+  });
+
+  it('approve-order transitions replay orders idempotently', async () => {
+    await post('/api/merchant/checkout', { scenario: 'normal', twoStep: true });
+    const first = await post('/api/sandbox/approve-order', { orderId: 'ORD-VP-0001' });
+    expect(first.status).toBe(200);
+    expect(json(first)).toEqual({ ok: true, orderId: 'ORD-VP-0001', status: 'APPROVED', already: false });
+    const popup = await get('/sandbox/paypal-checkout?token=ORD-VP-0001');
+    expect(popup.body).toContain('Already approved.');
+    const second = await post('/api/sandbox/approve-order', { orderId: 'ORD-VP-0001' });
+    expect(second.status).toBe(200);
+    expect(json(second)).toMatchObject({ already: true, status: 'APPROVED' });
+    const unknown = await post('/api/sandbox/approve-order', { orderId: 'ORD-VP-9999' });
+    expect(unknown.status).toBe(404);
+    const bad = await post('/api/sandbox/approve-order', { orderId: '<oops>' });
+    expect(bad.status).toBe(400);
+  });
+
+  it('finalize captures with browser echo and refreshes receipts on disk', async () => {
+    const receiptsBefore = snapshotReceipts();
+    try {
+      const step1 = json<AwaitingBody>(
+        await post('/api/merchant/checkout', { scenario: 'normal', twoStep: true }),
+      );
+      await post('/api/sandbox/approve-order', { orderId: step1.orderId });
+      const fin = await post('/api/merchant/checkout/finalize', {
+        orderId: step1.orderId,
+        scenario: 'normal',
+        prior: {
+          snapshot: step1.snapshot,
+          buyerApprovalSignatureHex: step1.buyerApprovalSignatureHex,
+          merchantSignatureHex: step1.merchantSignatureHex,
+        },
+      });
+      expect(fin.status).toBe(200);
+      const done = json<{
+        outcome: string;
+        orderId: string;
+        authorizationId: string;
+        captureId: string;
+        finalTotalUsd: number;
+        snapshot: { commitment: string };
+        receiptsWarning?: string;
+      }>(fin);
+      expect(done.outcome).toBe('CAPTURED');
+      expect(done.captureId).toMatch(/^CAP-VP-/);
+      expect(done.finalTotalUsd).toBe(297);
+      expect(done.snapshot.commitment).toBe(step1.snapshot['commitment']);
+      expect(done.receiptsWarning).toBeUndefined();
+      expect(existsSync(RECEIPTS_PATH)).toBe(true);
+      const doc = JSON.parse(readFileSync(RECEIPTS_PATH, 'utf8')) as {
+        orders: Array<Record<string, unknown>>;
+      };
+      const entry = doc.orders.find((o) => o['orderId'] === step1.orderId);
+      expect(entry).toMatchObject({
+        orderId: step1.orderId,
+        scenario: 'normal',
+        authorizationId: done.authorizationId,
+        captureId: done.captureId,
+        customId: done.snapshot.commitment,
+        finalTotalUsd: 297,
+        transportMode: 'DETERMINISTIC_SANDBOX_REPLAY',
+      });
+    } finally {
+      restoreReceipts(receiptsBefore);
+    }
+  });
+
+  it('finalize completes from the pending map and voids surcharges', async () => {
+    const receiptsBefore = snapshotReceipts();
+    try {
+      const step1 = json<AwaitingBody>(
+        await post('/api/merchant/checkout', { scenario: 'surcharge_void', twoStep: true }),
+      );
+      expect(step1.expectedPostApprovalAction).toBe('VOID');
+      await post('/api/sandbox/approve-order', { orderId: step1.orderId });
+      // No browser echo: the server pending map supplies step-1 evidence.
+      const fin = await post('/api/merchant/checkout/finalize', {
+        orderId: step1.orderId,
+        scenario: 'surcharge_void',
+      });
+      expect(fin.status).toBe(200);
+      const done = json<{
+        outcome: string;
+        finalTotalUsd: number;
+        voidReason: string;
+        snapshot: { commitment: string };
+      }>(fin);
+      expect(done.outcome).toBe('AUTO_VOIDED');
+      expect(done.finalTotalUsd).toBe(340.5);
+      expect(done.voidReason).toContain('320');
+      expect(done.snapshot.commitment).toBe(step1.snapshot['commitment']);
+      const doc = JSON.parse(readFileSync(RECEIPTS_PATH, 'utf8')) as {
+        orders: Array<Record<string, unknown>>;
+      };
+      expect(doc.orders.find((o) => o['orderId'] === step1.orderId)).toMatchObject({
+        voidStatus: 'VOIDED',
+        finalTotalUsd: 340.5,
+      });
+    } finally {
+      restoreReceipts(receiptsBefore);
+    }
+  });
+
+  it('finalize rejects echoed evidence bound to another order', async () => {
+    const fresh = json<AwaitingBody>(
+      await post('/api/merchant/checkout', { scenario: 'normal', twoStep: true }),
+    );
+    const other = json<AwaitingBody>(
+      await post('/api/merchant/checkout', { scenario: 'surcharge_void', twoStep: true }),
+    );
+    await post('/api/sandbox/approve-order', { orderId: fresh.orderId });
+    const fin = await post('/api/merchant/checkout/finalize', {
+      orderId: fresh.orderId,
+      scenario: 'normal',
+      prior: {
+        snapshot: other.snapshot,
+        buyerApprovalSignatureHex: other.buyerApprovalSignatureHex,
+        merchantSignatureHex: other.merchantSignatureHex,
+      },
+    });
+    expect(fin.status).toBe(500);
+    expect(json<{ error: string }>(fin).error).toContain('does not match the order custom_id');
+    const badId = await post('/api/merchant/checkout/finalize', { orderId: '<oops>', scenario: 'normal' });
+    expect(badId.status).toBe(400);
   });
 });

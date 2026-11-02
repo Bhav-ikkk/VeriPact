@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatCommitmentPrefix } from '@veripact/core';
 import {
   AuthorizationStateConflictError,
@@ -6,11 +9,15 @@ import {
   buildAuthorizeOrderBody,
   buildCaptureInvoiceId,
   createSandboxReplayEngine,
+  defaultEnvFilePath,
   DisputeActionNotPermittedByHateoasError,
   isSandboxBaseUrl,
+  orderLinksFor,
   PAYPAL_SANDBOX_BASE_URL,
   PayPalClient,
   PayPalHttpError,
+  readDotEnvFile,
+  resolvePaypalCredentials,
   resolveProxyForUrl,
   toHateoasActionMap,
   type HttpRequest,
@@ -19,6 +26,28 @@ import {
 
 const HEX = '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
 const COMMITMENT = `VP1:${HEX}`;
+
+// Hermetic env: no ambient PAYPAL_* / VERIPACT_ENV_FILE may flip tests into live mode.
+const HERMETIC_VARS = ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'VERIPACT_ENV_FILE'] as const;
+const savedEnv = new Map<string, string | undefined>();
+const ABSENT_ENV = join(process.cwd(), '.vitest-tmp', 'absent-credentials.env');
+
+beforeEach(() => {
+  for (const v of HERMETIC_VARS) savedEnv.set(v, process.env[v]);
+  delete process.env.PAYPAL_CLIENT_ID;
+  delete process.env.PAYPAL_CLIENT_SECRET;
+  process.env.VERIPACT_ENV_FILE = ABSENT_ENV;
+  vi.restoreAllMocks();
+});
+
+afterEach(() => {
+  for (const v of HERMETIC_VARS) {
+    const prev = savedEnv.get(v);
+    if (prev === undefined) delete process.env[v];
+    else process.env[v] = prev;
+  }
+  savedEnv.clear();
+});
 
 function replayClient() {
   const replay = createSandboxReplayEngine();
@@ -368,6 +397,124 @@ describe('@veripact/paypal-client', () => {
       expect(resolveProxyForUrl('::bad::')).toBeUndefined();
     } finally {
       process.env = saved;
+    }
+  });
+
+  it('orderLinksFor emits a replay approve link while CREATED, self-only afterwards', () => {
+    const created = orderLinksFor({ id: 'ORD-VP-0001', status: 'CREATED' });
+    const approve = created.find((l) => l.rel === 'approve');
+    expect(created.find((l) => l.rel === 'self')).toBeDefined();
+    expect(approve).toEqual({
+      href: '/sandbox/paypal-checkout?token=ORD-VP-0001',
+      rel: 'approve',
+      method: 'GET',
+    });
+    expect(
+      orderLinksFor({ id: 'ORD-VP-0001', status: 'APPROVED' }).some((l) => l.rel === 'approve'),
+    ).toBe(false);
+    expect(orderLinksFor({ id: 'ORD-VP-0001', status: 'COMPLETED' })).toHaveLength(1);
+  });
+
+  it('parses approveUrl on replay orders and clears it after approval', async () => {
+    const { client } = replayClient();
+    const created = await client.createAuthorizeOrder({
+      commitment: COMMITMENT,
+      description: 'Approval popup test order',
+      itemTotalUsd: 279,
+    });
+    expect(created.status).toBe('CREATED');
+    expect(created.approveUrl).toBe(`/sandbox/paypal-checkout?token=${created.orderId}`);
+    client.simulatePayerApproval(created.orderId);
+    const approved = await client.getOrder(created.orderId);
+    expect(approved.status).toBe('APPROVED');
+    expect(approved.approveUrl).toBeUndefined();
+  });
+
+  it('parses live-shaped approve and payer-action links', async () => {
+    const { parseOrderRecord } = await import('../src/orders');
+    const fromApprove = parseOrderRecord('LIVE_PAYPAL_SANDBOX', {
+      id: 'LIVE-1',
+      status: 'CREATED',
+      links: [{ href: 'https://www.sandbox.paypal.com/checkoutnow?token=LIVE-1', rel: 'approve', method: 'GET' }],
+    });
+    expect(fromApprove.approveUrl).toBe('https://www.sandbox.paypal.com/checkoutnow?token=LIVE-1');
+    expect(fromApprove.transportMode).toBe('LIVE_PAYPAL_SANDBOX');
+    const fromPayerAction = parseOrderRecord('LIVE_PAYPAL_SANDBOX', {
+      id: 'LIVE-2',
+      status: 'CREATED',
+      links: [{ href: 'https://www.sandbox.paypal.com/checkoutnow?token=LIVE-2', rel: 'payer-action', method: 'GET' }],
+    });
+    expect(fromPayerAction.approveUrl).toBe('https://www.sandbox.paypal.com/checkoutnow?token=LIVE-2');
+  });
+
+  it('readDotEnvFile parses quoted/export syntax and ignores comments', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'vp-env-'));
+    try {
+      const file = join(dir, '.env');
+      writeFileSync(
+        file,
+        '# VeriPact demo creds\nexport PAYPAL_CLIENT_ID="abc123"\nPAYPAL_CLIENT_SECRET=secret-xyz  \nEMPTY=\nNOT_A_PAIR\n',
+      );
+      expect(readDotEnvFile(file)).toEqual({
+        PAYPAL_CLIENT_ID: 'abc123',
+        PAYPAL_CLIENT_SECRET: 'secret-xyz',
+        EMPTY: '',
+      });
+      expect(readDotEnvFile(join(dir, 'missing.env'))).toEqual({});
+      // Hermetic hook set defaultEnvFilePath to the absent override...
+      expect(defaultEnvFilePath()).toBe(ABSENT_ENV);
+      // ...and without the override it falls back to <cwd>/.env.
+      delete process.env.VERIPACT_ENV_FILE;
+      expect(defaultEnvFilePath()).toBe(join(process.cwd(), '.env'));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('resolvePaypalCredentials prefers explicit, then env, then disk', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'vp-env-'));
+    try {
+      const file = join(dir, '.env');
+      writeFileSync(file, 'PAYPAL_CLIENT_ID=disk-id\nPAYPAL_CLIENT_SECRET=disk-secret\n');
+      expect(resolvePaypalCredentials({ clientId: 'x', clientSecret: 'y' }, file)).toEqual({
+        clientId: 'x',
+        clientSecret: 'y',
+      });
+      process.env.PAYPAL_CLIENT_ID = 'env-id';
+      process.env.PAYPAL_CLIENT_SECRET = 'env-secret';
+      expect(resolvePaypalCredentials({}, file)).toEqual({
+        clientId: 'env-id',
+        clientSecret: 'env-secret',
+      });
+      delete process.env.PAYPAL_CLIENT_ID;
+      delete process.env.PAYPAL_CLIENT_SECRET;
+      expect(resolvePaypalCredentials({}, file)).toEqual({
+        clientId: 'disk-id',
+        clientSecret: 'disk-secret',
+      });
+      expect(resolvePaypalCredentials({}, join(dir, 'missing.env'))).toEqual({
+        clientId: '',
+        clientSecret: '',
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('hot-reloads credentials dropped into disk mid-session', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'vp-env-'));
+    try {
+      const file = join(dir, '.env');
+      writeFileSync(file, '# empty for now\n');
+      process.env.VERIPACT_ENV_FILE = file;
+      const cold = new PayPalClient({});
+      expect(cold.transportMode).toBe('DETERMINISTIC_SANDBOX_REPLAY');
+      writeFileSync(file, 'PAYPAL_CLIENT_ID=hot-id\nPAYPAL_CLIENT_SECRET=hot-secret\n');
+      const hot = new PayPalClient({});
+      expect(hot.transportMode).toBe('LIVE_PAYPAL_SANDBOX');
+      expect(hot.hasCredentials()).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });

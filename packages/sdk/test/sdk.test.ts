@@ -4,8 +4,14 @@ import {
   verifyCanonicalPayload,
   type MandateSpec,
 } from '@veripact/core';
-import { createSandboxReplayEngine, PayPalClient } from '@veripact/paypal-client';
+import {
+  createSandboxReplayEngine,
+  PayPalClient,
+  type HttpRequest,
+  type HttpResponse,
+} from '@veripact/paypal-client';
 import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   buildDemoMandate,
   buildForensicNotes,
@@ -29,15 +35,21 @@ const KEY_VARS = [
   'BUYER_ED25519_PRIVATE_KEY',
   'WITNESS_ED25519_PRIVATE_KEY',
   'MERCHANT_ED25519_PRIVATE_KEY',
+  'PAYPAL_CLIENT_ID',
+  'PAYPAL_CLIENT_SECRET',
+  'VERIPACT_ENV_FILE',
 ] as const;
 
-// Pin a zero-key environment so demo-mode assertions are hermetic.
+// Pin a zero-key environment so demo-mode assertions are hermetic. The env
+// file pointer aims at an absent path so stray repo .env files stay unread.
+const ABSENT_ENV = join(process.cwd(), '.vitest-tmp', 'absent-credentials.env');
 const savedEnv: Record<string, string | undefined> = {};
 beforeEach(() => {
   for (const key of KEY_VARS) {
     savedEnv[key] = process.env[key];
     delete process.env[key];
   }
+  process.env.VERIPACT_ENV_FILE = ABSENT_ENV;
 });
 afterEach(() => {
   for (const key of KEY_VARS) {
@@ -303,4 +315,212 @@ describe('@veripact/sdk regression suite', () => {
       expect(existsSync(path)).toBe(true);
     },
   );
+
+  it('two-step replay returns AWAITING with a popup approveUrl and no authorize', async () => {
+    const replay = createSandboxReplayEngine();
+    const client = new VeriPactClient({ paypal: { replay } });
+    const step1 = await client.runWitnessedCheckoutFlow({ scenario: 'normal', twoStepApproval: true });
+    expect(step1.outcome).toBe('AWAITING_BUYER_APPROVAL');
+    expect(step1.orderId).toMatch(/^ORD-VP-/);
+    expect(step1.approveUrl).toBe(`/sandbox/paypal-checkout?token=${step1.orderId}`);
+    expect(step1.transportMode).toBe('DETERMINISTIC_SANDBOX_REPLAY');
+    expect(step1.finalTotalUsd).toBe(297);
+    expect(step1.expectedPostApprovalAction).toBe('CAPTURE');
+    expect(step1.headroomRemainingUsd).toBe(23);
+    expect(step1.snapshot.commitment).toMatch(/^VP1:[0-9a-f]{64}$/);
+    // Step 1 stops before approve/authorize: order still CREATED, zero auths.
+    expect((await client.paypal.getOrder(step1.orderId ?? '')).status).toBe('CREATED');
+    expect(replay.stats()).toEqual({ orders: 1, authorizations: 0, captures: 0 });
+  });
+
+  it('two-step replay previews VOID for the surcharge scenario', async () => {
+    const replay = createSandboxReplayEngine();
+    const client = new VeriPactClient({ paypal: { replay } });
+    const step1 = await client.runWitnessedCheckoutFlow({
+      scenario: 'surcharge_void',
+      twoStepApproval: true,
+    });
+    expect(step1.outcome).toBe('AWAITING_BUYER_APPROVAL');
+    expect(step1.finalTotalUsd).toBe(340.5);
+    expect(step1.expectedPostApprovalAction).toBe('VOID');
+    expect(step1.headroomRemainingUsd).toBeLessThan(0);
+  });
+
+  it('completeApprovedCheckout captures with echoed step-1 evidence', async () => {
+    const replay = createSandboxReplayEngine();
+    const client = new VeriPactClient({ paypal: { replay } });
+    const step1 = await client.runWitnessedCheckoutFlow({ scenario: 'normal', twoStepApproval: true });
+    const done = await client.completeApprovedCheckout({
+      orderId: step1.orderId ?? '',
+      scenario: 'normal',
+      prior: {
+        snapshot: step1.snapshot,
+        buyerApprovalSignatureHex: step1.buyerApprovalSignatureHex ?? '',
+        merchantSignatureHex: step1.merchantSignatureHex ?? '',
+      },
+    });
+    expect(done.outcome).toBe('CAPTURED');
+    expect(done.captureId).toMatch(/^CAP-VP-/);
+    expect(done.finalTotalUsd).toBe(297);
+    expect(done.snapshot.commitment).toBe(step1.snapshot.commitment);
+    expect(replay.stats()).toEqual({ orders: 1, authorizations: 1, captures: 1 });
+    const bundle = await client.verifyCheckoutBundle(done);
+    expect(bundle.allValid).toBe(true);
+    expect(bundle.anchorChecked).toBe(true);
+  });
+
+  it('completeApprovedCheckout auto-voids the surcharge scenario', async () => {
+    const replay = createSandboxReplayEngine();
+    const client = new VeriPactClient({ paypal: { replay } });
+    const step1 = await client.runWitnessedCheckoutFlow({
+      scenario: 'surcharge_void',
+      twoStepApproval: true,
+    });
+    const done = await client.completeApprovedCheckout({
+      orderId: step1.orderId ?? '',
+      scenarioId: 'surcharge_void',
+      prior: {
+        snapshot: step1.snapshot,
+        buyerApprovalSignatureHex: step1.buyerApprovalSignatureHex ?? '',
+        merchantSignatureHex: step1.merchantSignatureHex ?? '',
+      },
+    });
+    expect(done.outcome).toBe('AUTO_VOIDED');
+    expect(done.finalTotalUsd).toBe(340.5);
+    expect(done.voidReason ?? '').toContain('320');
+    expect(replay.getAuthorization(done.authorizationId ?? '').status).toBe('VOIDED');
+  });
+
+  it('completeApprovedCheckout re-witnesses when no prior evidence is echoed', async () => {
+    const replay = createSandboxReplayEngine();
+    const client = new VeriPactClient({ paypal: { replay } });
+    const step1 = await client.runWitnessedCheckoutFlow({ scenario: 'normal', twoStepApproval: true });
+    const done = await client.completeApprovedCheckout({ orderId: step1.orderId ?? '', scenario: 'normal' });
+    expect(done.outcome).toBe('CAPTURED');
+    expect(done.finalTotalUsd).toBe(297);
+  });
+
+  it('completeApprovedCheckout rejects prior evidence bound to another order', async () => {
+    const replay = createSandboxReplayEngine();
+    const client = new VeriPactClient({ paypal: { replay } });
+    const step1 = await client.runWitnessedCheckoutFlow({ scenario: 'normal', twoStepApproval: true });
+    const other = await client.witnessScenario('surcharge_void');
+    await expect(
+      client.completeApprovedCheckout({
+        orderId: step1.orderId ?? '',
+        scenario: 'normal',
+        prior: {
+          snapshot: other.snapshot,
+          buyerApprovalSignatureHex: '00'.repeat(64),
+          merchantSignatureHex: '00'.repeat(64),
+        },
+      }),
+    ).rejects.toThrow(/does not match the order custom_id/);
+  });
+
+  it('simulated live CREATED auto-awaits and completes via checkoutnow script', async () => {
+    let customId = '';
+    let approved = false;
+    const transport = (_baseUrl: string, req: HttpRequest): Promise<HttpResponse> => {
+      if (req.path === '/v1/oauth2/token') {
+        return Promise.resolve({
+          status: 200,
+          bodyText: JSON.stringify({ access_token: 'fake-token', expires_in: 300 }),
+        });
+      }
+      if (req.method === 'POST' && req.path === '/v2/checkout/orders') {
+        const body = JSON.parse(req.bodyText ?? '{}') as {
+          purchase_units?: Array<{ custom_id?: string }>;
+        };
+        customId = body.purchase_units?.[0]?.custom_id ?? '';
+        return Promise.resolve({
+          status: 201,
+          bodyText: JSON.stringify({
+            id: 'LIVE-ORD-1',
+            status: 'CREATED',
+            links: [
+              { rel: 'approve', href: 'https://www.sandbox.paypal.com/checkoutnow?token=LIVE-ORD-1', method: 'GET' },
+            ],
+            purchase_units: [{ custom_id: customId }],
+          }),
+        });
+      }
+      if (req.method === 'PATCH' && req.path === '/v2/checkout/orders/LIVE-ORD-1') {
+        return Promise.resolve({ status: 204, bodyText: '' });
+      }
+      if (req.method === 'GET' && req.path === '/v2/checkout/orders/LIVE-ORD-1') {
+        const status = approved ? 'APPROVED' : 'CREATED';
+        return Promise.resolve({
+          status: 200,
+          bodyText: JSON.stringify({
+            id: 'LIVE-ORD-1',
+            status,
+            links:
+              status === 'CREATED'
+                ? [{ rel: 'approve', href: 'https://www.sandbox.paypal.com/checkoutnow?token=LIVE-ORD-1', method: 'GET' }]
+                : [],
+            purchase_units: [
+              {
+                custom_id: customId,
+                amount: {
+                  currency_code: 'USD',
+                  value: '297.00',
+                  breakdown: {
+                    item_total: { currency_code: 'USD', value: '279.00' },
+                    shipping: { currency_code: 'USD', value: '11.50' },
+                    tax_total: { currency_code: 'USD', value: '6.50' },
+                  },
+                },
+                payments: approved
+                  ? { authorizations: [{ id: 'AUTH-LIVE-1', status: 'CREATED' }] }
+                  : undefined,
+              },
+            ],
+          }),
+        });
+      }
+      if (req.method === 'POST' && req.path === '/v2/checkout/orders/LIVE-ORD-1/authorize') {
+        return Promise.resolve({
+          status: 201,
+          bodyText: JSON.stringify({
+            id: 'LIVE-ORD-1',
+            status: 'COMPLETED',
+            purchase_units: [{ payments: { authorizations: [{ id: 'AUTH-LIVE-1', status: 'CREATED' }] } }],
+          }),
+        });
+      }
+      if (req.method === 'POST' && req.path === '/v2/payments/authorizations/AUTH-LIVE-1/capture') {
+        return Promise.resolve({
+          status: 201,
+          bodyText: JSON.stringify({ id: 'CAP-LIVE-1', status: 'COMPLETED' }),
+        });
+      }
+      return Promise.resolve({ status: 404, bodyText: JSON.stringify({ message: 'unexpected' }) });
+    };
+    const client = new VeriPactClient({
+      paypal: { clientId: 'id', clientSecret: 'sh', mode: 'live', httpTransport: transport },
+    });
+    expect(client.paypal.transportMode).toBe('LIVE_PAYPAL_SANDBOX');
+    // No explicit flag: live CREATED auto-awaits without simulating approval.
+    const step1 = await client.runWitnessedCheckoutFlow({ scenario: 'normal' });
+    expect(step1.outcome).toBe('AWAITING_BUYER_APPROVAL');
+    expect(step1.orderId).toBe('LIVE-ORD-1');
+    expect(step1.approveUrl).toBe('https://www.sandbox.paypal.com/checkoutnow?token=LIVE-ORD-1');
+    expect(step1.expectedPostApprovalAction).toBe('CAPTURE');
+    expect(customId).toMatch(/^VP1:[0-9a-f]{64}$/);
+    // Buyer approves out-of-band on the checkoutnow page, then step 2 runs.
+    approved = true;
+    const done = await client.completeApprovedCheckout({
+      orderId: 'LIVE-ORD-1',
+      scenario: 'normal',
+      prior: {
+        snapshot: step1.snapshot,
+        buyerApprovalSignatureHex: step1.buyerApprovalSignatureHex ?? '',
+        merchantSignatureHex: step1.merchantSignatureHex ?? '',
+      },
+    });
+    expect(done.outcome).toBe('CAPTURED');
+    expect(done.captureId).toBe('CAP-LIVE-1');
+    expect(done.finalTotalUsd).toBe(297);
+  });
 });
