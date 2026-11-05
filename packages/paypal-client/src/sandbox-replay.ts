@@ -498,6 +498,21 @@ export class SandboxReplayEngine {
     return structuredClone(d);
   }
 
+  /**
+   * File a NEW dispute against a captured order (post-purchase lifecycle).
+   * Returns the seeded `OPEN / INQUIRY` record with full HATEOAS links, so
+   * every granular action (require/provide evidence, escalate, accept,
+   * adjudicate) works on filed disputes exactly like on the canned seeds.
+   */
+  fileDispute(input: { disputeId: string; reason: string; amountUsd: number }): ReplayDisputeRecord {
+    if (this.disputes.has(input.disputeId)) {
+      throw new Error(`replay: dispute already filed: ${input.disputeId}`);
+    }
+    const record = seedDispute(input.disputeId, input.reason, input.amountUsd.toFixed(2));
+    this.disputes.set(input.disputeId, record);
+    return structuredClone(record);
+  }
+
   private requireRel(d: ReplayDisputeRecord, rel: string): void {
     if (!d.links.some((l) => l.rel === rel)) {
       throw new DisputeActionNotPermittedByHateoasError(d.dispute_id, rel);

@@ -15,7 +15,7 @@
  * buffering), JSON-only errors that never carry key material, and no
  * secret ever serialized into a response.
  */
-import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {
   deriveEd25519KeyPairFromSeed,
@@ -26,18 +26,27 @@ import {
   verifyCanonicalPayload,
   type MandateSpec,
 } from '@veripact/core';
-import { createWitnessSnapshot } from '@veripact/witness-client';
+import { createWitnessSnapshot, verifyWithChannel3Oracle } from '@veripact/witness-client';
 import {
   createSandboxReplayEngine,
   defaultEnvFilePath,
   DisputeActionNotPermittedByHateoasError,
+  fetchAccessToken,
   isPlaceholderCredential,
+  nodeHttpTransport,
   PayPalClient,
+  PAYPAL_SANDBOX_BASE_URL,
   resolvePaypalCredentials,
   type SandboxReplayEngine,
 } from '@veripact/paypal-client';
 import {
+  evaluateSufficiencyGate,
+  extractObservedTerms,
+  scanMerchantHtml,
+} from '@veripact/term-extractor';
+import {
   buildDemoMandate,
+  buildForensicNotes,
   DEMO_BUYER_SEED,
   DEMO_CHANNEL3_CACHE,
   DEMO_MERCHANT_SEED,
@@ -50,6 +59,7 @@ import {
   runRegressionSuite,
   SCENARIO_NAMES,
   VeriPactClient,
+  type CheckoutFlowResult,
   type DisputeCaseName,
   type PriorApprovalData,
   type ScenarioName,
@@ -68,11 +78,19 @@ export const ROUTES = [
   '/favicon.svg',
   '/store/:scenarioId',
   '/api/buyer/mandate',
+  '/api/buyer/mandate/update',
   '/api/witness/snapshot',
+  '/api/witness/custom-html',
   '/api/merchant/checkout',
   '/api/merchant/disputes',
   '/api/merchant/disputes/resolve',
   '/api/merchant/disputes/action',
+  '/api/merchant/disputes/create-from-order',
+  '/api/system/credentials',
+  '/api/ledger',
+  '/vendor/ag-grid-community.min.js',
+  '/vendor/ag-grid.min.css',
+  '/vendor/ag-theme-quartz.min.css',
   '/api/merchant/checkout/finalize',
   '/api/sandbox/approve-order',
   '/sandbox/paypal-checkout',
@@ -258,7 +276,7 @@ export function readRungKey(rung: Rung): {
 
 /** Credential-aware PayPal mode label (no network calls). */
 function paypalTransportMode(): string {
-  if (liveFallbackEngaged()) {
+  if (forceReplay || liveFallbackEngaged()) {
     return 'DETERMINISTIC_SANDBOX_REPLAY';
   }
   const client = new PayPalClient({
@@ -303,7 +321,7 @@ function liveFallbackEngaged(): boolean {
 /** True when an error looks like PayPal auth (401) or transport failure. */
 export function isLiveAuthFailure(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /HTTP 401|invalid_client|unauthorized|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT|EHOSTUNREACH|ENETUNREACH|fetch failed|getaddrinfo|socket hang up|self[ -]signed|CERT_/i.test(
+  return /HTTP 401|invalid_client|unauthorized|ENOTFOUND|EAI_AGAIN|EAI_FAIL|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EHOSTUNREACH|EHOSTDOWN|ENETUNREACH|ENETDOWN|EPIPE|EACCES|EPERM|fetch failed|getaddrinfo|socket hang up|timed? ?out|self[ -]signed|CERT_|proxy|CONNECT/i.test(
     message,
   );
 }
@@ -350,7 +368,7 @@ let sharedEngine: SandboxReplayEngine | null = null;
 function hasPaypalCredentials(): boolean {
   // Latched replay (after a live-auth failure) reports no credentials so
   // the UI, the mode pill, and demo-reset all follow the fallback.
-  if (liveFallbackEngaged()) {
+  if (forceReplay || liveFallbackEngaged()) {
     return false;
   }
   // Disk-aware (hot-swap): `.env` credentials count even before a restart.
@@ -431,6 +449,12 @@ export function resetDemoState(): void {
   sharedEngine = createSandboxReplayEngine();
   pendingApprovals.clear();
   clearLiveAuthFailure();
+  sessionMandate = null;
+  forceReplay = false;
+  capturedOrders.clear();
+  liveDisputes.clear();
+  liveDisputeSeq = 0;
+  ledger.length = 0;
   try {
     unlinkSync(PENDING_FILE);
   } catch {
@@ -444,6 +468,123 @@ export function resetDemoState(): void {
  */
 export function clearPendingApprovalsMemory(): void {
   pendingApprovals.clear();
+}
+
+/* ------------------------------------------------------------------ */
+/* End-to-end session state (View 1 → View 2 production pipeline)      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Buyer-global mandate override from POST /api/buyer/mandate/update
+ * (signed with the buyer rung key). Null = fixture mandates. Applies to
+ * every scenario: one buyer mandate is checked against any listing.
+ */
+let sessionMandate: MandateSpec | null = null;
+
+/** In-memory force-replay switch (creds modal "use replay" — never touches .env). */
+let forceReplay = false;
+
+/** Mandate actually gated under: session override wins over the fixture. */
+function effectiveMandate(scenario: ScenarioName): MandateSpec {
+  return sessionMandate ?? getScenario(scenario).mandate;
+}
+
+/**
+ * Captured-order evidence (orderId → receipt core + anchor). Recorded on
+ * every CAPTURED outcome (1-click and finalize) so post-purchase dispute
+ * filing anchors to the EXACT commitment bound into custom_id. Holds
+ * receipts and signatures only — no keys, no PayPal secrets.
+ */
+interface CaptureContext {
+  orderId: string;
+  scenario: ScenarioName;
+  receiptCore: Record<string, unknown>;
+  commitment: string;
+  witnessSignatureHex: string;
+  witnessPublicKeyHex: string;
+  provenance: Record<string, unknown>;
+  captureId: string;
+  finalTotalUsd: number;
+  transportMode: string;
+  capturedAtUtc: string;
+}
+
+const capturedOrders = new Map<string, CaptureContext>();
+
+/** Live disputes filed from captured orders (case key → filing record). */
+interface LiveDisputeEntry {
+  caseKey: string;
+  disputeId: string;
+  orderId: string;
+  kind: 'drift' | 'forgery';
+  filedAtUtc: string;
+}
+
+const liveDisputes = new Map<string, LiveDisputeEntry>();
+let liveDisputeSeq = 0;
+
+/** Append-only cryptographic clearing ledger (one entry per state change). */
+export interface LedgerEntry {
+  seq: number;
+  tsUtc: string;
+  kind: string;
+  summary: string;
+  orderId?: string;
+  disputeId?: string;
+  commitment?: string;
+}
+
+const ledger: LedgerEntry[] = [];
+
+function appendLedger(entry: Omit<LedgerEntry, 'seq' | 'tsUtc'>): LedgerEntry {
+  const row: LedgerEntry = {
+    seq: ledger.length + 1,
+    tsUtc: new Date().toISOString(),
+    ...entry,
+  };
+  ledger.push(row);
+  return row;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value !== null && typeof value === 'object') {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+/**
+ * Record a CAPTURED outcome's evidence so post-purchase dispute filing can
+ * anchor to the exact commitment bound into the order's custom_id.
+ */
+function recordCapture(result: CheckoutFlowResult, scenario: ScenarioName): void {
+  if (
+    result.outcome !== 'CAPTURED' ||
+    result.orderId === undefined ||
+    result.captureId === undefined ||
+    result.finalTotalUsd === undefined
+  ) {
+    return;
+  }
+  capturedOrders.set(result.orderId, {
+    orderId: result.orderId,
+    scenario,
+    receiptCore: asRecord(result.snapshot.receiptCore),
+    commitment: result.snapshot.commitment,
+    witnessSignatureHex: result.snapshot.witnessSignatureHex,
+    witnessPublicKeyHex: result.snapshot.witnessPublicKeyHex,
+    provenance: asRecord(result.snapshot.provenance),
+    captureId: result.captureId,
+    finalTotalUsd: result.finalTotalUsd,
+    transportMode: result.transportMode,
+    capturedAtUtc: new Date().toISOString(),
+  });
+  appendLedger({
+    kind: 'checkout-capture',
+    summary: `${scenario} captured $${result.finalTotalUsd.toFixed(2)} (${result.orderId})`,
+    orderId: result.orderId,
+    commitment: result.snapshot.commitment,
+  });
 }
 
 /**
@@ -466,7 +607,7 @@ function demoClient(): VeriPactClient {
       clientId: scrubEnvCredential(process.env['PAYPAL_CLIENT_ID']),
       clientSecret: scrubEnvCredential(process.env['PAYPAL_CLIENT_SECRET']),
       replay: demoEngine(),
-      ...(liveFallbackEngaged() ? { mode: 'replay' as const } : {}),
+      ...(forceReplay || liveFallbackEngaged() ? { mode: 'replay' as const } : {}),
     },
   });
 }
@@ -477,7 +618,7 @@ function demoPayPal(): PayPalClient {
     clientId: scrubEnvCredential(process.env['PAYPAL_CLIENT_ID']),
     clientSecret: scrubEnvCredential(process.env['PAYPAL_CLIENT_SECRET']),
     replay: demoEngine(),
-    ...(liveFallbackEngaged() ? { mode: 'replay' as const } : {}),
+    ...(forceReplay || liveFallbackEngaged() ? { mode: 'replay' as const } : {}),
   });
 }
 
@@ -584,6 +725,192 @@ function handleSystemStatus(res: WorkbenchResponse): void {
   sendJson(res, 200, payload);
 }
 
+function asCredentialField(value: unknown, field: string): string {
+  if (
+    typeof value !== 'string' ||
+    value === '' ||
+    value.length > 512 ||
+    /[\r\n\0]/.test(value)
+  ) {
+    throw new HttpError(400, `${field} must be a single-line string (1..512 chars)`);
+  }
+  if (isPlaceholderCredential(value)) {
+    throw new HttpError(400, `${field} looks like a placeholder — paste real sandbox credentials`);
+  }
+  return value;
+}
+
+/**
+ * Upsert the PayPal pair into the `.env` file, preserving every other
+ * line (SANDBOX_URL, comments, …). Test-hermetic via VERIPACT_ENV_FILE.
+ */
+function upsertEnvCredentials(envPath: string, clientId: string, clientSecret: string): void {
+  let lines: string[] = [];
+  try {
+    lines = readFileSync(envPath, 'utf8').split('\n');
+  } catch {
+    lines = [];
+  }
+  const kept = lines.filter((l) => !/^\s*(?:export\s+)?PAYPAL_CLIENT_(ID|SECRET)\s*=/.test(l));
+  while (kept.length > 0 && (kept[kept.length - 1] as string).trim() === '') {
+    kept.pop();
+  }
+  kept.push(`PAYPAL_CLIENT_ID=${clientId}`, `PAYPAL_CLIENT_SECRET=${clientSecret}`, '');
+  mkdirSync(dirname(envPath), { recursive: true });
+  writeFileSync(envPath, kept.join('\n'), 'utf8');
+}
+
+/**
+ * POST /api/system/credentials — persist sandbox credentials to `.env`
+ * and verify OAuth immediately (short timeout). Unreachable/invalid
+ * credentials latch the honest replay fallback instead of 500ing. With
+ * `{ replay: true }` forces in-memory replay WITHOUT touching `.env`.
+ * Responses never contain secret material (Rule 3).
+ */
+async function handleSystemCredentials(
+  body: Record<string, unknown>,
+  res: WorkbenchResponse,
+): Promise<void> {
+  if (body['replay'] === true) {
+    forceReplay = true;
+    appendLedger({
+      kind: 'credentials-replay',
+      summary: 'operator forced deterministic replay (in-memory, .env untouched)',
+    });
+    sendJson(res, 200, {
+      mode: 'DETERMINISTIC_SANDBOX_REPLAY',
+      verified: false,
+      forced: true,
+      boundary: 'SIGN',
+    });
+    return;
+  }
+  const clientId = asCredentialField(body['clientId'], 'clientId');
+  const clientSecret = asCredentialField(body['clientSecret'], 'clientSecret');
+  const envPath = defaultEnvFilePath();
+  try {
+    upsertEnvCredentials(envPath, clientId, clientSecret);
+  } catch {
+    throw new HttpError(500, `could not persist credentials to ${envPath}`);
+  }
+  forceReplay = false;
+  clearLiveAuthFailure();
+  const timeoutRaw = body['timeoutMs'];
+  const timeoutMs =
+    typeof timeoutRaw === 'number' && Number.isFinite(timeoutRaw)
+      ? Math.min(Math.max(Math.floor(timeoutRaw), 50), 30000)
+      : 8000;
+  const scrub = (text: string): string =>
+    text.split(clientId).join('<redacted>').split(clientSecret).join('<redacted>').slice(0, 300);
+  try {
+    const token = await fetchAccessToken({
+      transport: nodeHttpTransport,
+      baseUrl: PAYPAL_SANDBOX_BASE_URL,
+      clientId,
+      clientSecret,
+      timeoutMs,
+    });
+    appendLedger({ kind: 'credentials-live', summary: 'sandbox credentials verified (OAuth) — live mode' });
+    sendJson(res, 200, {
+      mode: 'LIVE_PAYPAL_SANDBOX',
+      verified: true,
+      expiresInSec: token.expiresInSec,
+      envFilePath: envPath,
+      boundary: 'SIGN',
+    });
+  } catch (e) {
+    const detail = scrub(e instanceof Error ? e.message : String(e));
+    if (isLiveAuthFailure(e)) {
+      noteLiveAuthFailure();
+      appendLedger({
+        kind: 'credentials-fallback',
+        summary: `live OAuth failed (${detail}) — replay fallback latched`,
+      });
+      sendJson(res, 200, {
+        mode: 'DETERMINISTIC_SANDBOX_REPLAY',
+        verified: false,
+        fallback: true,
+        error: detail,
+        envFilePath: envPath,
+        boundary: 'SIGN',
+      });
+      return;
+    }
+    appendLedger({ kind: 'credentials-error', summary: `credential verify error (${detail})` });
+    sendJson(res, 200, {
+      mode: paypalTransportMode(),
+      verified: false,
+      error: detail,
+      envFilePath: envPath,
+      boundary: 'SIGN',
+    });
+  }
+}
+
+/** GET /api/ledger — the session clearing ledger, signed by the witness key. */
+function handleLedger(res: WorkbenchResponse): void {
+  const witness = readRungKey('witness');
+  const payload = { entries: ledger, exportedAtUtc: new Date().toISOString() };
+  sendJson(res, 200, {
+    ...payload,
+    witnessSignatureHex: signCanonicalPayload(payload, witness.privateKeyHex),
+    witnessPublicKeyHex: witness.publicKeyHex,
+  });
+}
+
+/**
+ * Same-origin vendor assets (real AG Grid, zero CDN): served from the
+ * installed `ag-grid-community` package. If the package is absent the
+ * routes still return 200 with an honest stub so the page never 404s and
+ * the native fallback grid engages.
+ */
+interface VendorSpec {
+  segments: string[];
+  contentType: string;
+  fallback: string;
+}
+
+const VENDOR_FILES: Record<string, VendorSpec> = {
+  '/vendor/ag-grid-community.min.js': {
+    segments: ['node_modules', 'ag-grid-community', 'dist', 'ag-grid-community.min.js'],
+    contentType: 'application/javascript; charset=utf-8',
+    fallback:
+      '/* veripact: ag-grid-community not installed — native fallback grid engaged */\nwindow.__vpGridMissing=true;\n',
+  },
+  '/vendor/ag-grid.min.css': {
+    segments: ['node_modules', 'ag-grid-community', 'styles', 'ag-grid.min.css'],
+    contentType: 'text/css; charset=utf-8',
+    fallback: '/* veripact: grid css fallback (native engine) */\n',
+  },
+  '/vendor/ag-theme-quartz.min.css': {
+    segments: ['node_modules', 'ag-grid-community', 'styles', 'ag-theme-quartz.min.css'],
+    contentType: 'text/css; charset=utf-8',
+    fallback: '/* veripact: grid theme fallback (native engine) */\n',
+  },
+};
+
+function handleVendor(pathname: string, res: WorkbenchResponse): void {
+  const spec: VendorSpec | undefined = VENDOR_FILES[pathname];
+  if (spec === undefined) {
+    sendJson(res, 404, { error: 'not found' });
+    return;
+  }
+  let body = spec.fallback;
+  try {
+    const path = repoPath(...spec.segments);
+    if (existsSync(path)) {
+      body = readFileSync(path, 'utf8');
+    }
+  } catch {
+    // Unreadable install: honest stub, never a 500.
+  }
+  res.writeHead(200, {
+    ...securityHeaders(spec.contentType),
+    'cache-control': 'public, max-age=3600',
+  });
+  res.end(body);
+}
+
 /** Two-tone VeriPact V-check emblem (same geometry as the header logo). */
 const FAVICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 26" fill="none">' +
@@ -678,6 +1005,80 @@ function handleBuyerMandate(body: Record<string, unknown>, res: WorkbenchRespons
   sendJson(res, 200, { mandate, boundary: 'SELF', demoKeys: buyer.demoKeys });
 }
 
+function asMandateNumber(value: unknown, field: string, min: number, max: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
+    throw new HttpError(400, `${field} must be a finite number in [${min}, ${max}]`);
+  }
+  return value;
+}
+
+/**
+ * POST /api/buyer/mandate/update — composition point (SELF sign + local
+ * WIT re-gate, zero PayPal calls). Validates the four editable
+ * constraints, signs a fresh buyer mandate (Rung 1), stores it as the
+ * session override, and immediately re-gates it against the scenario
+ * storefront so the UI can show the new decision inline.
+ */
+async function handleBuyerMandateUpdate(
+  body: Record<string, unknown>,
+  res: WorkbenchResponse,
+): Promise<void> {
+  const scenario = asRequestScenario(body);
+  const buyer = readRungKey('buyer');
+  const current = effectiveMandate(scenario);
+  const requiredCondition = body['requiredCondition'] ?? body['required_condition'];
+  if (requiredCondition !== 'NEW' && requiredCondition !== 'REFURBISHED') {
+    throw new HttpError(400, 'requiredCondition must be NEW or REFURBISHED');
+  }
+  const capRaw = body['maxAllInPriceUsd'] ?? body['max_all_in_price_usd'];
+  const daysRaw = body['minReturnWindowDays'] ?? body['min_free_return_days'];
+  const feeRaw = body['maxRestockingFeePct'] ?? body['max_restocking_fee_pct'];
+  const mandate: MandateSpec = {
+    mandateId: `mnd_${Date.now().toString(36)}`,
+    createdAtUtc: new Date().toISOString(),
+    buyerId: current.buyerId,
+    itemQuery: current.itemQuery,
+    constraints: {
+      requiredCondition,
+      maxAllInPriceUsd: Number(asMandateNumber(capRaw, 'maxAllInPriceUsd', 1, 1000000).toFixed(2)),
+      minReturnWindowDays: Math.floor(asMandateNumber(daysRaw, 'minReturnWindowDays', 0, 365)),
+      maxRestockingFeePct: asMandateNumber(feeRaw, 'maxRestockingFeePct', 0, 100),
+    },
+    buyerPublicKeyHex: buyer.publicKeyHex,
+    buyerSignatureHex: '',
+  };
+  mandate.buyerSignatureHex = signCanonicalPayload(
+    { ...mandate, buyerSignatureHex: '' },
+    buyer.privateKeyHex,
+  );
+  sessionMandate = mandate;
+  const witness = readRungKey('witness');
+  const page = getScenario(scenario);
+  const snapshot = await createWitnessSnapshot({
+    listingUrl: page.listingUrl,
+    mandate,
+    witnessKeys: { publicKeyHex: witness.publicKeyHex, privateKeyHex: witness.privateKeyHex },
+    htmlFetcher: () => Promise.resolve({ status: 200, html: page.html, tlsVerified: false }),
+    requirePublicHttps: false,
+    tsaMode: 'local',
+    channel3Mode: 'cache',
+    channel3Cache: DEMO_CHANNEL3_CACHE,
+  });
+  appendLedger({
+    kind: 'mandate-update',
+    summary: `mandate re-signed: cap $${mandate.constraints.maxAllInPriceUsd.toFixed(2)}, ${requiredCondition}, ≥${mandate.constraints.minReturnWindowDays}d, ≤${mandate.constraints.maxRestockingFeePct}% → ${snapshot.gateResult.decision}`,
+  });
+  sendJson(res, 200, {
+    mandate,
+    scenario,
+    boundary: 'SELF',
+    demoKeys: buyer.demoKeys,
+    gateResult: snapshot.gateResult,
+    headroomUsd: snapshot.gateResult.headroomUsd,
+    commitment: snapshot.commitment,
+  });
+}
+
 /**
  * POST /api/witness/snapshot — WITNESS rung only. Snapshots a scenario
  * storefront (in-memory HTML, local TSA, demo Channel3 cache). Zero PayPal
@@ -692,13 +1093,18 @@ async function handleWitnessSnapshot(
   const page = getScenario(scenario);
   const snapshot = await createWitnessSnapshot({
     listingUrl: page.listingUrl,
-    mandate: page.mandate,
+    mandate: effectiveMandate(scenario),
     witnessKeys: { publicKeyHex: witness.publicKeyHex, privateKeyHex: witness.privateKeyHex },
     htmlFetcher: () => Promise.resolve({ status: 200, html: page.html, tlsVerified: false }),
     requirePublicHttps: false,
     tsaMode: 'local',
     channel3Mode: 'cache',
     channel3Cache: DEMO_CHANNEL3_CACHE,
+  });
+  appendLedger({
+    kind: 'witness-snapshot',
+    summary: `${scenario} witnessed → ${snapshot.gateResult.decision}`,
+    commitment: snapshot.commitment,
   });
   sendJson(res, 200, {
     scenario,
@@ -716,6 +1122,69 @@ async function handleWitnessSnapshot(
   });
 }
 
+/** Cap for pasted merchant HTML (the 1MB body cap still applies first). */
+const MAX_CUSTOM_HTML_BYTES = 200_000;
+
+/**
+ * POST /api/witness/custom-html — WITNESS rung only. Scans judge-pasted
+ * merchant HTML with the 13-rule DOM scanner + quote verifier, gates it
+ * under the session mandate, and cross-checks the Channel3 cache. Zero
+ * PayPal calls. Block/hidden lists are truncated for transport safety.
+ */
+async function handleWitnessCustomHtml(
+  body: Record<string, unknown>,
+  res: WorkbenchResponse,
+): Promise<void> {
+  const html = body['html'];
+  if (typeof html !== 'string' || html.length === 0) {
+    throw new HttpError(400, 'html must be a non-empty string');
+  }
+  if (Buffer.byteLength(html, 'utf8') > MAX_CUSTOM_HTML_BYTES) {
+    throw new HttpError(400, `html exceeds the ${MAX_CUSTOM_HTML_BYTES}-byte inspector cap`);
+  }
+  const rawUrl = body['listingUrl'];
+  const listingUrl =
+    typeof rawUrl === 'string' && rawUrl !== ''
+      ? rawUrl.slice(0, 500)
+      : 'https://custom.merchant.invalid/listing';
+  const mandate = sessionMandate ?? buildDemoMandate('Custom merchant listing');
+  const scan = scanMerchantHtml(html);
+  const observed = await extractObservedTerms(scan);
+  const gateResult = evaluateSufficiencyGate(mandate, observed);
+  const terms = observed as unknown as Record<string, { value?: unknown }>;
+  const oracleResult = await verifyWithChannel3Oracle(
+    {
+      brandModel:
+        typeof terms['itemTitle']?.value === 'string' ? terms['itemTitle'].value : undefined,
+      condition:
+        typeof terms['condition']?.value === 'string' ? terms['condition'].value : undefined,
+      basePriceUsd:
+        typeof terms['basePriceUsd']?.value === 'number' ? terms['basePriceUsd'].value : undefined,
+    },
+    { mode: 'cache', cache: DEMO_CHANNEL3_CACHE },
+  );
+  appendLedger({
+    kind: 'custom-witness',
+    summary:
+      `custom HTML scanned: ${scan.visibleBlocks.length} visible blocks, ` +
+      `${scan.hiddenFindings.length} hidden findings → ${gateResult.decision}`,
+  });
+  sendJson(res, 200, {
+    boundary: 'WIT',
+    listingUrl,
+    blockCount: scan.visibleBlocks.length,
+    visibleBlocks: scan.visibleBlocks.slice(0, 200),
+    blocksTruncated: scan.visibleBlocks.length > 200,
+    hiddenFindingCount: scan.hiddenFindings.length,
+    hiddenFindings: scan.hiddenFindings.slice(0, 50),
+    findingsTruncated: scan.hiddenFindings.length > 50,
+    adversarialDomDetected: scan.adversarialDomDetected,
+    observed,
+    gateResult,
+    oracleResult,
+  });
+}
+
 /**
  * POST /api/merchant/checkout — documented composition point: runs the
  * full bilateral flow (needs all three rung keys + PayPal) so one click
@@ -729,8 +1198,30 @@ async function handleMerchantCheckout(
   const client = demoClient();
   const result = await client.runWitnessedCheckoutFlow({
     scenario,
+    mandate: effectiveMandate(scenario),
     twoStepApproval: body['twoStep'] === true,
   });
+  recordCapture(result, scenario);
+  if (result.outcome === 'AUTO_VOIDED') {
+    appendLedger({
+      kind: 'checkout-void',
+      summary: `${scenario} auto-voided at $${(result.finalTotalUsd ?? 0).toFixed(2)} (cap exceeded)`,
+      orderId: result.orderId,
+      commitment: result.snapshot.commitment,
+    });
+  } else if (result.outcome === 'BLOCKED_PRE_CHECKOUT') {
+    appendLedger({
+      kind: 'checkout-block',
+      summary: `${scenario} blocked pre-checkout (${result.snapshot.gateResult.decision})`,
+    });
+  } else if (result.outcome === 'AWAITING_BUYER_APPROVAL' && result.orderId !== undefined) {
+    appendLedger({
+      kind: 'order-create',
+      summary: `${scenario} order ${result.orderId} awaiting buyer approval`,
+      orderId: result.orderId,
+      commitment: result.snapshot.commitment,
+    });
+  }
   if (
     result.outcome === 'AWAITING_BUYER_APPROVAL' &&
     result.orderId !== undefined &&
@@ -748,73 +1239,189 @@ async function handleMerchantCheckout(
   sendJson(res, 200, { ...result, boundary: 'SIGN' });
 }
 
+/** Inspector copy for one dispute (server-owned so live cases render too). */
+export interface DisputeMeta {
+  label: string;
+  blurb: string;
+  buyerTerms: string;
+  sellerTerms: string;
+  witnessed: string;
+  diffs: { field: string; left: string; right: string }[];
+}
+
+const CANNED_DISPUTE_META: Record<'buyer_forgery' | 'merchant_drift', DisputeMeta> = {
+  buyer_forgery: {
+    label: 'Case B — Buyer forgery',
+    buyerTerms: '60-day returns (self-signed SELF receipt)',
+    sellerTerms: 'Stands by witnessed terms',
+    witnessed: '30-day returns · 0% fee',
+    diffs: [{ field: 'return_window_days', left: '60', right: '30' }],
+    blurb:
+      'The buyer edited local JSON to claim 60-day returns. Signature verifies (self-signed) but the hash cannot match the PayPal-anchored commitment.',
+  },
+  merchant_drift: {
+    label: 'Case A — Merchant drift',
+    buyerTerms: '30-day free returns (matches witness)',
+    sellerTerms: '14-day returns · 25% restocking fee',
+    witnessed: '30-day returns · 0% fee',
+    diffs: [
+      { field: 'return_window_days', left: '30', right: '14' },
+      { field: 'restocking_fee_pct', left: '0%', right: '25%' },
+    ],
+    blurb:
+      'The seller changed the return policy after purchase. The buyer receipt still matches; the seller counter-claim diverges.',
+  },
+};
+
+function disputedNumber(core: Record<string, unknown>, field: string): string {
+  const terms = asRecord(core['observedTerms']);
+  const criterion = asRecord(terms[field]);
+  const value = criterion['value'];
+  return typeof value === 'number' ? String(value) : '?';
+}
+
+function liveDisputeMeta(entry: LiveDisputeEntry, ctx: CaptureContext): DisputeMeta {
+  const days = disputedNumber(ctx.receiptCore, 'returnWindowDays');
+  const fee = disputedNumber(ctx.receiptCore, 'restockingFeePct');
+  if (entry.kind === 'forgery') {
+    return {
+      label: `Live forgery — ${entry.disputeId}`,
+      buyerTerms: '60-day returns + $50 rebate (tampered SELF receipt)',
+      sellerTerms: 'Stands by witnessed terms',
+      witnessed: `${days}-day returns · ${fee}% fee`,
+      diffs: [{ field: 'return_window_days', left: '60', right: days }],
+      blurb: `Filed from captured order ${entry.orderId}: the buyer re-signed a tampered receipt. The WIT signature and PayPal custom_id reject it.`,
+    };
+  }
+  return {
+    label: `Live drift — ${entry.disputeId}`,
+    buyerTerms: `${days}-day returns (matches witness)`,
+    sellerTerms: '14-day returns · 25% restocking fee (mutated listing)',
+    witnessed: `${days}-day returns · ${fee}% fee`,
+    diffs: [
+      { field: 'return_window_days', left: days, right: '14' },
+      { field: 'restocking_fee_pct', left: `${fee}%`, right: '25%' },
+    ],
+    blurb: `Filed from captured order ${entry.orderId}: the merchant silently mutated the return policy after the sale.`,
+  };
+}
+
+interface ContestKeys {
+  buyer: { publicKeyHex: string; privateKeyHex: string };
+  merchant: { publicKeyHex: string; privateKeyHex: string };
+}
+
 /**
- * GET /api/merchant/disputes — Case B FIRST, then Case A, each with its
- * live HATEOAS record plus computed forensics (referee verdict, 3-way hash
- * comparison, provenance). Read-only: dispute state is never mutated here.
+ * Shared contested-forensics builder (canned + live disputes): forges
+ * (buyer_forgery) or drifts (merchant_drift) the disputed receipt, signs
+ * both sides, and runs the core 3-way referee against the anchored
+ * custom_id. Pure derivation — no PayPal calls, no state changes.
+ */
+function contestedForensics(
+  core: Record<string, unknown>,
+  customId: string,
+  witnessReceipt: { payload: unknown; signatureHex: string; publicKeyHex: string },
+  keys: ContestKeys,
+  kind: 'buyer_forgery' | 'merchant_drift',
+): ReturnType<typeof evaluateContestedDispute> {
+  const terms = asRecord(core['observedTerms']);
+  const mutated = {
+    ...core,
+    observedTerms:
+      kind === 'buyer_forgery'
+        ? { ...terms, returnWindowDays: { status: 'DETERMINATE', value: 60 } }
+        : {
+          ...terms,
+          returnWindowDays: { status: 'DETERMINATE', value: 14 },
+          restockingFeePct: { status: 'DETERMINATE', value: 25 },
+        },
+  };
+  const buyerClaimReceipt =
+    kind === 'buyer_forgery'
+      ? {
+        payload: mutated,
+        signatureHex: signCanonicalPayload(mutated, keys.buyer.privateKeyHex),
+        publicKeyHex: keys.buyer.publicKeyHex,
+      }
+      : {
+        payload: core,
+        signatureHex: signCanonicalPayload(core, keys.buyer.privateKeyHex),
+        publicKeyHex: keys.buyer.publicKeyHex,
+      };
+  const sellerCounterClaimReceipt =
+    kind === 'merchant_drift'
+      ? {
+        payload: mutated,
+        signatureHex: signCanonicalPayload(mutated, keys.merchant.privateKeyHex),
+        publicKeyHex: keys.merchant.publicKeyHex,
+      }
+      : witnessReceipt;
+  return evaluateContestedDispute({
+    paypalOrderCustomId: customId,
+    witnessReceipt,
+    buyerClaimReceipt,
+    sellerCounterClaimReceipt,
+  });
+}
+
+/**
+ * GET /api/merchant/disputes — live filed disputes FIRST (newest first),
+ * then Case B, then Case A, each with its live HATEOAS record plus
+ * computed forensics (referee verdict, 3-way hash comparison,
+ * provenance). Read-only: dispute state is never mutated here.
  */
 async function handleMerchantDisputes(res: WorkbenchResponse): Promise<void> {
   const client = demoClient();
+  // Canned baseline always runs the FIXTURE mandate: the two seeded cases
+  // are deterministic fixtures and must stay resolvable even while the
+  // founder stress-tests a tighter session mandate in View 1.
   const checkout = await client.runWitnessedCheckoutFlow({ scenario: 'normal' });
   if (checkout.outcome !== 'CAPTURED' || checkout.orderId === undefined) {
     throw new HttpError(500, 'baseline checkout did not capture');
   }
   const order = await client.paypal.getOrder(checkout.orderId);
-  const core = checkout.snapshot.receiptCore;
+  const core = asRecord(checkout.snapshot.receiptCore);
   const witnessReceipt = {
     payload: core,
     signatureHex: checkout.snapshot.witnessSignatureHex,
     publicKeyHex: checkout.snapshot.witnessPublicKeyHex,
   };
-  const buildCase = (kind: 'buyer_forgery' | 'merchant_drift') => {
-    const mutated =
-      kind === 'buyer_forgery'
-        ? {
-            ...core,
-            observedTerms: {
-              ...core.observedTerms,
-              returnWindowDays: { status: 'DETERMINATE', value: 60 },
-            },
-          }
-        : {
-            ...core,
-            observedTerms: {
-              ...core.observedTerms,
-              returnWindowDays: { status: 'DETERMINATE', value: 14 },
-              restockingFeePct: { status: 'DETERMINATE', value: 25 },
-            },
-          };
-    const buyerClaimReceipt =
-      kind === 'buyer_forgery'
-        ? {
-            payload: mutated,
-            signatureHex: signCanonicalPayload(mutated, client.keys.buyer.privateKeyHex),
-            publicKeyHex: client.keys.buyer.publicKeyHex,
-          }
-        : {
-            payload: core,
-            signatureHex: signCanonicalPayload(core, client.keys.buyer.privateKeyHex),
-            publicKeyHex: client.keys.buyer.publicKeyHex,
-          };
-    const sellerCounterClaimReceipt =
-      kind === 'merchant_drift'
-        ? {
-            payload: mutated,
-            signatureHex: signCanonicalPayload(mutated, client.keys.merchant.privateKeyHex),
-            publicKeyHex: client.keys.merchant.publicKeyHex,
-          }
-        : witnessReceipt;
-    return evaluateContestedDispute({
-      paypalOrderCustomId: order.customId,
-      witnessReceipt,
-      buyerClaimReceipt,
-      sellerCounterClaimReceipt,
-    });
-  };
+  const keys = { buyer: client.keys.buyer, merchant: client.keys.merchant };
   const caseB = await client.paypal.getDispute('PP-D-CASE-B-FORGERY');
   const caseA = await client.paypal.getDispute('PP-D-CASE-A-DRIFT');
-  const forensicsB = buildCase('buyer_forgery');
-  const forensicsA = buildCase('merchant_drift');
+  const live: Record<string, unknown>[] = [];
+  for (const entry of [...liveDisputes.values()].reverse()) {
+    const ctx = capturedOrders.get(entry.orderId);
+    if (ctx === undefined) {
+      continue;
+    }
+    const record = await client.paypal.getDispute(entry.disputeId);
+    const liveWitness = {
+      payload: ctx.receiptCore,
+      signatureHex: ctx.witnessSignatureHex,
+      publicKeyHex: ctx.witnessPublicKeyHex,
+    };
+    live.push({
+      case: entry.caseKey,
+      record,
+      forensics: contestedForensics(
+        ctx.receiptCore,
+        ctx.commitment,
+        liveWitness,
+        keys,
+        entry.kind === 'forgery' ? 'buyer_forgery' : 'merchant_drift',
+      ),
+      meta: liveDisputeMeta(entry, ctx),
+      live: {
+        orderId: ctx.orderId,
+        customId: ctx.commitment,
+        captureId: ctx.captureId,
+        provenance: ctx.provenance,
+        kind: entry.kind,
+        filedAtUtc: entry.filedAtUtc,
+      },
+    });
+  }
   sendJson(res, 200, {
     boundary: 'SIGN',
     orderId: checkout.orderId,
@@ -823,8 +1430,31 @@ async function handleMerchantDisputes(res: WorkbenchResponse): Promise<void> {
     demoKeys: client.keys.demoKeys,
     provenance: checkout.snapshot.provenance,
     disputes: [
-      { case: 'buyer_forgery', record: caseB, forensics: forensicsB },
-      { case: 'merchant_drift', record: caseA, forensics: forensicsA },
+      ...live,
+      {
+        case: 'buyer_forgery',
+        record: caseB,
+        forensics: contestedForensics(
+          core,
+          order.customId,
+          witnessReceipt,
+          keys,
+          'buyer_forgery',
+        ),
+        meta: CANNED_DISPUTE_META.buyer_forgery,
+      },
+      {
+        case: 'merchant_drift',
+        record: caseA,
+        forensics: contestedForensics(
+          core,
+          order.customId,
+          witnessReceipt,
+          keys,
+          'merchant_drift',
+        ),
+        meta: CANNED_DISPUTE_META.merchant_drift,
+      },
     ],
   });
 }
@@ -834,10 +1464,237 @@ async function handleDisputeResolve(
   body: Record<string, unknown>,
   res: WorkbenchResponse,
 ): Promise<void> {
+  const rawCase = body['case'];
+  if (typeof rawCase === 'string' && /^live_(drift|forgery)_[1-9][0-9]*$/.test(rawCase)) {
+    await resolveLiveDispute(rawCase, res);
+    return;
+  }
   const disputeCase = asDisputeCase(body['case']);
   const client = demoClient();
   const result = await client.auditAndResolveDispute({ case: disputeCase });
   sendJson(res, 200, { ...result, boundary: 'SIGN' });
+}
+
+/**
+ * POST /api/merchant/disputes/create-from-order — file a NEW contested
+ * dispute anchored to an order captured in THIS session (View 1 → View 2).
+ * Replay-only: PayPal exposes no file-dispute API, so live orders cannot
+ * be charged back from this desk (honest 400, never a fake filing).
+ */
+async function handleDisputeCreateFromOrder(
+  body: Record<string, unknown>,
+  res: WorkbenchResponse,
+): Promise<void> {
+  const orderId = asOrderId(body['orderId']);
+  const kind = body['kind'];
+  if (kind !== 'drift' && kind !== 'forgery') {
+    throw new HttpError(400, 'kind must be drift or forgery');
+  }
+  const paypal = demoPayPal();
+  if (paypal.transportMode !== 'DETERMINISTIC_SANDBOX_REPLAY') {
+    throw new HttpError(
+      400,
+      'post-purchase dispute filing is replay-only: PayPal exposes no file-dispute API',
+    );
+  }
+  const ctx = capturedOrders.get(orderId);
+  if (ctx === undefined) {
+    throw new HttpError(
+      404,
+      `order not captured in this session: ${orderId} (run a 1-click checkout first)`,
+    );
+  }
+  const engine = demoEngine();
+  if (engine === undefined) {
+    throw new HttpError(400, 'shared replay engine unavailable');
+  }
+  liveDisputeSeq += 1;
+  const n = liveDisputeSeq;
+  const disputeId = kind === 'drift' ? `PP-D-LIVE-DRIFT-${n}` : `PP-D-LIVE-FORGERY-${n}`;
+  const caseKey = kind === 'drift' ? `live_drift_${n}` : `live_forgery_${n}`;
+  const record = engine.fileDispute({
+    disputeId,
+    reason: 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED',
+    amountUsd: ctx.finalTotalUsd,
+  });
+  const entry: LiveDisputeEntry = {
+    caseKey,
+    disputeId,
+    orderId,
+    kind,
+    filedAtUtc: new Date().toISOString(),
+  };
+  liveDisputes.set(caseKey, entry);
+  const client = demoClient();
+  const forensics = contestedForensics(
+    ctx.receiptCore,
+    ctx.commitment,
+    {
+      payload: ctx.receiptCore,
+      signatureHex: ctx.witnessSignatureHex,
+      publicKeyHex: ctx.witnessPublicKeyHex,
+    },
+    { buyer: client.keys.buyer, merchant: client.keys.merchant },
+    kind === 'forgery' ? 'buyer_forgery' : 'merchant_drift',
+  );
+  appendLedger({
+    kind: 'dispute-file',
+    summary: `${kind} dispute ${disputeId} filed from ${orderId} → ${forensics.verdict}`,
+    orderId,
+    disputeId,
+    commitment: ctx.commitment,
+  });
+  sendJson(res, 200, {
+    case: caseKey,
+    disputeId,
+    orderId,
+    kind,
+    verdict: forensics.verdict,
+    reason: forensics.reason,
+    record,
+    forensics,
+    meta: liveDisputeMeta(entry, ctx),
+    boundary: 'SIGN',
+  });
+}
+
+/** Resolve a live filed dispute through the HATEOAS evidence chain. */
+async function resolveLiveDispute(caseKey: string, res: WorkbenchResponse): Promise<void> {
+  const entry = liveDisputes.get(caseKey);
+  if (entry === undefined) {
+    throw new HttpError(404, `unknown live dispute case: ${caseKey}`);
+  }
+  const ctx = capturedOrders.get(entry.orderId);
+  if (ctx === undefined) {
+    throw new HttpError(409, `capture evidence for ${entry.orderId} is gone (demo was reset)`);
+  }
+  const paypal = demoPayPal();
+  if (paypal.transportMode !== 'DETERMINISTIC_SANDBOX_REPLAY') {
+    throw new HttpError(400, 'live dispute resolution is replay-only in this desk');
+  }
+  const client = demoClient();
+  const forensics = contestedForensics(
+    ctx.receiptCore,
+    ctx.commitment,
+    {
+      payload: ctx.receiptCore,
+      signatureHex: ctx.witnessSignatureHex,
+      publicKeyHex: ctx.witnessPublicKeyHex,
+    },
+    { buyer: client.keys.buyer, merchant: client.keys.merchant },
+    entry.kind === 'forgery' ? 'buyer_forgery' : 'merchant_drift',
+  );
+  const outcome =
+    forensics.verdict === 'BUYER_FORGERY_DETECTED'
+      ? ('SELLER_FAVOR' as const)
+      : forensics.verdict === 'MERCHANT_DRIFT_CONFIRMED'
+        ? ('BUYER_FAVOR' as const)
+        : null;
+  if (outcome === null) {
+    throw new HttpError(409, `referee found ${forensics.verdict} — nothing to resolve`);
+  }
+  const steps: string[] = [`referee verdict: ${forensics.verdict} (${forensics.reason})`];
+  const notes = buildForensicNotes({
+    caseName: entry.kind === 'forgery' ? 'buyer_forgery' : 'merchant_drift',
+    orderId: entry.orderId,
+    commitment: ctx.commitment,
+    verdict: forensics.verdict,
+    refereeReason: forensics.reason,
+  });
+  // Same HATEOAS walk as the canned audit: drift concedes via accept-claim,
+  // forgery must never accept and drives to a seller-favor adjudication.
+  for (let i = 0; i < 8; i += 1) {
+    const dispute = await paypal.getDispute(entry.disputeId);
+    if (dispute.status === 'RESOLVED') {
+      break;
+    }
+    const allowed = dispute.allowedActions;
+    if (outcome === 'BUYER_FAVOR') {
+      if (allowed.includes('accept-claim')) {
+        await paypal.acceptDisputeClaim(entry.disputeId);
+        steps.push('accept-claim: seller conceded, buyer wins');
+        break;
+      }
+      if (allowed.includes('escalate')) {
+        await paypal.escalateDisputeToClaim(entry.disputeId);
+        steps.push('escalated INQUIRY → CHARGEBACK');
+        continue;
+      }
+      if (allowed.includes('require-evidence')) {
+        await paypal.requireDisputeEvidence(entry.disputeId, 'BUYER_EVIDENCE');
+        steps.push('require-evidence: BUYER_EVIDENCE');
+        continue;
+      }
+      if (allowed.includes('provide-evidence')) {
+        await paypal.provideDisputeEvidence({
+          disputeId: entry.disputeId,
+          evidenceType: 'OTHER',
+          notes,
+        });
+        steps.push('provide-evidence: buyer forensic report (OTHER)');
+        continue;
+      }
+      if (allowed.includes('adjudicate')) {
+        await paypal.adjudicateDisputeSandbox(entry.disputeId, 'BUYER_FAVOR');
+        steps.push('adjudicate: BUYER_FAVOR');
+        break;
+      }
+    } else {
+      if (allowed.includes('require-evidence')) {
+        await paypal.requireDisputeEvidence(entry.disputeId, 'SELLER_EVIDENCE');
+        steps.push('require-evidence: SELLER_EVIDENCE');
+        continue;
+      }
+      if (allowed.includes('provide-evidence')) {
+        await paypal.provideDisputeEvidence({
+          disputeId: entry.disputeId,
+          evidenceType: 'OTHER',
+          notes,
+        });
+        steps.push('provide-evidence: seller forensic report (OTHER)');
+        continue;
+      }
+      if (allowed.includes('escalate')) {
+        await paypal.escalateDisputeToClaim(entry.disputeId);
+        steps.push('escalated INQUIRY → CHARGEBACK');
+        continue;
+      }
+      if (allowed.includes('adjudicate')) {
+        await paypal.adjudicateDisputeSandbox(entry.disputeId, 'SELLER_FAVOR');
+        steps.push('adjudicate: SELLER_FAVOR');
+        break;
+      }
+      if (allowed.includes('accept-claim')) {
+        throw new HttpError(409, 'refusing accept-claim on a forged buyer claim');
+      }
+    }
+    throw new HttpError(409, `no drivable dispute action from [${allowed.join(', ')}]`);
+  }
+  const final = await paypal.getDispute(entry.disputeId);
+  if (final.status !== 'RESOLVED') {
+    throw new HttpError(409, `dispute ${entry.disputeId} did not resolve (${final.disputeState})`);
+  }
+  appendLedger({
+    kind: 'dispute-resolve',
+    summary: `${entry.disputeId} resolved ${outcome} (${forensics.verdict})`,
+    orderId: entry.orderId,
+    disputeId: entry.disputeId,
+  });
+  sendJson(res, 200, {
+    case: caseKey,
+    disputeId: entry.disputeId,
+    orderId: entry.orderId,
+    verdict: forensics.verdict,
+    anchorTrusted: forensics.anchorTrusted,
+    refereeReason: forensics.reason,
+    steps,
+    finalState: {
+      status: final.status,
+      lifeCycleStage: final.lifeCycleStage,
+      disputeState: final.disputeState,
+    },
+    boundary: 'SIGN',
+  });
 }
 
 /**
@@ -847,7 +1704,10 @@ async function handleDisputeResolve(
 async function handleVerify(body: Record<string, unknown>, res: WorkbenchResponse): Promise<void> {
   const scenario = asRequestScenario(body);
   const client = demoClient();
-  const checkout = await client.runWitnessedCheckoutFlow({ scenario });
+  const checkout = await client.runWitnessedCheckoutFlow({
+    scenario,
+    mandate: effectiveMandate(scenario),
+  });
   if (checkout.outcome !== 'CAPTURED' || checkout.orderId === undefined) {
     throw new HttpError(400, `nothing to verify: scenario ended ${checkout.outcome}`);
   }
@@ -1113,7 +1973,21 @@ async function handleCheckoutFinalize(
       }
       : undefined;
   const client = demoClient();
-  const result = await client.completeApprovedCheckout({ orderId, scenario, prior });
+  const result = await client.completeApprovedCheckout({
+    orderId,
+    scenario,
+    prior,
+    mandate: effectiveMandate(scenario),
+  });
+  recordCapture(result, scenario);
+  if (result.outcome === 'AUTO_VOIDED') {
+    appendLedger({
+      kind: 'checkout-void',
+      summary: `${scenario} finalized → auto-voided at $${(result.finalTotalUsd ?? 0).toFixed(2)}`,
+      orderId,
+      commitment: result.snapshot.commitment,
+    });
+  }
   pendingApprovals.delete(orderId);
   savePendingApprovals();
   let receiptsWarning: string | undefined;
@@ -1192,12 +2066,32 @@ export async function handleWorkbenchRequest(
       handleSystemStatus(res);
       return;
     }
+    if (method === 'GET' && pathname === '/api/ledger') {
+      handleLedger(res);
+      return;
+    }
+    if (method === 'GET' && pathname.startsWith('/vendor/')) {
+      handleVendor(pathname, res);
+      return;
+    }
     if (method === 'GET' && pathname === '/sandbox/paypal-checkout') {
       await withLiveFallback(() => handleSandboxCheckout(req, res));
       return;
     }
     if (method === 'POST' && pathname === '/api/buyer/mandate') {
       handleBuyerMandate(parseJsonBody(await readBody(req)), res);
+      return;
+    }
+    if (method === 'POST' && pathname === '/api/buyer/mandate/update') {
+      await handleBuyerMandateUpdate(parseJsonBody(await readBody(req)), res);
+      return;
+    }
+    if (method === 'POST' && pathname === '/api/witness/custom-html') {
+      await handleWitnessCustomHtml(parseJsonBody(await readBody(req)), res);
+      return;
+    }
+    if (method === 'POST' && pathname === '/api/system/credentials') {
+      await handleSystemCredentials(parseJsonBody(await readBody(req)), res);
       return;
     }
     if (method === 'POST' && pathname === '/api/witness/snapshot') {
@@ -1217,6 +2111,11 @@ export async function handleWorkbenchRequest(
     if (method === 'POST' && pathname === '/api/merchant/disputes/action') {
       const body = parseJsonBody(await readBody(req));
       await withLiveFallback(() => handleDisputeAction(body, res));
+      return;
+    }
+    if (method === 'POST' && pathname === '/api/merchant/disputes/create-from-order') {
+      const body = parseJsonBody(await readBody(req));
+      await withLiveFallback(() => handleDisputeCreateFromOrder(body, res));
       return;
     }
     if (method === 'POST' && pathname === '/api/demo/reset') {
@@ -1247,18 +2146,27 @@ export async function handleWorkbenchRequest(
       '/api/merchant/disputes',
       '/api/benchmark',
       '/api/buyer/mandate',
+      '/api/buyer/mandate/update',
       '/api/witness/snapshot',
+      '/api/witness/custom-html',
       '/api/merchant/checkout',
       '/api/merchant/disputes/resolve',
       '/api/merchant/disputes/action',
+      '/api/merchant/disputes/create-from-order',
       '/api/merchant/checkout/finalize',
       '/api/sandbox/approve-order',
       '/sandbox/paypal-checkout',
       '/api/demo/reset',
       '/api/system/status',
+      '/api/system/credentials',
+      '/api/ledger',
       '/api/verify',
     ];
-    if (knownPaths.includes(pathname) || pathname.startsWith('/store/')) {
+    if (
+      knownPaths.includes(pathname) ||
+      pathname.startsWith('/store/') ||
+      pathname.startsWith('/vendor/')
+    ) {
       sendJson(res, 405, { error: 'method not allowed' });
       return;
     }

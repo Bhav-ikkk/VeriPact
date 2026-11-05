@@ -260,6 +260,19 @@ describe('@veripact/workbench red team', () => {
       bodies.push((await post('/api/merchant/disputes/action', { disputeId: 'x', action: 'y' })).body);
       bodies.push((await get('/no-such-route')).body);
       bodies.push((await get('/api/benchmark')).body);
+      bodies.push(
+        (
+          await post('/api/buyer/mandate/update', {
+            maxAllInPriceUsd: 290,
+            requiredCondition: 'NEW',
+            minReturnWindowDays: 30,
+            maxRestockingFeePct: 0,
+          })
+        ).body,
+      );
+      bodies.push((await post('/api/witness/custom-html', { html: '<h1>t</h1>' })).body);
+      bodies.push((await post('/api/system/credentials', { replay: true })).body);
+      bodies.push((await get('/api/ledger')).body);
     } finally {
       for (const k of Object.keys(canaries)) {
         delete process.env[k];

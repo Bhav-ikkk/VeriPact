@@ -220,6 +220,27 @@ describe('@veripact/paypal-client', () => {
     expect(forgery.allowedActions).not.toContain('provide-evidence');
   });
 
+  it('files new disputes with full HATEOAS links and rejects duplicates', async () => {
+    const { client, replay } = replayClient();
+    const filed = replay.fileDispute({
+      disputeId: 'PP-D-LIVE-DRIFT-1',
+      reason: 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED',
+      amountUsd: 297,
+    });
+    expect(filed.dispute_id).toBe('PP-D-LIVE-DRIFT-1');
+    expect(filed.dispute_life_cycle_stage).toBe('INQUIRY');
+    const read = await client.getDispute('PP-D-LIVE-DRIFT-1');
+    expect(read.allowedActions).toContain('require-evidence');
+    expect(read.allowedActions).toContain('escalate');
+    expect(() =>
+      replay.fileDispute({
+        disputeId: 'PP-D-LIVE-DRIFT-1',
+        reason: 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED',
+        amountUsd: 297,
+      }),
+    ).toThrow(/already filed/);
+  });
+
   it('refuses actions the dispute does not advertise', async () => {
     const { client } = replayClient();
     await expect(

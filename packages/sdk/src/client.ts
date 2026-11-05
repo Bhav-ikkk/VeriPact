@@ -241,6 +241,8 @@ export interface CompleteCheckoutInput {
   approveInReplay?: boolean;
   /** Step-1 evidence (browser echo or server pending map). */
   prior?: PriorApprovalData;
+  /** Session mandate override: re-gate under this mandate instead of the fixture. */
+  mandate?: MandateSpec;
 }
 
 interface ResolvedCheckoutPage {
@@ -258,7 +260,10 @@ function resolvePage(input: CheckoutFlowInput): ResolvedCheckoutPage {
       scenario: s.name,
       listingUrl: s.listingUrl,
       html: s.html,
-      mandate: s.mandate,
+      // Session mandate override (workbench editor): an explicit mandate
+      // replaces the fixture mandate for THIS run only. Fixture default
+      // keeps every existing caller byte-identical.
+      mandate: input.mandate ?? s.mandate,
       callbackTotals: input.callbackTotals ?? s.callbackTotals,
     };
   }
@@ -646,7 +651,8 @@ export class VeriPactClient {
     }
     const page = getScenario(scenarioName);
     const prior = input.prior;
-    const snapshot = prior?.snapshot ?? (await this.snapshotPage(page.listingUrl, page.html, page.mandate));
+    const mandate = input.mandate ?? page.mandate;
+    const snapshot = prior?.snapshot ?? (await this.snapshotPage(page.listingUrl, page.html, mandate));
     const buyerApprovalSignatureHex =
       prior?.buyerApprovalSignatureHex ??
       signCanonicalPayload(snapshot.receiptCore, this.keys.buyer.privateKeyHex);
@@ -682,7 +688,7 @@ export class VeriPactClient {
     }
     // Re-gate from the patched order breakdown (source of truth).
     const order = await this.paypal.getOrder(input.orderId);
-    const regate = evaluatePostApprovalReGate(page.mandate, snapshot.termReceipt, {
+    const regate = evaluatePostApprovalReGate(mandate, snapshot.termReceipt, {
       itemTotalUsd: order.amountBreakdown.itemTotalUsd,
       shippingUsd: order.amountBreakdown.shippingUsd,
       taxUsd: order.amountBreakdown.taxUsd,

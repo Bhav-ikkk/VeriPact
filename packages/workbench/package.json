@@ -13,7 +13,8 @@
     "@veripact/paypal-client": "^0.1.0",
     "@veripact/sdk": "^0.1.0",
     "@veripact/term-extractor": "^0.1.0",
-    "@veripact/witness-client": "^0.1.0"
+    "@veripact/witness-client": "^0.1.0",
+    "ag-grid-community": "^31.3.4"
   },
   "license": "MIT"
 }

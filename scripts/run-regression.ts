@@ -2,10 +2,20 @@
  * `npm run regression` — run the 24-scenario suite and refresh the
  * committed report. Usage: `npm run regression [-- passes]` (default 3).
  * Zero network/API cost (local TSA + cached Channel3 + PayPal replay).
+ * Hermetically pinned to zero-key replay: a founder `.env` with live
+ * credentials must never flip this determinism suite (or corrupt the
+ * committed report with a live-mode run).
  */
+import { join } from 'node:path';
 import { runRegressionSuite, writeRegressionReport } from '@veripact/sdk';
 
 async function main(): Promise<void> {
+  delete process.env['PAYPAL_CLIENT_ID'];
+  delete process.env['PAYPAL_CLIENT_SECRET'];
+  delete process.env['BUYER_ED25519_PRIVATE_KEY'];
+  delete process.env['WITNESS_ED25519_PRIVATE_KEY'];
+  delete process.env['MERCHANT_ED25519_PRIVATE_KEY'];
+  process.env['VERIPACT_ENV_FILE'] = join(__dirname, '..', '..', '.vitest-tmp', 'absent-credentials.env');
   const passes = Number(process.argv[2] ?? 3);
   if (!Number.isInteger(passes) || passes < 1 || passes > 10) {
     console.error('usage: npm run regression [-- passes]  (1..10, default 3)');

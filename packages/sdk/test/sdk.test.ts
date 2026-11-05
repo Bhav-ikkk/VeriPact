@@ -200,6 +200,46 @@ describe('@veripact/sdk', () => {
     expect(replay.getAuthorization(result.authorizationId ?? '').status).toBe('VOIDED');
   });
 
+  it('honors a session mandate override on scenario checkouts', async () => {
+    const replay = createSandboxReplayEngine();
+    const client = new VeriPactClient({ paypal: { replay } });
+    const tight = {
+      ...buildDemoMandate(),
+      constraints: {
+        requiredCondition: 'NEW',
+        maxAllInPriceUsd: 290,
+        minReturnWindowDays: 30,
+        maxRestockingFeePct: 0,
+      },
+    };
+    const result = await client.runWitnessedCheckoutFlow({ scenario: 'normal', mandate: tight });
+    expect(result.outcome).toBe('AUTO_VOIDED');
+    expect(result.finalTotalUsd).toBe(297);
+  });
+
+  it('re-gates step-2 finalize under the override mandate', async () => {
+    const replay = createSandboxReplayEngine();
+    const client = new VeriPactClient({ paypal: { replay } });
+    const step1 = await client.runWitnessedCheckoutFlow({ scenario: 'normal', twoStepApproval: true });
+    expect(step1.outcome).toBe('AWAITING_BUYER_APPROVAL');
+    const tight = {
+      ...buildDemoMandate(),
+      constraints: {
+        requiredCondition: 'NEW',
+        maxAllInPriceUsd: 290,
+        minReturnWindowDays: 30,
+        maxRestockingFeePct: 0,
+      },
+    };
+    const done = await client.completeApprovedCheckout({
+      orderId: step1.orderId ?? '',
+      scenario: 'normal',
+      mandate: tight,
+    });
+    expect(done.outcome).toBe('AUTO_VOIDED');
+    expect(done.finalTotalUsd).toBe(297);
+  });
+
   it('blocks the adversarial scenario before any PayPal call', async () => {
     const replay = createSandboxReplayEngine();
     const client = new VeriPactClient({ paypal: { replay } });
