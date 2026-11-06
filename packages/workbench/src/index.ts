@@ -30,6 +30,7 @@ export {
 export { renderIndexPage } from './ui-template';
 export { renderStorefront } from './storefront-template';
 export { renderApprovalPage, type ApprovalPageData } from './approval-template';
+export { buildOpenApiSpec } from './openapi-route';
 
 const entrypoint = process.argv[1] ?? '';
 if (entrypoint.endsWith('index.js')) {

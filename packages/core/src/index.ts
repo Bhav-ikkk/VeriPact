@@ -38,6 +38,27 @@ export type {
   Ed25519KeyPair,
   SignedReceipt,
 } from './crypto';
+export {
+  computePartitionAvailableUsd,
+  evaluatePartitionSpendCheck,
+  partitionSigningPayload,
+  signPartitionSpec,
+  verifyOrderCommitmentReproducible,
+  verifyPartitionSpecSignature,
+} from './wallet';
+export type {
+  ConnectorScope,
+  PairingSession,
+  PairingStatus,
+  PartitionSpec,
+  PartitionSpendCheckInput,
+  PartitionSpendCheckVerdict,
+  PaymentProtectionClass,
+  SyncPaymentRecord,
+  UnsignedPartitionSpec,
+  WalletOrderRecord,
+  WalletTransportMode,
+} from './wallet';
 
 /** Evidence ladder rung: buyer-recorded, independent-witness, merchant-signed. */
 export type EvidenceRung = 'SELF' | 'WIT' | 'SIGN';

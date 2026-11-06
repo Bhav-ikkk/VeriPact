@@ -50,6 +50,7 @@ import {
   type ScenarioName,
   type StorefrontScenario,
 } from './scenarios';
+import { VeriPactWallet } from './wallet';
 
 export { formatCommitmentPrefix, PayPalClient, SufficiencyGate, WitnessClient };
 export type { PayPalClientOptions, WitnessClientDeps };
@@ -466,6 +467,23 @@ export class VeriPactClient {
   /** Format a `VP1:` commitment (throws on malformed digests). */
   formatCommitment(sha256Hex: string): string {
     return formatCommitmentPrefix(sha256Hex);
+  }
+
+  private cachedWallet: VeriPactWallet | null = null;
+
+  /**
+   * Partitioned agent wallet bound to this client's PayPal transport +
+   * keys (shared replay engine, shared keyset). The default instance is
+   * memoized; pass a state path for an isolated store (tests).
+   */
+  wallet(stateFilePath?: string): VeriPactWallet {
+    if (stateFilePath !== undefined) {
+      return new VeriPactWallet({ paypal: this.paypal, keys: this.keys, stateFilePath });
+    }
+    if (this.cachedWallet === null) {
+      this.cachedWallet = new VeriPactWallet({ paypal: this.paypal, keys: this.keys });
+    }
+    return this.cachedWallet;
   }
 
   /** Witness-only snapshot for a scenario: zero PayPal calls by construction. */

@@ -8,6 +8,9 @@
  * signatures, and PayPal ids are printed.
  */
 import {
+  DEFAULT_PARTITION_ALLOCATION_USD,
+  DEFAULT_PARTITION_ASK_HUMAN_ABOVE_USD,
+  DEFAULT_PARTITION_MAX_PER_ORDER_USD,
   DISPUTE_CASE_NAMES,
   SCENARIO_NAMES,
   SDK_VERSION,
@@ -42,6 +45,12 @@ Usage:
                                        Audit a contested dispute to RESOLVED
   veripact verify --scenario <name> [--json]
                                        Verify a checkout transaction bundle
+  veripact wallet-pair [--email <addr>] [--approve --session-id <id>] [--json]
+                                       Start (or approve) a QR pairing ceremony
+  veripact wallet-sync [--json]        Sync legacy vs protected payments
+  veripact partition-create [--label <t>] [--total <usd>] [--max-order <usd>] [--ask-above <usd>] [--json]
+                                       Create a buyer-signed agentic partition
+  veripact partition-list [--json]     List partitions with live availability
 
 Scenarios: ${SCENARIO_NAMES.join(', ')}
 Dispute cases: ${DISPUTE_CASE_NAMES.join(', ')}
@@ -66,16 +75,65 @@ function asJson(command: string, payload: unknown): string {
 interface ParsedArgs {
   scenario?: string;
   caseName?: string;
+  label?: string;
+  total?: string;
+  maxOrder?: string;
+  askAbove?: string;
+  email?: string;
+  approve: boolean;
+  sessionId?: string;
   json: boolean;
   error?: string;
 }
 
+function valuedFlag(
+  command: string,
+  rest: string[],
+  i: number,
+  flag: string,
+): { value?: string; next: number; error?: string } {
+  const value = rest[i + 1];
+  if (value === undefined) {
+    return { next: i, error: `\`veripact ${command}\` requires a value for ${flag}` };
+  }
+  return { value, next: i + 1 };
+}
+
 function parseFlags(command: string, rest: string[]): ParsedArgs {
-  const parsed: ParsedArgs = { json: false };
+  const parsed: ParsedArgs = { approve: false, json: false };
   for (let i = 0; i < rest.length; i += 1) {
     const flag = rest[i];
     if (flag === '--json') {
       parsed.json = true;
+    } else if (flag === '--approve') {
+      parsed.approve = true;
+    } else if (
+      flag === '--label' ||
+      flag === '--total' ||
+      flag === '--max-order' ||
+      flag === '--ask-above' ||
+      flag === '--email' ||
+      flag === '--session-id'
+    ) {
+      const got = valuedFlag(command, rest, i, flag);
+      if (got.error !== undefined) {
+        parsed.error = got.error;
+        return parsed;
+      }
+      i = got.next;
+      if (flag === '--label') {
+        parsed.label = got.value;
+      } else if (flag === '--total') {
+        parsed.total = got.value;
+      } else if (flag === '--max-order') {
+        parsed.maxOrder = got.value;
+      } else if (flag === '--ask-above') {
+        parsed.askAbove = got.value;
+      } else if (flag === '--email') {
+        parsed.email = got.value;
+      } else {
+        parsed.sessionId = got.value;
+      }
     } else if (flag === '--scenario') {
       const value = rest[i + 1];
       if (value === undefined) {
@@ -250,6 +308,121 @@ async function runVerify(args: ParsedArgs): Promise<CliResult> {
   return ok(formatVerifyHuman(args.scenario, bundle, checkout.transportMode, checkout.demoKeys));
 }
 
+function parseUsdFlag(raw: string | undefined, fallback: number, flag: string): number {
+  if (raw === undefined) {
+    return fallback;
+  }
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`\`${flag}\` must be a USD amount > 0 (got ${raw})`);
+  }
+  return value;
+}
+
+async function runWalletPair(args: ParsedArgs): Promise<CliResult> {
+  const client = new VeriPactClient();
+  if (args.approve) {
+    if (args.sessionId === undefined) {
+      return fail('`veripact wallet-pair --approve` requires --session-id <id>');
+    }
+    if (args.email === undefined) {
+      return fail('`veripact wallet-pair --approve` requires --email <addr>');
+    }
+    const approved = await client
+      .wallet()
+      .approvePairingCeremony({ sessionId: args.sessionId, payerEmail: args.email });
+    if (args.json) {
+      return ok(asJson('wallet-pair', approved));
+    }
+    return ok(
+      [
+        `veripact wallet-pair — ${approved.session.sessionId}: APPROVED`,
+        `vault: ${approved.vaultId} (${approved.session.payerEmail ?? '?'})`,
+        `partition: ${approved.partition.partitionId} ($${approved.partition.availableUsd.toFixed(2)} available)`,
+        labelsLine(approved.demoKeys, approved.transportMode),
+      ].join('\n') + '\n',
+    );
+  }
+  const session = client.wallet().startPairingCeremony();
+  if (args.json) {
+    return ok(asJson('wallet-pair', session));
+  }
+  return ok(
+    [
+      `veripact wallet-pair — ${session.sessionId}: PENDING_SCAN`,
+      `scan: ${session.qrPairUrl} (code ${session.pairingCode}, expires ${session.expiresAtUtc})`,
+      'approve with: veripact wallet-pair --approve --session-id ' +
+        `${session.sessionId} --email <addr>`,
+      labelsLine(client.keys.demoKeys, session.transportMode),
+    ].join('\n') + '\n',
+  );
+}
+
+async function runWalletSync(args: ParsedArgs): Promise<CliResult> {
+  const client = new VeriPactClient();
+  const synced = client.wallet().syncWalletTransactions();
+  if (args.json) {
+    return ok(asJson('wallet-sync', synced));
+  }
+  const lines = [
+    `veripact wallet-sync — ${synced.protectedCount} protected, ${synced.legacyCount} legacy`,
+    ...synced.records.map(
+      (r) =>
+        `  - [${r.protectionClass}] ${r.orderId} $${r.amountUsd.toFixed(2)} ${r.status} (${r.transportMode})`,
+    ),
+    labelsLine(client.keys.demoKeys, client.paypal.transportMode),
+  ];
+  return ok(`${lines.join('\n')}\n`);
+}
+
+async function runPartitionCreate(args: ParsedArgs): Promise<CliResult> {
+  let total: number;
+  let maxOrder: number;
+  let askAbove: number;
+  try {
+    total = parseUsdFlag(args.total, DEFAULT_PARTITION_ALLOCATION_USD, '--total');
+    maxOrder = parseUsdFlag(args.maxOrder, DEFAULT_PARTITION_MAX_PER_ORDER_USD, '--max-order');
+    askAbove = parseUsdFlag(args.askAbove, DEFAULT_PARTITION_ASK_HUMAN_ABOVE_USD, '--ask-above');
+  } catch (e) {
+    return fail(e instanceof Error ? e.message : String(e));
+  }
+  const client = new VeriPactClient();
+  const spec = client.wallet().createOrUpdatePartition({
+    label: args.label ?? 'Agentic Partition',
+    totalAllocatedUsd: total,
+    maxPerOrderUsd: maxOrder,
+    askHumanAboveUsd: askAbove,
+  });
+  if (args.json) {
+    return ok(asJson('partition-create', spec));
+  }
+  return ok(
+    [
+      `veripact partition-create — ${spec.partitionId} (${spec.status})`,
+      `allocation: $${spec.totalAllocatedUsd.toFixed(2)}, per-order cap $${spec.maxPerOrderUsd.toFixed(2)}, ask-human above $${spec.askHumanAboveUsd.toFixed(2)}`,
+      `available: $${spec.availableUsd.toFixed(2)} (buyer-signed ${spec.buyerPublicKeyHex.slice(0, 16)}…)`,
+      labelsLine(client.keys.demoKeys, client.paypal.transportMode),
+    ].join('\n') + '\n',
+  );
+}
+
+async function runPartitionList(args: ParsedArgs): Promise<CliResult> {
+  const client = new VeriPactClient();
+  const partitions = client.wallet().listPartitions();
+  if (args.json) {
+    return ok(asJson('partition-list', { partitions }));
+  }
+  const lines = [
+    `veripact partition-list — ${partitions.length} partition(s)`,
+    ...partitions.map(
+      (p) =>
+        `  - ${p.partitionId} "${p.label}": $${p.availableUsd.toFixed(2)} available of $${p.totalAllocatedUsd.toFixed(2)} (${p.status})`,
+    ),
+    labelsLine(client.keys.demoKeys, client.paypal.transportMode),
+  ];
+  return ok(`${lines.join('\n')}\n`);
+}
+
 /**
  * Route argv (without node/script prefix) to a result. Sync for help/version
  * and parse errors; async for flows — `await` the return value uniformly.
@@ -266,7 +439,11 @@ export function run(argv: string[]): CliResult | Promise<CliResult> {
     command === 'witness' ||
     command === 'checkout' ||
     command === 'audit-dispute' ||
-    command === 'verify'
+    command === 'verify' ||
+    command === 'wallet-pair' ||
+    command === 'wallet-sync' ||
+    command === 'partition-create' ||
+    command === 'partition-list'
   ) {
     const args = parseFlags(command, rest);
     if (args.error !== undefined) {
@@ -279,7 +456,15 @@ export function run(argv: string[]): CliResult | Promise<CliResult> {
           ? runCheckout(args)
           : command === 'audit-dispute'
             ? runAuditDispute(args)
-            : runVerify(args);
+            : command === 'verify'
+              ? runVerify(args)
+              : command === 'wallet-pair'
+                ? runWalletPair(args)
+                : command === 'wallet-sync'
+                  ? runWalletSync(args)
+                  : command === 'partition-create'
+                    ? runPartitionCreate(args)
+                    : runPartitionList(args);
     return task.then(
       (result) => result,
       (e: unknown) => fail(e instanceof Error ? e.message : String(e)),

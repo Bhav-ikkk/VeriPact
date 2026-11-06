@@ -12,6 +12,7 @@
 import { AuthorizationStateConflictError } from './authorizations';
 import { DisputeActionNotPermittedByHateoasError, type DisputeLink } from './disputes';
 import type { AuthorizeOrderBody, PatchOperation, PaypalMoney } from './orders';
+import { RefundStateConflictError } from './refunds';
 
 /* ------------------------------------------------------------------ */
 /* Orders v2 + Payments v2 records                                      */
@@ -91,6 +92,55 @@ export interface ReplayCaptureRecord {
   final_capture: boolean;
   note_to_payer?: string;
   create_time: string;
+  /** Set once a refund lands (one-way capture→refund truth). */
+  refunded?: boolean;
+  refund_id?: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* Vault v3 + refunds + reporting records (v5 wallet surface)            */
+/* ------------------------------------------------------------------ */
+
+export interface ReplayVaultSetupRecord {
+  id: string;
+  payer_email: string;
+  status: 'CREATED' | 'APPROVED';
+  create_time: string;
+  links: DisputeLink[];
+}
+
+export interface ReplayVaultTokenRecord {
+  id: string;
+  setup_token_id: string;
+  payer_email: string;
+  status: 'VAULTED';
+  create_time: string;
+}
+
+export interface ReplayRefundRecord {
+  id: string;
+  capture_id: string;
+  amount: PaypalMoney;
+  invoice_id?: string;
+  note_to_payer?: string;
+  status: 'COMPLETED';
+  create_time: string;
+}
+
+export interface ReplayRefundInput {
+  amount?: PaypalMoney;
+  invoice_id?: string;
+  note_to_payer?: string;
+}
+
+/** Live-shaped transaction-search row (parsed by `reporting.ts` verbatim). */
+export interface ReplayReportingDetail {
+  transaction_info: {
+    transaction_id: string;
+    transaction_status: 'D' | 'P' | 'S' | 'V';
+    transaction_amount: PaypalMoney;
+    transaction_initiation_date: string;
+  };
 }
 
 export interface ReplayCaptureInput {
@@ -228,10 +278,15 @@ export class SandboxReplayEngine {
   private orderSeq = 0;
   private authSeq = 0;
   private captureSeq = 0;
+  private vaultSeq = 0;
+  private refundSeq = 0;
   private readonly orders = new Map<string, ReplayOrderRecord>();
   private readonly authorizations = new Map<string, ReplayAuthorizationRecord>();
   private readonly captures = new Map<string, ReplayCaptureRecord>();
   private readonly disputes = new Map<string, ReplayDisputeRecord>();
+  private readonly vaultSetups = new Map<string, ReplayVaultSetupRecord>();
+  private readonly vaultTokens = new Map<string, ReplayVaultTokenRecord>();
+  private readonly refunds = new Map<string, ReplayRefundRecord>();
   /** Idempotency store: PayPal-Request-Id → stored response clone. */
   private readonly idempotent = new Map<string, unknown>();
 
@@ -244,10 +299,15 @@ export class SandboxReplayEngine {
     this.orderSeq = 0;
     this.authSeq = 0;
     this.captureSeq = 0;
+    this.vaultSeq = 0;
+    this.refundSeq = 0;
     this.orders.clear();
     this.authorizations.clear();
     this.captures.clear();
     this.disputes.clear();
+    this.vaultSetups.clear();
+    this.vaultTokens.clear();
+    this.refunds.clear();
     this.idempotent.clear();
     this.disputes.set(
       'PP-D-CASE-B-FORGERY',
@@ -608,6 +668,192 @@ export class SandboxReplayEngine {
 
   verifyWebhookSignature(present: boolean): { verification_status: 'SUCCESS' | 'FAILURE' } {
     return { verification_status: present ? 'SUCCESS' : 'FAILURE' };
+  }
+
+  /* ---------------- Vault v3 ---------------- */
+
+  setupVaultToken(
+    input: { payer_email: string },
+    requestId?: string,
+  ): { setupToken: ReplayVaultSetupRecord; replayed: boolean } {
+    const { value, replayed } = this.dedupe(requestId, (): ReplayVaultSetupRecord => {
+      this.vaultSeq += 1;
+      const id = `SETUP-VP-${pad(this.vaultSeq)}`;
+      const setupToken: ReplayVaultSetupRecord = {
+        id,
+        payer_email: input.payer_email,
+        status: 'CREATED',
+        create_time: nowIso(),
+        links: [
+          {
+            rel: 'self',
+            href: `https://api-m.sandbox.paypal.com/v3/vault/setup-tokens/${id}`,
+            method: 'GET',
+          },
+          {
+            rel: 'approve',
+            href: `/sandbox/vault-approve?token=${id}`,
+            method: 'GET',
+          },
+        ],
+      };
+      this.vaultSetups.set(id, setupToken);
+      return structuredClone(setupToken);
+    });
+    return { setupToken: value, replayed };
+  }
+
+  getVaultSetup(setupTokenId: string): ReplayVaultSetupRecord {
+    const setup = this.vaultSetups.get(setupTokenId);
+    if (setup === undefined) {
+      throw new Error(`replay: vault setup token not found: ${setupTokenId}`);
+    }
+    return structuredClone(setup);
+  }
+
+  approveVaultToken(
+    setupTokenId: string,
+    payerEmail: string,
+    requestId?: string,
+  ): { token: ReplayVaultTokenRecord; replayed: boolean } {
+    const { value, replayed } = this.dedupe(requestId, (): ReplayVaultTokenRecord => {
+      const setup = this.vaultSetups.get(setupTokenId);
+      if (setup === undefined) {
+        throw new Error(`replay: vault setup token not found: ${setupTokenId}`);
+      }
+      setup.status = 'APPROVED';
+      const token: ReplayVaultTokenRecord = {
+        id: `PM-VP-VAULT-${pad(this.vaultSeq)}`,
+        setup_token_id: setupTokenId,
+        payer_email: payerEmail,
+        status: 'VAULTED',
+        create_time: nowIso(),
+      };
+      this.vaultTokens.set(token.id, token);
+      return structuredClone(token);
+    });
+    return { token: value, replayed };
+  }
+
+  /* ---------------- Refunds ---------------- */
+
+  refundCapture(
+    captureId: string,
+    input: ReplayRefundInput,
+    requestId?: string,
+  ): { refund: ReplayRefundRecord; replayed: boolean } {
+    const { value, replayed } = this.dedupe(requestId, (): ReplayRefundRecord => {
+      const capture = this.captures.get(captureId);
+      if (capture === undefined) {
+        throw new Error(`replay: capture not found: ${captureId}`);
+      }
+      if (capture.refunded === true) {
+        throw new RefundStateConflictError(captureId, 'capture is already refunded');
+      }
+      const amount = input.amount ?? { ...capture.amount };
+      if (Number(amount.value) > Number(capture.amount.value) + 0.005) {
+        throw new Error('replay: refund amount exceeds captured amount');
+      }
+      this.refundSeq += 1;
+      const refund: ReplayRefundRecord = {
+        id: `RFD-VP-${pad(this.refundSeq)}`,
+        capture_id: captureId,
+        amount,
+        invoice_id: input.invoice_id,
+        note_to_payer: input.note_to_payer,
+        status: 'COMPLETED',
+        create_time: nowIso(),
+      };
+      capture.refunded = true;
+      capture.refund_id = refund.id;
+      this.refunds.set(refund.id, refund);
+      return structuredClone(refund);
+    });
+    return { refund: value, replayed };
+  }
+
+  getRefund(refundId: string): ReplayRefundRecord {
+    const refund = this.refunds.get(refundId);
+    if (refund === undefined) {
+      throw new Error(`replay: refund not found: ${refundId}`);
+    }
+    return structuredClone(refund);
+  }
+
+  /* ---------------- Reporting + sync ---------------- */
+
+  /** All orders (clones) for payment-sync reconciliation rows. */
+  listOrders(): ReplayOrderRecord[] {
+    return [...this.orders.values()].map((o) => structuredClone(o));
+  }
+
+  /**
+   * Session-order view shaped like live Transaction Search rows, filtered
+   * by initiation window and capped at pageSize. The sync layer parses
+   * these with the same code path as live rows.
+   */
+  searchReportingTransactions(input: {
+    startIso: string;
+    endIso: string;
+    pageSize: number;
+  }): { transaction_details: ReplayReportingDetail[] } {
+    const startMs = Date.parse(input.startIso);
+    const endMs = Date.parse(input.endIso);
+    const inWindow = (iso: string): boolean => {
+      const ms = Date.parse(iso);
+      return Number.isFinite(ms) && ms >= startMs && ms <= endMs;
+    };
+    const details: ReplayReportingDetail[] = [];
+    for (const order of this.orders.values()) {
+      if (!inWindow(order.create_time)) {
+        continue;
+      }
+      const unit = order.purchase_units[0];
+      details.push({
+        transaction_info: {
+          transaction_id: order.id,
+          transaction_status:
+            order.status === 'COMPLETED' ? 'S' : order.status === 'VOIDED' ? 'V' : 'P',
+          transaction_amount: {
+            currency_code: unit?.amount.currency_code ?? 'USD',
+            value: unit?.amount.value ?? '0.00',
+          },
+          transaction_initiation_date: order.create_time,
+        },
+      });
+    }
+    for (const capture of this.captures.values()) {
+      if (!inWindow(capture.create_time)) {
+        continue;
+      }
+      details.push({
+        transaction_info: {
+          transaction_id: capture.id,
+          transaction_status: 'S',
+          transaction_amount: { ...capture.amount },
+          transaction_initiation_date: capture.create_time,
+        },
+      });
+    }
+    for (const auth of this.authorizations.values()) {
+      if (auth.status !== 'VOIDED' || !inWindow(auth.update_time)) {
+        continue;
+      }
+      details.push({
+        transaction_info: {
+          transaction_id: auth.id,
+          transaction_status: 'V',
+          transaction_amount: { ...auth.amount },
+          transaction_initiation_date: auth.update_time,
+        },
+      });
+    }
+    details.sort((a, b) =>
+      a.transaction_info.transaction_initiation_date < b.transaction_info.transaction_initiation_date
+        ? -1
+        : 1,
+    );
+    return { transaction_details: details.slice(0, input.pageSize) };
   }
 
   /** Engine stats for tests (e.g. asserting zero PayPal calls pre-checkout). */

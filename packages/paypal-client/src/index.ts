@@ -79,6 +79,41 @@ import {
   type PaypalMoney,
   type ShippingTaxBreakdown,
 } from './orders';
+import {
+  approveVaultPaymentToken,
+  createVaultSetupToken,
+  type VaultApproveInput,
+  type VaultSetupInput,
+  type VaultSetupRecord,
+  type VaultTokenRecord,
+} from './vault';
+import {
+  refundCapturedPayment,
+  RefundStateConflictError,
+  type RefundCaptureInput,
+  type RefundResult,
+} from './refunds';
+import {
+  buildReportingFallback,
+  mapReportingStatusCode,
+  REPORTING_INDEXING_DELAY_DISCLOSURE,
+  ReportingRangeExceededError,
+  searchTransactions,
+  validateSearchWindow,
+  type ReportingRecord,
+  type ReportingScopeStatus,
+  type ReportingStatusCode,
+  type TransactionSearchInput,
+  type TransactionSearchResult,
+  type ValidatedSearchWindow,
+} from './reporting';
+import {
+  legacyUnwitnessedFixtures,
+  syncAccountPayments,
+  type LiveOrderReceipt,
+  type SyncAccountPaymentsInput,
+  type SyncAccountPaymentsResult,
+} from './payment-sync';
 import { createSandboxReplayEngine, type SandboxReplayEngine } from './sandbox-replay';
 import {
   verifyPayPalWebhookSignature,
@@ -88,21 +123,33 @@ import {
 
 export { NotImplementedError };
 export {
+  approveVaultPaymentToken,
   AuthorizationStateConflictError,
   buildAmountPatch,
   buildAuthorizeOrderBody,
   buildCaptureInvoiceId,
+  buildReportingFallback,
   captureAuthorizationExact,
   createSandboxReplayEngine,
+  createVaultSetupToken,
   DEFAULT_UNIT_AMOUNT_PATH,
   fetchAccessToken,
+  legacyUnwitnessedFixtures,
+  mapReportingStatusCode,
   nodeHttpTransport,
   parseJsonResponse,
   PayPalHttpError,
+  refundCapturedPayment,
+  RefundStateConflictError,
+  REPORTING_INDEXING_DELAY_DISCLOSURE,
+  ReportingRangeExceededError,
   resolveProxyForUrl,
+  searchTransactions,
+  syncAccountPayments,
   TokenCache,
   toMoneyValue,
   toPaypalMoney,
+  validateSearchWindow,
   voidAuthorization,
 };
 export {
@@ -151,8 +198,30 @@ export type {
   ReplayCaptureRecord,
   ReplayDisputeRecord,
   ReplayOrderRecord,
+  ReplayRefundInput,
+  ReplayRefundRecord,
+  ReplayReportingDetail,
+  ReplayVaultSetupRecord,
+  ReplayVaultTokenRecord,
   SandboxReplayEngine,
 } from './sandbox-replay';
+export type {
+  LiveOrderReceipt,
+  RefundCaptureInput,
+  RefundResult,
+  ReportingRecord,
+  ReportingScopeStatus,
+  ReportingStatusCode,
+  SyncAccountPaymentsInput,
+  SyncAccountPaymentsResult,
+  TransactionSearchInput,
+  TransactionSearchResult,
+  ValidatedSearchWindow,
+  VaultApproveInput,
+  VaultSetupInput,
+  VaultSetupRecord,
+  VaultTokenRecord,
+};
 
 /** PayPal Sandbox REST base URL — the only host the demo may call. */
 export const PAYPAL_SANDBOX_BASE_URL = 'https://api-m.sandbox.paypal.com';
@@ -207,6 +276,8 @@ export class PayPalClient implements PayPalApi {
   private readonly timeoutMs: number;
   /** One-way in-session lock: AUTHORIZED → CAPTURED | VOIDED (terminal). */
   private readonly authStates = new Map<string, SessionAuthState>();
+  /** One-way in-session refund lock: a capture refunds at most once. */
+  private readonly refundedCaptures = new Set<string>();
 
   constructor(options: PayPalClientOptions = {}) {
     const baseUrl = options.baseUrl ?? PAYPAL_SANDBOX_BASE_URL;
@@ -293,6 +364,11 @@ export class PayPalClient implements PayPalApi {
       if (state === 'CAPTURED' || state === 'VOIDED') {
         throw new AuthorizationStateConflictError(voidId, state, 'VOIDED');
       }
+      return;
+    }
+    const refundId = matchPath(path, /^\/v2\/payments\/captures\/([^/]+)\/refund$/);
+    if (refundId !== undefined && this.refundedCaptures.has(refundId)) {
+      throw new RefundStateConflictError(refundId, 'capture already refunded in this session');
     }
   }
 
@@ -308,6 +384,11 @@ export class PayPalClient implements PayPalApi {
     const voidId = matchPath(path, /^\/v2\/payments\/authorizations\/([^/]+)\/void$/);
     if (voidId !== undefined) {
       this.authStates.set(voidId, 'VOIDED');
+      return;
+    }
+    const refundId = matchPath(path, /^\/v2\/payments\/captures\/([^/]+)\/refund$/);
+    if (refundId !== undefined) {
+      this.refundedCaptures.add(refundId);
     }
     // Successful authorizes are recorded by `authorizeOrder()` below, which
     // sees the parsed authorization id from the response body.
@@ -435,6 +516,68 @@ export class PayPalClient implements PayPalApi {
     if (method === 'POST' && path === '/v1/notifications/verify-webhook-signature') {
       return { status: 200, data: this.replay.verifyWebhookSignature(true) as T };
     }
+    // Vault v3 (v5 wallet pairing)
+    if (method === 'POST' && path === '/v3/vault/setup-tokens') {
+      const b = (body ?? {}) as {
+        payment_source?: { paypal?: { email_address?: string } };
+      };
+      const { setupToken } = this.replay.setupVaultToken(
+        { payer_email: b.payment_source?.paypal?.email_address ?? '' },
+        requestId,
+      );
+      return {
+        status: 201,
+        data: { id: setupToken.id, status: setupToken.status, links: setupToken.links } as T,
+      };
+    }
+    if (method === 'POST' && path === '/v3/vault/payment-tokens') {
+      const b = (body ?? {}) as { payment_source?: { token?: { id?: string } } };
+      const setupTokenId = b.payment_source?.token?.id ?? '';
+      const setup = this.replay.getVaultSetup(setupTokenId);
+      const { token } = this.replay.approveVaultToken(setupTokenId, setup.payer_email, requestId);
+      return {
+        status: 201,
+        data: { id: token.id, customer: { id: setup.payer_email } } as T,
+      };
+    }
+    // Refunds (v5 partition Undo)
+    const refundCaptureId = matchPath(path, /^\/v2\/payments\/captures\/([^/]+)\/refund$/);
+    if (refundCaptureId !== undefined && method === 'POST') {
+      const b = (body ?? {}) as {
+        amount?: PaypalMoney;
+        invoice_id?: string;
+        note_to_payer?: string;
+      };
+      const { refund } = this.replay.refundCapture(
+        refundCaptureId,
+        { amount: b.amount, invoice_id: b.invoice_id, note_to_payer: b.note_to_payer },
+        requestId,
+      );
+      return {
+        status: 201,
+        data: {
+          id: refund.id,
+          amount: refund.amount,
+          invoice_id: refund.invoice_id,
+          note_to_payer: refund.note_to_payer,
+          status: refund.status,
+          create_time: refund.create_time,
+        } as T,
+      };
+    }
+    // Reporting (v5 payment sync; query string carries the window)
+    if (method === 'GET' && path.startsWith('/v1/reporting/transactions')) {
+      const query = path.includes('?') ? path.slice(path.indexOf('?') + 1) : '';
+      const params = new URLSearchParams(query);
+      return {
+        status: 200,
+        data: this.replay.searchReportingTransactions({
+          startIso: params.get('start_date') ?? new Date(0).toISOString(),
+          endIso: params.get('end_date') ?? new Date().toISOString(),
+          pageSize: Number(params.get('page_size') ?? '100'),
+        }) as T,
+      };
+    }
     throw new Error(`paypal replay: unsupported call ${method} ${path}`);
   }
 
@@ -508,6 +651,7 @@ export class PayPalClient implements PayPalApi {
     }
     this.replay.reset();
     this.authStates.clear();
+    this.refundedCaptures.clear();
   }
 
   /* ---------------- Orders v2 ---------------- */
@@ -580,5 +724,41 @@ export class PayPalClient implements PayPalApi {
 
   verifyWebhookSignature(input: WebhookVerifyInput): Promise<WebhookVerifyResult> {
     return verifyPayPalWebhookSignature(this, input);
+  }
+
+  /* ---------------- Vault v3 (v5 wallet pairing) ---------------- */
+
+  createVaultSetupToken(input: VaultSetupInput): Promise<VaultSetupRecord> {
+    return createVaultSetupToken(this, input);
+  }
+
+  approveVaultPaymentToken(input: VaultApproveInput): Promise<VaultTokenRecord> {
+    return approveVaultPaymentToken(this, input);
+  }
+
+  /* ---------------- Refunds (v5 partition Undo) ---------------- */
+
+  refundCapturedPayment(input: RefundCaptureInput): Promise<RefundResult> {
+    return refundCapturedPayment(this, input);
+  }
+
+  /* ---------------- Reporting (v5 payment sync) ---------------- */
+
+  /**
+   * Transaction Search with honest live fallback: validation throws
+   * before any transport call; a live 403 (missing reporting-search-read
+   * scope) or transport failure returns replay + session-order records
+   * labeled `FALLBACK_TO_REPLAY_AND_SESSION_ORDERS`, never live data.
+   */
+  async searchTransactions(input: TransactionSearchInput): Promise<TransactionSearchResult> {
+    const window = validateSearchWindow(input);
+    if (this.transportMode !== 'LIVE_PAYPAL_SANDBOX') {
+      return searchTransactions(this, input);
+    }
+    try {
+      return await searchTransactions(this, input);
+    } catch {
+      return buildReportingFallback(this.replay, window);
+    }
   }
 }

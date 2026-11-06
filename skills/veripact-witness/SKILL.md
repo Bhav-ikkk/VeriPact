@@ -29,6 +29,10 @@ veripact witness --scenario <normal|surcharge_void|adversarial_hidden_dom> [--js
 veripact checkout --scenario <normal|surcharge_void|adversarial_hidden_dom> [--json]
 veripact audit-dispute --case <buyer_forgery|merchant_drift> [--json]
 veripact verify --scenario <normal> [--json]
+veripact wallet-pair [--email <addr>] [--approve --session-id <id>] [--json]
+veripact wallet-sync [--json]
+veripact partition-create [--label <t>] [--total <usd>] [--max-order <usd>] [--ask-above <usd>] [--json]
+veripact partition-list [--json]
 ```
 
 - `witness` snapshots a scenario storefront (hidden-DOM scan, verified
@@ -40,6 +44,12 @@ veripact verify --scenario <normal> [--json]
   commitment and drives the dispute to `RESOLVED` via HATEOAS-gated actions.
 - `verify` re-verifies a captured bundle: commitment recompute, `custom_id`
   exact match, buyer/witness/merchant signatures, TSA anchor (±5 min skew).
+- `wallet-pair` starts (or `--approve`s) a QR pairing ceremony; approval
+  vaults the payer and mints the $350 agentic partition.
+- `wallet-sync` lists payments labeled `VERIPACT_PROTECTED` vs
+  `LEGACY_UNWITNESSED` with counts.
+- `partition-create` / `partition-list` manage buyer-signed agentic
+  partitions with live availability.
 
 Keys come from environment variables only (`BUYER_*`, `WITNESS_*`,
 `MERCHANT_*`, `PAYPAL_*` — see `.env.example`). Never pass key material
@@ -57,6 +67,9 @@ Server: `@veripact/mcp-server`. Methods: `initialize`, `tools/list`,
 | `veripact_execute_guarded_checkout` | `{ scenario }` | Run a guarded witnessed checkout |
 | `veripact_verify_order_receipt` | `{ scenario }` or `{ bundle }` | Verify a bundle (demo or explicit `TransactionBundleInput`) |
 | `veripact_adjudicate_contested_dispute` | `{ case }` | Audit a contested dispute to `RESOLVED` |
+| `veripact_pair_wallet` | `{ action: 'start' }` or `{ action: 'approve', sessionId, payerEmail }` | Pair a wallet over QR (approval vaults + mints $350 partition) |
+| `veripact_sync_payments` | `{}` | Sync protected vs legacy payments |
+| `veripact_partition_spend` | `{ scenario, amountUsd?, agentToken? }` | Partitioned agent payment (capture / wall-void / ask-human) |
 
 `scenario` ∈ `normal | surcharge_void | adversarial_hidden_dom`;
 `case` ∈ `buyer_forgery | merchant_drift`. Results arrive as

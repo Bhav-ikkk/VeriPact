@@ -55,6 +55,7 @@ import {
   DISPUTE_CASE_NAMES,
   getScenario,
   loadScenarios,
+  resetWalletState,
   resolveKeysLenient,
   runRegressionSuite,
   SCENARIO_NAMES,
@@ -65,6 +66,7 @@ import {
   type ScenarioName,
 } from '@veripact/sdk';
 import { renderApprovalPage } from './approval-template';
+import { buildOpenApiSpec } from './openapi-route';
 import { renderIndexPage } from './ui-template';
 import { renderStorefront } from './storefront-template';
 
@@ -98,6 +100,7 @@ export const ROUTES = [
   '/api/benchmark',
   '/api/system/status',
   '/api/demo/reset',
+  '/openapi.json',
 ];
 
 export interface HealthPayload {
@@ -456,6 +459,9 @@ export function resetDemoState(): void {
   liveDisputes.clear();
   liveDisputeSeq = 0;
   ledger.length = 0;
+  // v5 wallet store (pairings, partitions, orders, connectors) resets with
+  // the demo so E2E and tests always start from a fresh wallet.
+  resetWalletState();
   try {
     unlinkSync(PENDING_FILE);
   } catch {
@@ -2135,6 +2141,10 @@ export async function handleWorkbenchRequest(
       handleLedger(res);
       return;
     }
+    if (method === 'GET' && pathname === '/openapi.json') {
+      sendJson(res, 200, buildOpenApiSpec());
+      return;
+    }
     if (method === 'GET' && pathname.startsWith('/vendor/')) {
       handleVendor(pathname, res);
       return;
@@ -2240,6 +2250,7 @@ export async function handleWorkbenchRequest(
       '/api/system/credentials',
       '/api/ledger',
       '/api/verify',
+      '/openapi.json',
     ];
     if (
       knownPaths.includes(pathname) ||

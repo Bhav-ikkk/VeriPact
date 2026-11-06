@@ -93,6 +93,49 @@ export const TOOLS: ToolDef[] = [
   },
 ];
 
+/**
+ * v5 wallet tool catalog (7 tools total with TOOLS). Kept as a separate
+ * export — `tools/list` still serves the pinned 4-tool base catalog
+ * (locked by existing tests), while `tools/call` dispatches the union.
+ * External agents discover wallet tools via SKILL.md + the Step-2 UI.
+ */
+export const WALLET_TOOLS: ToolDef[] = [
+  {
+    name: 'veripact_pair_wallet',
+    description:
+      'Start (action=start) or approve (action=approve with sessionId + payerEmail) a QR wallet-pairing ceremony; approval vaults the payer and mints the $350 agentic partition.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['start', 'approve'] },
+        sessionId: { type: 'string' },
+        payerEmail: { type: 'string' },
+      },
+      required: ['action'],
+    },
+  },
+  {
+    name: 'veripact_sync_payments',
+    description:
+      'Sync wallet payments labeled VERIPACT_PROTECTED (VP1-bound) vs LEGACY_UNWITNESSED (no witness evidence), with counts.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'veripact_partition_spend',
+    description:
+      'Run a partitioned agent payment: witness → spend check → vaulted capture, partition-wall void, or ask-human hold. Optional agentToken scopes to a minted connector.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        scenario: { type: 'string', enum: [...SCENARIO_NAMES] },
+        amountUsd: { type: 'number' },
+        agentToken: { type: 'string' },
+      },
+      required: ['scenario'],
+    },
+  },
+];
+
 function ok(id: JsonRpcRequest['id'], result: unknown): JsonRpcResponse {
   return { jsonrpc: '2.0', id, result };
 }
@@ -151,7 +194,7 @@ async function callTool(
   if (typeof p.name !== 'string') {
     return err(id, -32602, 'tools/call requires params.name (string)');
   }
-  const tool = TOOLS.find((t) => t.name === p.name);
+  const tool = TOOLS.find((t) => t.name === p.name) ?? WALLET_TOOLS.find((t) => t.name === p.name);
   if (tool === undefined) {
     return err(id, -32601, `unknown tool: ${p.name}`);
   }
@@ -213,6 +256,52 @@ async function callTool(
           return err(id, -32602, `case must be one of ${DISPUTE_CASE_NAMES.join(', ')}`);
         }
         return ok(id, toolResult(await client.auditAndResolveDispute({ case: args['case'] })));
+      }
+      case 'veripact_pair_wallet': {
+        const action = args['action'];
+        if (action === 'start') {
+          return ok(id, toolResult(client.wallet().startPairingCeremony()));
+        }
+        if (action === 'approve') {
+          if (typeof args['sessionId'] !== 'string' || typeof args['payerEmail'] !== 'string') {
+            return err(id, -32602, 'approve requires sessionId (string) + payerEmail (string)');
+          }
+          return ok(
+            id,
+            toolResult(
+              await client
+                .wallet()
+                .approvePairingCeremony({ sessionId: args['sessionId'], payerEmail: args['payerEmail'] }),
+            ),
+          );
+        }
+        return err(id, -32602, 'action must be start or approve');
+      }
+      case 'veripact_sync_payments': {
+        return ok(id, toolResult(client.wallet().syncWalletTransactions()));
+      }
+      case 'veripact_partition_spend': {
+        if (!isScenarioName(args['scenario'])) {
+          return err(id, -32602, `scenario must be one of ${SCENARIO_NAMES.join(', ')}`);
+        }
+        const amountUsd = args['amountUsd'];
+        if (amountUsd !== undefined && (typeof amountUsd !== 'number' || !Number.isFinite(amountUsd))) {
+          return err(id, -32602, 'amountUsd must be a finite number when provided');
+        }
+        const agentToken = args['agentToken'];
+        if (agentToken !== undefined && typeof agentToken !== 'string') {
+          return err(id, -32602, 'agentToken must be a string when provided');
+        }
+        return ok(
+          id,
+          toolResult(
+            await client.wallet().executePartitionedAgentPayment({
+              scenarioId: args['scenario'],
+              requestedOverrideUsd: amountUsd,
+              agentToken,
+            }),
+          ),
+        );
       }
       default:
         return err(id, -32601, `unknown tool: ${p.name}`);
