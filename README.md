@@ -46,6 +46,10 @@ chromium` once). Every frame below is rendered from a live SDK run via
 | normal | `1D1495603B138083R` | `VP1:e1c9eabe3c821dd3a72d47e7bcd6eba731024dc5ed42a3a2f7a0b03873134627` | $297.00 | CREATED (read-back match=true) |
 | surcharge_void | `1DM45086A58528407` | `VP1:e0ea946fd40916eb1db67a7d9b2778d291c9d6f4e541fb0e976887fe10c10c56` | $340.50 | CREATED (read-back) |
 
+Both receipts stop at CREATED: the founder approves each order as
+the sandbox buyer, then runs Finalize for authorize / capture / void
+(see §7 item 7). Live dispute listing at seed time: none.
+
 ## Verified Research Context
 
 - [arXiv:2610.17378](https://arxiv.org/abs/2610.17378) — *Get In, Decide,
@@ -65,6 +69,25 @@ chromium` once). Every frame below is rendered from a live SDK run via
   choices without touching signed bytes (90% / 56% / 73.3% across three
   attack families); VeriPact answers with witnessed, order-anchored
   commitments — the same binding class as the paper's A-VIP defense.
+
+## v5 Agentic Wallet & Witnessed Clearing Thesis
+
+The 3-rung checkout below is one half of the system. VeriPact v5
+promotes it into an **Agentic Wallet & Witnessed Clearing System**:
+PayPal moves money; VeriPact clears intent. Any external agent —
+ChatGPT via a Custom GPT Action importing `GET /openapi.json`, or
+Claude/Cursor via `@veripact/mcp-server` (stdio, 7 tools) — spends
+through a QR-paired wallet with a hard sub-balance partition, and
+every payment is automatically witnessed on the same 3-rung SELF,
+WIT, SIGN rails: the phone QR pairing ceremony (`/pair/:sessionId`)
+links a PayPal Vault payer and initializes the $350.00 agentic
+partition ($320.00 per-order cap); the deterministic spend check
+blocks or auto-voids overruns before capture; payment sync splits
+`LEGACY_UNWITNESSED` history from `VERIPACT_PROTECTED` (`VP1:`)
+transactions; scoped API credentials mint per platform and are
+shown once. Verified end to end: **238/238 unit tests** (16 files)
+plus a **23-step Playwright E2E** (pair, spend, wall, refund, sync,
+mint across 4 viewports, zero overflow).
 
 ## Three-Rung Evidence Ladder
 
@@ -108,8 +131,9 @@ npx veripact verify --scenario normal
 
 # 3. MCP server (stdio JSON-RPC for shopping agents)
 node packages/mcp-server/dist/index.js
-# tools: veripact_witness_offer, veripact_execute_guarded_checkout,
-#        veripact_verify_order_receipt, veripact_adjudicate_contested_dispute
+# 7 tools: veripact_witness_offer, veripact_execute_guarded_checkout,
+# veripact_verify_order_receipt, veripact_adjudicate_contested_dispute,
+# veripact_pair_wallet, veripact_sync_payments, veripact_partition_spend
 
 # 4. Regression suite (24 scenarios × 3 passes, Wilson 95% CIs)
 npm run regression
@@ -190,6 +214,24 @@ Gate confusion (expected × actual): PROCEED 24, ASK_HUMAN_DELTA 33, BLOCK
    synthetic storefronts assert the pipeline behaves as specified; they do
    not measure the open web. Intervals above are honest Wilson bounds on
    that suite.
+6. **The Dispute Desk is a LOCAL SIMULATION.** Post-purchase filings
+   land in the labeled local desk (`simulationDesk: true`) anchored to
+   the real orderId and `VP1:` commitment; desk HATEOAS walks are
+   `OTHER` evidence, never PayPal proof (PayPal exposes no
+   file-dispute API).
+7. **Live receipts are CREATED-only.** The AUTHORIZE to CAPTURE/VOID
+   story is replay-proven; live capture/void needs the founder to
+   approve each seeded order as the sandbox buyer and run Finalize.
+8. **The surcharge custom_id match is withheld.** TSA timestamps use
+   a real clock, so re-witnessing a live order yields a different
+   hash; judge re-witness of live orders stays untested until a
+   reproducible strategy lands — the withheld match is disclosed,
+   not buried.
+9. **Transaction Search sync is async reconciliation.** Uncredentialed
+   sync reports `FALLBACK_TO_REPLAY_AND_SESSION_ORDERS`; PayPal
+   reporting carries up to a 3-hour indexing SLA plus non-unique
+   transaction IDs, so the real-time partition balance always comes
+   from the VeriPact Clearing Ledger, never from a reporting row.
 
 Rule compliance: built for
 [paypalaihackathon.devpost.com](https://paypalaihackathon.devpost.com). No

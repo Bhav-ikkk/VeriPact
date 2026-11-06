@@ -468,6 +468,158 @@ async function fullFlow(browser: Browser): Promise<void> {
   assert(ringSeen, 'tour-ring', 'spotlight ring never appeared');
   await page.screenshot({ path: join(ROOT, '.vitest-tmp', 'e2e-tour-done.png') });
 
+  step('v5 wallet clean load: null-safe partitions + wallet DOM present');
+  await page.goto(`${ORIGIN}/`, { waitUntil: 'domcontentloaded' });
+  await waitBanner(page, 'captured', 'Purchase Captured');
+  const prePair = await page.evaluate(async () => {
+    const r = await fetch('/api/wallet/partitions');
+    const j = (await r.json()) as { partition: unknown; orders: unknown[] };
+    return { status: r.status, partition: j.partition, orders: j.orders.length };
+  });
+  assert(prePair.status === 200, 'wallet-clean-status', `status=${prePair.status}`);
+  assert(prePair.partition === null, 'wallet-clean-null', 'expected null partition before pairing');
+  assert(prePair.orders === 0, 'wallet-clean-orders', 'expected zero orders before pairing');
+  const walletIds = ['#wallet-card', '#rb-partition', '#connectors-row', '#ds-sync'];
+  for (const id of walletIds) {
+    assert((await page.$(id)) !== null, 'wallet-dom', `missing ${id}`);
+  }
+
+  step('v5 QR pairing ceremony end-to-end');
+  await page.click('#btn-pair-start');
+  await page.waitForSelector('#qr-svg-box svg', { timeout: 8000 });
+  const pairHref = await page.getAttribute('#btn-pair-approve', 'href');
+  assert((pairHref ?? '').startsWith('/pair/PAIR-VP-'), 'pair-href', String(pairHref));
+  const pairCode = await page.textContent('#pair-code');
+  assert(/^\d{6}$/.test(pairCode ?? ''), 'pair-code', String(pairCode));
+  const pairPage: Page = await context.newPage();
+  await pairPage.goto(`${ORIGIN}${pairHref}`, { waitUntil: 'domcontentloaded' });
+  const ceremonyTitle = await pairPage.title();
+  assert(ceremonyTitle.includes('Phone QR Pairing Ceremony'), 'pair-title', ceremonyTitle);
+  await pairPage.click('#btn-pair-ok');
+  await pairPage.waitForFunction(
+    () =>
+      document.getElementById('pair-action')?.textContent?.includes('Connected! Desktop Workbench Updated') ===
+      true,
+  );
+  await pairPage.close();
+  await page.waitForFunction(
+    () => document.getElementById('pair-status-pill')?.textContent?.includes('Vault Paired') === true,
+    { timeout: 30000 },
+  );
+  const vaultPill = await page.textContent('#pair-status-pill');
+  assert((vaultPill ?? '').includes('PM-VP-VAULT-'), 'pair-vault', String(vaultPill));
+  const pairAvail = await page.textContent('#part-available');
+  assert(pairAvail === '$350.00', 'pair-avail', String(pairAvail));
+
+  step('v5 partition spend, wall block, refund undo');
+  await page.click('#btn-part-spend');
+  await page.waitForFunction(() => document.getElementById('part-available')?.textContent === '$53.00');
+  const spendCaptured = await page.textContent('#part-captured');
+  assert(spendCaptured === '$297.00', 'spend-captured', String(spendCaptured));
+  const spendStatus = await page.textContent('#part-status');
+  assert((spendStatus ?? '').includes('CAPTURED $297.00'), 'spend-status', String(spendStatus));
+  await page.click('#btn-part-spend');
+  await page.waitForFunction(
+    () =>
+      document.getElementById('part-status')?.textContent?.includes('AUTO_VOIDED_BY_PARTITION_WALL') === true,
+  );
+  const walledAvail = await page.textContent('#part-available');
+  assert(walledAvail === '$53.00', 'wall-avail', String(walledAvail));
+  const wallState = await page.getAttribute('#part-available', 'data-state');
+  assert(wallState === 'wall', 'wall-state', String(wallState));
+  await page.click('#btn-part-refund');
+  await page.waitForFunction(() => document.getElementById('part-available')?.textContent === '$350.00');
+  const walletKinds = await page.evaluate(async () => {
+    const r = await fetch('/api/ledger');
+    const j = (await r.json()) as { entries: Array<{ kind: string }> };
+    return j.entries.map((e) => e.kind);
+  });
+  for (const kind of ['wallet-pair-start', 'wallet-pair-approve', 'wallet-spend', 'wallet-refund']) {
+    assert(walletKinds.includes(kind), 'wallet-ledger', `missing ledger kind ${kind}`);
+  }
+  const spendCount = walletKinds.filter((k) => k === 'wallet-spend').length;
+  assert(spendCount === 2, 'wallet-spend-count', `expected 2 wallet-spend entries, got ${spendCount}`);
+
+  step('v5 sync grid: legacy vs protected');
+  await page.click('#tab-desk');
+  await page.waitForFunction(
+    () => document.getElementById('insp-seller')?.textContent?.includes('BUYER_FORGERY_DETECTED') === true,
+  );
+  await page.click('#ds-sync');
+  await page.waitForSelector('#sync-shell:not([hidden])');
+  const syncVisibility = await page.evaluate(() => ({
+    liveHidden:
+      (document.getElementById('ag-live-disputes-grid')?.parentElement as HTMLElement | null)?.hidden === true,
+    regressionHidden: document.getElementById('regression-shell')?.hidden === true,
+    syncShown: document.getElementById('sync-shell')?.hidden === false,
+  }));
+  assert(
+    syncVisibility.liveHidden && syncVisibility.regressionHidden && syncVisibility.syncShown,
+    'sync-visibility',
+    JSON.stringify(syncVisibility),
+  );
+  await page.waitForFunction(
+    () => document.getElementById('sync-body')?.textContent?.includes('VERIPACT_PROTECTED') === true,
+  );
+  const syncShellText = await page.textContent('#sync-shell');
+  for (const needle of [
+    'LEGACY_UNWITNESSED',
+    'VERIPACT_PROTECTED',
+    'VP1:',
+    '3-hour',
+    'FALLBACK_TO_REPLAY_AND_SESSION_ORDERS',
+  ]) {
+    assert((syncShellText ?? '').includes(needle), 'sync-rows', `sync grid missing "${needle}"`);
+  }
+  const syncNote = await page.textContent('#sync-shell .sync-note');
+  assert((syncNote ?? '').includes('3-hour indexing delay'), 'sync-note', String(syncNote));
+  await page.click('#ds-live');
+  await assertAgEngine(page);
+  const liveHeight = await page.$eval('#ag-live-disputes-grid', (el) => el.getBoundingClientRect().height);
+  assert(liveHeight === 560, 'live-grid-height', `got ${liveHeight}`);
+  await page.click('#ds-regression');
+  await page.waitForSelector('#matrix-wrap table');
+  const regressionHeight = await page.$eval(
+    '#ag-regression-benchmark-grid',
+    (el) => el.getBoundingClientRect().height,
+  );
+  assert(regressionHeight === 560, 'regression-grid-height', `got ${regressionHeight}`);
+
+  step('v5 connectors mint one-time credentials');
+  await page.click('#btn-mint-chatgpt');
+  await page.waitForFunction(
+    () =>
+      !(document.getElementById('chatgpt-token-out')?.hidden ?? true) &&
+      ((document.getElementById('chatgpt-token-out')?.textContent ?? '').length > 40),
+  );
+  const chatText = (await page.textContent('#chatgpt-token-out')) ?? '';
+  assert(chatText.includes('/openapi.json'), 'chat-openapi', chatText.slice(0, 80));
+  assert(chatText.includes('copy now'), 'chat-once', chatText.slice(0, 80));
+  await page.click('#btn-mint-mcp');
+  await page.waitForFunction(
+    () =>
+      !(document.getElementById('mcp-token-out')?.hidden ?? true) &&
+      ((document.getElementById('mcp-token-out')?.textContent ?? '').length > 40),
+  );
+  const mcpText = (await page.textContent('#mcp-token-out')) ?? '';
+  assert(mcpText.includes('mcp-server'), 'mcp-cmd', mcpText.slice(0, 120));
+  assert(mcpText.includes('copy now'), 'mcp-once', mcpText.slice(0, 80));
+  assert(chatText !== mcpText, 'mint-distinct', 'connector outputs unexpectedly identical');
+  const mcpCard = await page.textContent('#card-conn-mcp');
+  assert((mcpCard ?? '').includes('@veripact/mcp-server'), 'mcp-card', String(mcpCard));
+  const chatCard = await page.textContent('#card-conn-chatgpt');
+  assert((chatCard ?? '').includes('/openapi.json'), 'chat-card', String(chatCard));
+  const minted = [...chatText.matchAll(/vp_[0-9a-f]+/g), ...mcpText.matchAll(/vp_[0-9a-f]+/g)].map((m) => m[0]);
+  assert(minted.length === 2, 'mint-format', `expected 2 vp_ values, got ${minted.length}`);
+  const ledgerAfterMint = await page.evaluate(async () => {
+    const r = await fetch('/api/ledger');
+    return await r.text();
+  });
+  for (const secret of minted) {
+    assert(!ledgerAfterMint.includes(secret), 'mint-no-leak', 'raw credential present in ledger export');
+  }
+  assert(ledgerAfterMint.includes('wallet-connector-mint'), 'mint-ledger', 'missing mint ledger kind');
+
   await context.close();
 }
 
@@ -509,6 +661,7 @@ async function main(): Promise<void> {
   delete process.env['WITNESS_ED25519_PRIVATE_KEY'];
   delete process.env['MERCHANT_ED25519_PRIVATE_KEY'];
   process.env['VERIPACT_ENV_FILE'] = join(ROOT, '.vitest-tmp', 'absent-credentials.env');
+  process.env['VERIPACT_WALLET_STATE_FILE'] = join(ROOT, '.vitest-tmp', 'e2e-wallet-state.json');
   backup();
   resetDemoState();
   const browser = await launch();
@@ -521,6 +674,7 @@ async function main(): Promise<void> {
     await browser.close();
     resetDemoState();
     restore();
+    rmSync(join(ROOT, '.vitest-tmp', 'e2e-wallet-state.json'), { force: true });
   }
   if (failures.length > 0) {
     console.log(`E2E RESULT: FAIL (${failures.length} failure${failures.length === 1 ? '' : 's'})`);

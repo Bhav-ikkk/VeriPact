@@ -472,3 +472,32 @@ describe('@veripact/workbench v5 QR encoder + pair page units', () => {
     expect(evil).toContain('&lt;script&gt;');
   });
 });
+
+describe('@veripact/workbench v5 byte-cleanliness guards', () => {
+  it('serves an index page with zero NBSP and zero redactor tokens', async () => {
+    const res = await get('/');
+    expect(res.status).toBe(200);
+    expect(res.body.match(/\u00a0/g) ?? []).toHaveLength(0);
+    const redactorToken = '[' + 'REDACTED' + ']';
+    expect(res.body).not.toContain(redactorToken);
+  });
+
+  it('renders the v5 wallet DOM ids on first paint', async () => {
+    const res = await get('/');
+    for (const id of [
+      'wallet-card',
+      'rb-partition',
+      'connectors-row',
+      'ds-sync',
+      'sync-shell',
+      'btn-pair-start',
+      'btn-part-spend',
+      'btn-part-refund',
+      'btn-part-config',
+      'btn-mint-chatgpt',
+      'btn-mint-mcp',
+    ]) {
+      expect(res.body).toContain(`id="${id}"`);
+    }
+  });
+});

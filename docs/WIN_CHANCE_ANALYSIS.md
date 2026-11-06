@@ -6,6 +6,9 @@ marked [inference].
 
 ## 1. The contest (verified)
 
+(All figures in this section stale as of 2026-11-02 — the analysis
+date above; none re-fetched since.)
+
 - **26,874 participants**, $67,500+ cash ($61,500 itemized on the main
   page; balance presumably on sponsor detail pages), deadline **Nov 12,
   2026 @ 12:00pm PST** (one secondary source says 2:00pm PT — submit

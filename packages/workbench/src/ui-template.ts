@@ -886,33 +886,12 @@ var syncLoaded=false;
 function wpMoney(n){return '$'+Number(n).toFixed(2);}
 function setPairStatus(txt){var st=$('pair-status');if(st)st.textContent=txt||'';}
 function setPartStatus(txt){var st=$('part-status');if(st)st.textContent=txt||'';}
-function paintPartition(p){
-wallet.partition=p;
-var cap=p?p.totalAllocatedUsd:350,used=p?p.capturedUsd:0,avail=p?p.availableUsd:350;
-$('part-allocated').textContent=wpMoney(cap);
-$('part-captured').textContent=wpMoney(used);
-var av=$('part-available');av.textContent=wpMoney(avail);
-var st=avail<=0?'wall':(avail<150?'low':'healthy');
-av.setAttribute('data-state',st);
-var fill=$('part-progress-fill');fill.style.width=(cap>0?Math.min(100,Math.max(0,used/cap*100)):0)+'%';fill.setAttribute('data-state',st);
-var rb=$('rb-partition');if(rb)rb.textContent='Wallet Partition: '+wpMoney(cap)+' cap  ·  '.replace(/ /g,'')+wpMoney(avail)+' avail';}
 function paintQr(){
 var box=$('qr-svg-box');if(!box)return;
 var s=wallet.session;
 if(!s){box.innerHTML='<span class="status-line" style="font-size:11px;text-align:center">No session yet</span>';return;}
 try{var m=qrEncodeMatrix(s.qrPairUrl);box.innerHTML=qrMatrixToSvg(m,76);}
 catch(e){box.innerHTML='<span class="status-line" style="font-size:11px">QR unavailable</span>';}}
-function paintPair(){
-var s=wallet.session;
-$('pair-code').textContent=s?s.pairingCode:'      '.replace(/ /g,'·');
-var pill=$('pair-status-pill');
-if(!s){pill.textContent='Not paired';pill.className='pill pill-info';}
-else if(s.status==='APPROVED'){pill.textContent='● Vault Paired ('+(s.vaultId||'vault')+')';pill.className='pill pill-ok';}
-else{pill.textContent='Pending Scan';pill.className='pill pill-warn';}
-var a=$('btn-pair-approve');
-if(s){a.setAttribute('href','/pair/'+s.sessionId);a.setAttribute('aria-disabled','false');}
-else{a.setAttribute('href','#');a.setAttribute('aria-disabled','true');}
-paintQr();}
 function stopPairPoll(){if(wallet.pollTimer){clearTimeout(wallet.pollTimer);wallet.pollTimer=null;}}
 function pollPairStatusOnce(continuePolling){
 var s=wallet.session;if(!s)return;
@@ -987,31 +966,9 @@ var pc=p.protectionClass==='VERIPACT_PROTECTED';
 var terms=p.returnWindowDays!=null?(p.returnWindowDays+'-day / '+p.restockingFeePct+'%'):'—';
 return '<tr><td class="mono">'+esc(p.orderId)+'</td><td>'+esc(p.merchantName)+'</td><td class="num">'+wpMoney(p.amountUsd)+'</td><td><span class="pill '+pillFor(p.status)+'">'+esc(p.status)+'</span></td><td><span class="pill '+(pc?'pill-ok':'pill-bad')+'">'+esc(p.protectionClass)+'</span></td><td class="mono">'+(p.commitment?esc(String(p.commitment).slice(0,18))+'…':'—')+'</td><td>'+esc(p.driftRiskNote)+(p.channel3ProductId?' <span class="mono">'+esc(p.channel3ProductId)+'</span>':'')+'</td></tr>';
 }).join('');
-$('sync-body').innerHTML=h+'</tbody></table></div><p class="status-line">'+r.summary.protectedCount+' protected · '+r.summary.legacyUnwitnessedCount+' legacy unwitnessed</p>';
+$('sync-body').innerHTML=h+'</tbody></table></div><p class="status-line">'+r.summary.protectedCount+' protected · '+r.summary.legacyUnwitnessedCount+' legacy unwitnessed [scope: ' + r.reportingScopeStatus + ']</p>';
 }).catch(function(e){syncLoaded=false;$('sync-body').innerHTML='<p class="status-line">'+esc(e.message)+'</p>';});}
-/* v5 wallet string overrides (ASCII-safe redefinitions win over the NBSP-artifact originals above) */
-function paintPartition(p){
-wallet.partition=p;
-var cap=p?p.totalAllocatedUsd:350,used=p?p.capturedUsd:0,avail=p?p.availableUsd:350;
-$('part-allocated').textContent=wpMoney(cap);
-$('part-captured').textContent=wpMoney(used);
-var av=$('part-available');av.textContent=wpMoney(avail);
-var st=avail<=0?'wall':(avail<150?'low':'healthy');
-av.setAttribute('data-state',st);
-var fill=$('part-progress-fill');fill.style.width=(cap>0?Math.min(100,Math.max(0,used/cap*100)):0)+'%';fill.setAttribute('data-state',st);
-var rb=$('rb-partition');if(rb)rb.textContent='Wallet Partition: '+wpMoney(cap)+' cap  ·  '.replace(/ /g,' ')+wpMoney(avail)+' avail';}
-function paintPair(){
-var s=wallet.session;
-$('pair-code').textContent=s?s.pairingCode:'      '.replace(/ /g,'·');
-var pill=$('pair-status-pill');
-if(!s){pill.textContent='Not paired';pill.className='pill pill-info';}
-else if(s.status==='APPROVED'){pill.textContent='● Vault Paired ('+(s.vaultId||'vault')+')';pill.className='pill pill-ok';}
-else{pill.textContent='Pending Scan';pill.className='pill pill-warn';}
-var a=$('btn-pair-approve');
-if(s){a.setAttribute('href','/pair/'+s.sessionId);a.setAttribute('aria-disabled','false');}
-else{a.setAttribute('href','#');a.setAttribute('aria-disabled','true');}
-paintQr();}
-/* v5 wallet authoritative strings (single spaces plus u-escapes only) */
+/* v5 wallet painters (ASCII-only: single spaces plus u-escapes) */
 function paintPartition(p){
 wallet.partition=p;
 var cap=p?p.totalAllocatedUsd:350,used=p?p.capturedUsd:0,avail=p?p.availableUsd:350;

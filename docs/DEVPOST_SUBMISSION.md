@@ -68,6 +68,13 @@ observed terms into the PayPal order record:
   ("30-day → 14-day / 25% fee" post-purchase mutation →
   `MERCHANT_DRIFT_CONFIRMED`), then drives the PayPal dispute through
   its real HATEOAS action chain.
+- **v5 Agentic Wallet & Witnessed Clearing** — the ladder above,
+  promoted into a wallet system: phone QR pairing links a PayPal
+  Vault payer and opens a $350.00 partition ($320.00 per-order cap);
+  the deterministic spend check auto-voids overruns; sync splits
+  legacy unwitnessed history from VP1:-protected payments; ChatGPT
+  Actions import `GET /openapi.json` and Claude/Cursor run the 7-tool
+  MCP server, with automatic 3-rung witnessing on every agent payment.
 
 ### How We Built It
 
@@ -84,10 +91,13 @@ invoke witnessing. Zero paid API keys anywhere.
 
 ### Verification & Evaluation
 
-- **156/156 unit + integration tests** green (`lint`, `typecheck`,
-  `build`, `test` all exit 0), including an 8-case adversarial
-  red-team suite (XSS, 1MB/413 caps, prototype pollution, path
-  traversal, zero secret leakage across 13 routes).
+- **238/238 unit + integration tests** across 16 files green
+  (`lint`, `typecheck`, `build`, `test` all exit 0), including an
+  8-case adversarial red-team suite (XSS, 1MB/413 caps, prototype
+  pollution, path traversal, zero secret leakage), plus a **23-step
+  Playwright E2E** (pairing, partition wall, refund, sync, mint,
+  4-viewport overflow gates) with zero 4xx/5xx and zero console
+  errors.
 - **JCS-Parity proof:** the in-browser canonicalizer is byte-tested
   against the server implementation, so client-side hash recomputation
   cannot drift.
@@ -109,6 +119,16 @@ invoke witnessing. Zero paid API keys anywhere.
    — not agent task success, and not the separate 555-site census.
 5. The regression suite is controlled, not a field benchmark: 24
    synthetic storefronts with honest Wilson bounds on that suite.
+6. The Dispute Desk is a LOCAL SIMULATION (`simulationDesk: true`):
+   desk HATEOAS walks are `OTHER` evidence, never PayPal proof.
+7. Live receipts are CREATED-only; live capture/void needs
+   founder-manual buyer approval plus Finalize per order.
+8. The surcharge custom_id match is withheld: TSA real-clock hashes
+   are non-reproducible, so judge re-witness stays untested.
+9. Transaction Search sync is async reconciliation only
+   (`FALLBACK_TO_REPLAY_AND_SESSION_ORDERS` uncredentialed, 3-hour
+   SLA, non-unique IDs); real-time balances come from the Clearing
+   Ledger, never from a reporting row.
 
 ## 4. Built With & sponsor alignment
 
@@ -118,9 +138,12 @@ invoke witnessing. Zero paid API keys anywhere.
 
 - **Best Use of PayPal + AI:** full Orders v2 AUTHORIZE/PATCH/capture
   + Disputes v1 HATEOAS engine with the `VP1:` commitment bound into
-  `custom_id`, re-gated post-approval.
+  `custom_id`, re-gated post-approval — plus Vault pairing, Refunds
+  Undo, and reporting reconciliation behind the partition ledger.
 - **Best Use of Agentic Commerce:** witness → gate → guarded checkout
-  pipeline plus a stdio MCP server any shopping agent can call.
+  pipeline plus a stdio MCP server any shopping agent can call —
+  now with QR-paired sub-balance partitions, deterministic
+  pre-authorization spend checks, and ChatGPT/Claude connectors.
 - **Best Demo Delivery:** 60-second guided in-app tour, one-command
   Playwright video recorder, 5 committed SVG visuals, zero-key judging.
 - **Best Use of AG Grid:** dispute desk + 72-run regression grids with
