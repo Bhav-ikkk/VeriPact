@@ -26,7 +26,12 @@ import {
   verifyCanonicalPayload,
   type MandateSpec,
 } from '@veripact/core';
-import { createWitnessSnapshot, verifyWithChannel3Oracle } from '@veripact/witness-client';
+import {
+  createWitnessSnapshot,
+  loadChannel3CacheFromDisk,
+  verifyWithChannel3Oracle,
+  type Channel3CatalogCache,
+} from '@veripact/witness-client';
 import {
   createSandboxReplayEngine,
   defaultEnvFilePath,
@@ -80,6 +85,7 @@ export const ROUTES = [
   '/favicon.ico',
   '/favicon.svg',
   '/store/:scenarioId',
+  '/api/catalog',
   '/api/buyer/mandate',
   '/api/buyer/mandate/update',
   '/api/witness/snapshot',
@@ -195,7 +201,7 @@ export async function readBody(req: WorkbenchRequest): Promise<string> {
   if (typeof req.on !== 'function') {
     return '';
   }
-  const on = req.on;
+  const stream = req as WorkbenchRequest & { on: WorkbenchBodyStream['on'] };
   return new Promise<string>((resolve, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
@@ -206,7 +212,7 @@ export async function readBody(req: WorkbenchRequest): Promise<string> {
         reject(e);
       }
     };
-    on('data', (chunk: Buffer) => {
+    stream.on('data', (chunk: Buffer) => {
       size += chunk.length;
       if (size > MAX_BODY_BYTES) {
         fail(new HttpError(413, 'request body too large'));
@@ -214,13 +220,13 @@ export async function readBody(req: WorkbenchRequest): Promise<string> {
       }
       chunks.push(chunk);
     });
-    on('end', () => {
+    stream.on('end', () => {
       if (!settled) {
         settled = true;
         resolve(Buffer.concat(chunks).toString('utf8'));
       }
     });
-    on('error', (e: Error) => fail(e));
+    stream.on('error', (e: Error) => fail(e));
   });
 }
 
@@ -327,10 +333,10 @@ function liveFallbackEngaged(): boolean {
   return true;
 }
 
-/** True when an error looks like PayPal auth (401) or transport failure. */
+/** True when an error looks like PayPal auth (401/403) or transport failure. */
 export function isLiveAuthFailure(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /HTTP 401|invalid_client|unauthorized|ENOTFOUND|EAI_AGAIN|EAI_FAIL|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EHOSTUNREACH|EHOSTDOWN|ENETUNREACH|ENETDOWN|EPIPE|EACCES|EPERM|fetch failed|getaddrinfo|socket hang up|timed? ?out|self[ -]signed|CERT_|proxy|CONNECT/i.test(
+  return /HTTP 40[13]|invalid_client|unauthorized|NOT_AUTHORIZED|insufficient permissions|ENOTFOUND|EAI_AGAIN|EAI_FAIL|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EHOSTUNREACH|EHOSTDOWN|ENETUNREACH|ENETDOWN|EPIPE|EACCES|EPERM|fetch failed|getaddrinfo|socket hang up|timed? ?out|self[ -]signed|CERT_|proxy|CONNECT/i.test(
     message,
   );
 }
@@ -996,11 +1002,27 @@ function handleFavicon(res: WorkbenchResponse): void {
   res.end(FAVICON_SVG);
 }
 
-async function handleStore(scenarioId: string, res: WorkbenchResponse): Promise<void> {
+async function handleStore(
+  scenarioId: string,
+  sku: string | undefined,
+  res: WorkbenchResponse,
+): Promise<void> {
   const scenario = asScenarioName(scenarioId);
   // SAMEORIGIN: the workbench embeds this preview in its own iframe; every
   // other surface keeps DENY (the approval popup is never framed).
-  sendHtml(res, 200, await renderStorefront(scenario), 'SAMEORIGIN');
+  sendHtml(res, 200, await renderStorefront(scenario, sku), 'SAMEORIGIN');
+}
+
+function getCatalogCachePath(): string {
+  return repoPath('benchmark', 'responses', 'channel3_catalog_cache.json');
+}
+
+function handleCatalog(res: WorkbenchResponse): void {
+  const cache = loadChannel3CacheFromDisk(getCatalogCachePath());
+  sendJson(res, 200, {
+    products: cache.products,
+    source: 'CHANNEL3_ORACLE_CATALOG',
+  });
 }
 
 function isMandateSpec(value: unknown): value is MandateSpec {
@@ -1158,25 +1180,39 @@ async function handleWitnessSnapshot(
   res: WorkbenchResponse,
 ): Promise<void> {
   const scenario = asRequestScenario(body);
+  const sku = typeof body['sku'] === 'string' && body['sku'].length > 0 ? (body['sku'] as string) : undefined;
   const witness = readRungKey('witness');
   const page = getScenario(scenario);
+  let channel3Cache: Channel3CatalogCache = DEMO_CHANNEL3_CACHE;
+  try {
+    channel3Cache = loadChannel3CacheFromDisk(getCatalogCachePath());
+  } catch {
+    // fallback
+  }
   const snapshot = await createWitnessSnapshot({
     listingUrl: page.listingUrl,
     mandate: effectiveMandate(scenario),
     witnessKeys: { publicKeyHex: witness.publicKeyHex, privateKeyHex: witness.privateKeyHex },
-    htmlFetcher: () => Promise.resolve({ status: 200, html: page.html, tlsVerified: false }),
+    htmlFetcher: async () => {
+      if (sku) {
+        const html = await renderStorefront(scenario, sku);
+        return { status: 200, html, tlsVerified: false };
+      }
+      return { status: 200, html: page.html, tlsVerified: false };
+    },
     requirePublicHttps: false,
     tsaMode: 'local',
     channel3Mode: 'cache',
-    channel3Cache: DEMO_CHANNEL3_CACHE,
+    channel3Cache,
   });
   appendLedger({
     kind: 'witness-snapshot',
-    summary: `${scenario} witnessed → ${snapshot.gateResult.decision}`,
+    summary: `${scenario} (${sku ?? 'default'}) witnessed → ${snapshot.gateResult.decision}`,
     commitment: snapshot.commitment,
   });
   sendJson(res, 200, {
     scenario,
+    sku: sku ?? 'APEX-27-4K-IPS',
     boundary: 'WIT',
     demoKeys: witness.demoKeys,
     termReceipt: snapshot.termReceipt,
@@ -1864,11 +1900,8 @@ async function handleDisputeAction(
   throw new HttpError(400, `unknown dispute action: ${action}`);
 }
 
-/** POST /api/demo/reset — re-seed shared replay state (replay only). */
+/** POST /api/demo/reset — re-seed shared replay state + wallet state. */
 function handleDemoReset(res: WorkbenchResponse): void {
-  if (hasPaypalCredentials()) {
-    throw new HttpError(400, 'demo reset is replay-only');
-  }
   resetDemoState();
   sendJson(res, 200, { ok: true });
 }
@@ -2117,7 +2150,8 @@ export async function handleWorkbenchRequest(
   res: WorkbenchResponse,
 ): Promise<void> {
   try {
-    const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    const pathname = url.pathname;
     const method = (req.method ?? 'GET').toUpperCase();
     if (method === 'GET' && pathname === '/health') {
       handleHealth(res);
@@ -2131,8 +2165,13 @@ export async function handleWorkbenchRequest(
       handleFavicon(res);
       return;
     }
+    if (method === 'GET' && pathname === '/api/catalog') {
+      handleCatalog(res);
+      return;
+    }
     if (method === 'GET' && pathname.startsWith('/store/')) {
-      await handleStore(pathname.slice('/store/'.length), res);
+      const sku = url.searchParams.get('sku') ?? undefined;
+      await handleStore(pathname.slice('/store/'.length), sku, res);
       return;
     }
     if (method === 'GET' && pathname === '/api/merchant/disputes') {
@@ -2268,6 +2307,7 @@ export async function handleWorkbenchRequest(
       '/api/system/status',
       '/api/system/credentials',
       '/api/ledger',
+      '/api/catalog',
       '/api/verify',
       '/openapi.json',
     ];
