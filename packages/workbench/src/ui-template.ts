@@ -119,45 +119,51 @@ main{max-width:1560px;margin:0 auto;padding:12px 20px 26px;display:flex;flex-dir
 .hash-chip.mid span{direction:rtl;text-align:left}
 .mono-scroll{overflow-x:auto;white-space:pre;font-family:var(--font-mono);font-size:12px;background:#101828;color:#e8eef6;border-radius:var(--radius-control);padding:10px 12px;max-width:100%}
 /* Tier B — connected 3-stage evidence pipeline */
-.ribbon{display:grid;grid-template-columns:200px minmax(0,1fr) 24px minmax(0,1fr) 24px minmax(0,1.1fr);align-items:center;gap:12px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:12px 20px;box-shadow:var(--shadow-card)}
-.rb-title{border-right:1px solid var(--border-subtle);padding-right:16px}
-.rb-title b{display:block;font-size:15px;font-weight:700}
-.rb-title span{font-size:12px;color:var(--text-muted)}
-.ribbon-step{display:flex;gap:10px;align-items:flex-start;min-width:0}
-.rb-num{font-family:var(--font-mono);font-weight:700;font-size:13px;background:var(--bg-subtle);color:var(--text-muted);border:1px solid var(--border-subtle);border-radius:50%;min-width:26px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ribbon{display:grid;grid-template-columns:220px minmax(0,1fr) 20px minmax(0,1.05fr) 20px minmax(0,1.1fr);align-items:stretch;gap:12px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:12px 18px;box-shadow:var(--shadow-card)}
+.rb-title{border-right:1px solid var(--border-subtle);padding-right:14px;display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0}
+.rb-title b{display:block;font-size:14.5px;font-weight:700;color:var(--text-primary)}
+.rb-title span{font-size:11.5px;color:var(--text-muted)}
+#rb-partition{font-size:11px;padding:2px 8px;margin-top:4px;align-self:flex-start}
+.ribbon-step{display:flex;gap:10px;align-items:center;min-width:0;background:var(--bg-muted);border:1px solid var(--border-subtle);border-radius:10px;padding:8px 12px;transition:all .2s ease}
+.ribbon-step.on{border-color:var(--status-success-border)}
+.ribbon-step.bad{background:var(--status-danger-bg);border-color:var(--status-danger-border)}
+.rb-num{font-family:var(--font-mono);font-weight:700;font-size:13px;background:#fff;color:var(--text-muted);border:1px solid var(--border-strong);border-radius:50%;min-width:26px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ribbon-step.on .rb-num{background:var(--status-success-solid);border-color:var(--status-success-solid);color:#fff;font-size:0}
 .ribbon-step.on .rb-num::after{content:'✓';font-size:14px;font-weight:700}
 .ribbon-step.bad .rb-num{background:var(--status-danger-ink);border-color:var(--status-danger-ink);color:#fff}
-.ribbon-step b{font-size:13px;font-weight:700}
-.rb-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.rb-badges .badge{max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.ribbon-step .rb-badges{flex-direction:column;gap:2px}
-.ribbon-step .badge{font-family:var(--font-mono);font-size:11.5px;color:var(--text-secondary);background:none;border:0;padding:0;font-variant-numeric:tabular-nums}
+.ribbon-step b{font-size:12.5px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.ribbon-step .rb-badges{flex-direction:row;gap:5px}
+.ribbon-step .badge{font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);background:#fff;border:1px solid var(--border-subtle);border-radius:4px;padding:1px 6px;white-space:nowrap;font-variant-numeric:tabular-nums}
 #rb-ch3{color:var(--status-success-ink);font-weight:600}
-.rb-connector{height:2px;background:var(--border-strong);border-radius:2px}
+.rb-connector{height:2px;background:var(--border-strong);border-radius:2px;align-self:center}
 .rb-connector.done{background:var(--status-success-solid)}
-#rb-3{background:var(--bg-muted);border:1px solid var(--border-subtle);border-radius:10px;padding:8px 14px}
+#rb-3{background:var(--bg-muted);border:1px solid var(--border-subtle);border-radius:10px;padding:8px 12px}
 #rb-3[data-state="captured"]{background:var(--status-success-bg);border-color:var(--status-success-border)}
 #rb-3[data-state="voided"],#rb-3[data-state="blocked"]{background:var(--status-danger-bg);border-color:var(--status-danger-border)}
 /* Tier C — two-column checkout workspace */
 .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
 .card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:16px 20px;min-width:0;box-shadow:var(--shadow-card)}
 .stack{display:flex;flex-direction:column;gap:12px;min-width:0}
-.scn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
-.scn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;border:1px solid var(--border-strong);border-radius:10px;background:#fff;cursor:pointer;min-width:0;font-family:inherit;color:var(--text-primary)}
+.scn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.scn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:9px 12px;border:1px solid var(--border-strong);border-radius:10px;background:#fff;cursor:pointer;min-width:0;font-family:inherit;color:var(--text-primary)}
 .scn:hover{border-color:#98a2b3}
 .scn b{font-size:13px;font-weight:700}
 .scn span{font-size:11.5px;color:var(--text-muted)}
 .scn svg{margin-bottom:4px}
 .scn[aria-pressed="true"]{background:var(--accent-charcoal);border-color:var(--accent-charcoal);color:#fff}
 .scn[aria-pressed="true"] span{color:#d0d5dd}
-.browser{border:1px solid var(--border-subtle);border-radius:10px;overflow:hidden;background:#fff}
-.browser-chrome{background:var(--bg-subtle);padding:7px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border-subtle)}
+.channel3-catalog-bar{display:flex;align-items:center;gap:8px;background:var(--bg-muted);border:1px solid var(--border-subtle);border-radius:8px;padding:6px 10px;margin-bottom:10px}
+.channel3-catalog-bar label{font-size:11.5px;font-weight:700;color:var(--text-secondary);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.channel3-catalog-bar select{flex:1;min-width:0;padding:5px 8px;border-radius:6px;border:1px solid var(--border-strong);background:#fff;font-size:12px;font-family:var(--font-sans);color:var(--text-primary);cursor:pointer}
+.browser{border:1px solid var(--border-subtle);border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.browser-chrome{background:var(--bg-subtle);padding:6px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border-subtle)}
 .dots{display:flex;gap:5px;flex-shrink:0}
-.dots i{width:9px;height:9px;border-radius:50%;background:var(--border-strong)}
+.dots i{width:8px;height:8px;border-radius:50%;background:var(--border-strong)}
 .urlbar{background:#fff;border:1px solid var(--border-subtle);border-radius:6px;padding:3px 10px;font-family:var(--font-mono);font-size:11.5px;color:#344054;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;min-width:0}
-.store-frame{width:100%;height:310px;border:0;background:#fff;display:block}
-details.tech-drawer{margin-top:12px}
+.store-frame{width:100%;height:310px;border:0;background:#fff;display:block;overflow:hidden}
+details.tech-drawer{margin-top:10px}
+details.tech-drawer summary{cursor:pointer;padding:8px 12px;font-size:12px;color:var(--text-secondary);background:var(--bg-muted);border:1px solid var(--border-subtle);border-radius:8px}
 details.tech-drawer .badges{margin-top:0}
 .badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .badge{font-family:var(--font-mono);font-size:11px;background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:6px;padding:3px 8px;white-space:nowrap;color:var(--text-secondary);font-variant-numeric:tabular-nums}
@@ -165,23 +171,23 @@ details.tech-drawer .badges{margin-top:0}
 .mutate{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:13px}
 .mutate input{width:18px;height:18px;margin-top:1px;flex-shrink:0;accent-color:var(--status-danger-ink)}
 /* Mandate card: metric strip + sufficiency pills */
-.card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
-.card-head h2{margin:0;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
-.mandate-strip{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;border-top:1px solid var(--bg-subtle);padding-top:12px}
-.mandate-strip>div{padding:0 12px;text-align:center;min-width:0}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.card-head h2{margin:0;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.mandate-strip{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;border-top:1px solid var(--border-subtle);padding-top:10px;margin-top:4px}
+.mandate-strip>div{padding:0 10px;text-align:center;min-width:0}
 .mandate-strip>div:first-child{padding-left:0;text-align:left}
 .mandate-strip>div:last-child{padding-right:0}
 .mandate-strip>div+div{border-left:1px solid var(--border-subtle)}
 .mandate-strip b{display:block;color:var(--text-primary);font-variant-numeric:tabular-nums}
-.mandate-strip .big{font-size:24px;font-weight:800}
-.mandate-strip .mid{font-size:16px;font-weight:700}
-.mandate-strip span{font-size:12px;color:var(--text-muted)}
-.suff-grid{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 0}
-.suff{display:flex;align-items:baseline;gap:6px;min-width:0;font-size:11px;color:var(--text-muted)}
+.mandate-strip .big{font-size:22px;font-weight:800}
+.mandate-strip .mid{font-size:15px;font-weight:700}
+.mandate-strip span{font-size:11.5px;color:var(--text-muted)}
+.suff-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin:10px 0 0;padding-top:10px;border-top:1px dashed var(--border-subtle)}
+.suff{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0;font-size:11.5px;color:var(--text-secondary)}
 .suff b{font-weight:600;white-space:nowrap}
-.suff .pill{font-size:11px;padding:1px 8px;white-space:normal;overflow-wrap:anywhere}
+.suff .pill{font-size:11px;padding:1px 8px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* SELF → WIT → SIGN step strip */
-.rung-flow{display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr) 24px minmax(0,1fr);align-items:center;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:12px 16px;box-shadow:var(--shadow-card)}
+.rung-flow{display:grid;grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr) 20px minmax(0,1fr);align-items:center;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 14px;box-shadow:var(--shadow-card)}
 .rung-step{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap;min-width:0}
 .rung-step .dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--status-success-solid);color:var(--status-success-solid);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:#fff}
 .rung-step.on{color:var(--text-primary)}
@@ -189,43 +195,44 @@ details.tech-drawer .badges{margin-top:0}
 #rung-sign .dot{background:var(--accent-charcoal);border-color:var(--accent-charcoal);color:#fff}
 .rung-arrow{height:2px;background:var(--border-subtle);border-radius:2px}
 /* Channel3 oracle bar */
-.oracle-bar{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:var(--shadow-card)}
-.oracle-bar .left{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-muted);min-width:0;flex-shrink:0}
+.oracle-bar{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:var(--shadow-card)}
+.oracle-bar .left{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);min-width:0;flex-shrink:0}
 .oracle-bar .left b{color:var(--text-primary);white-space:nowrap}
 .oracle-bar .sep{color:var(--border-strong)}
 /* Controls row: checkboxes + actions */
-.controls-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px}
-.checks-card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:6px;justify-content:center;box-shadow:var(--shadow-card)}
-.checks-card label{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--text-primary);cursor:pointer}
-.checks-card input{width:16px;height:16px;accent-color:var(--accent-charcoal);flex-shrink:0}
-.actions-card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-card)}
-.status-line{font-size:13px;color:var(--text-secondary);margin:8px 0}
-.status-line[aria-live]{min-height:20px}
-#awaiting-card{background:var(--bg-surface);border:1px solid var(--status-warn-border);border-radius:var(--radius-card);padding:14px 18px;box-shadow:var(--shadow-card)}
+.controls-row{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:12px;align-items:stretch}
+.checks-card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;gap:5px;justify-content:center;box-shadow:var(--shadow-card)}
+.checks-card label{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--text-primary);cursor:pointer}
+.checks-card input{width:15px;height:15px;accent-color:var(--accent-charcoal);flex-shrink:0}
+.actions-card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow-card)}
+.actions-card .btn{flex:1;min-height:38px;padding:6px 12px;font-size:12.5px;font-weight:700}
+.status-line{font-size:12.5px;color:var(--text-secondary);margin:6px 0}
+.status-line[aria-live]{min-height:18px}
+#awaiting-card{background:var(--bg-surface);border:1px solid var(--status-warn-border);border-radius:var(--radius-card);padding:12px 16px;box-shadow:var(--shadow-card)}
 #awaiting-card h3{margin-top:0}
-.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:13px;margin:8px 0}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:12.5px;margin:8px 0}
 .kv dt{color:var(--text-secondary)}
 .kv dd{margin:0;min-width:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 /* Tier D — outcome banner, transaction record, auditor */
 .tier-d{display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.1fr) minmax(0,1.1fr);gap:16px;align-items:stretch}
-.outcome-banner{border-radius:var(--radius-card);padding:18px 20px;display:flex;align-items:center;gap:16px;border:1px solid;min-width:0;box-shadow:var(--shadow-card)}
+.outcome-banner{border-radius:var(--radius-card);padding:16px 18px;display:flex;align-items:center;gap:14px;border:1px solid;min-width:0;box-shadow:var(--shadow-card)}
 .outcome-banner[data-state="idle"]{background:var(--bg-surface);border-color:var(--border-subtle)}
 .outcome-banner[data-state="captured"]{background:linear-gradient(135deg,#ecfdf3 0%,#ffffff 85%);border-color:var(--status-success-border)}
 .outcome-banner[data-state="voided"],.outcome-banner[data-state="blocked"]{background:linear-gradient(135deg,#fef3f2 0%,#ffffff 85%);border-color:var(--status-danger-border)}
-.outcome-banner h3{margin:0;font-size:20px;font-weight:800;color:var(--text-primary)}
-.outcome-banner p{margin:2px 0 0;font-size:13px;color:var(--text-secondary)}
-.outcome-icon{width:46px;height:46px;flex-shrink:0;display:block}
-.record-kv{display:grid;grid-template-columns:115px minmax(0,1fr);row-gap:7px;column-gap:10px;font-size:12.5px;margin:0}
+.outcome-banner h3{margin:0;font-size:18px;font-weight:800;color:var(--text-primary)}
+.outcome-banner p{margin:2px 0 0;font-size:12.5px;color:var(--text-secondary)}
+.outcome-icon{width:42px;height:42px;flex-shrink:0;display:block}
+.record-kv{display:grid;grid-template-columns:105px minmax(0,1fr);row-gap:6px;column-gap:10px;font-size:12.5px;margin:0;align-items:baseline}
 .record-kv dt{color:var(--text-secondary)}
 .record-kv dd{margin:0;min-width:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .auditor-card{display:flex;flex-direction:column}
-.audit-rows{display:flex;flex-direction:column;gap:6px;margin:10px 0;font-size:12.5px}
+.audit-rows{display:flex;flex-direction:column;gap:6px;margin:8px 0;font-size:12px}
 .audit-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.audit-banner{background:var(--status-success-bg);border:1px solid var(--status-success-border);border-radius:8px;padding:9px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px}
+.audit-banner{background:var(--status-success-bg);border:1px solid var(--status-success-border);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px}
 .audit-banner.bad{background:var(--status-danger-bg);border-color:var(--status-danger-border)}
-.audit-banner .left{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:#065f46}
+.audit-banner .left{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#065f46}
 .audit-banner.bad .left{color:var(--status-danger-ink)}
-.audit-banner .right{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--status-success-ink);font-weight:700}
+.audit-banner .right{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--status-success-ink);font-weight:700}
 details.inspect{display:inline-block;font-weight:600}
 details.inspect summary{cursor:pointer;font-size:12px;color:var(--text-secondary);text-decoration:underline;list-style:none}
 details.inspect summary::-webkit-details-marker{display:none}
@@ -297,7 +304,7 @@ footer.app{max-width:1560px;margin:0 auto;padding:0 20px 26px;color:var(--text-m
 /* Term diff pills: readable at video distance */
 .diff-pill{display:inline-block;font-family:var(--font-mono);font-size:15px;font-weight:700;background:var(--status-danger-bg);color:var(--status-danger-ink);border:2px solid var(--status-danger-ink);border-radius:10px;padding:6px 14px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
 .wit-pill{display:inline-block;font-family:var(--font-mono);font-size:13px;font-weight:700;background:var(--status-success-bg);color:var(--status-success-ink);border:2px solid var(--status-success-ink);border-radius:10px;padding:5px 12px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
-@media (max-width:1280px){
+@media (max-width:1100px){
 .brand .tagline,.brand .divider{display:none}
 #tour-status{display:none}
 .ribbon{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -376,6 +383,15 @@ ${WALLET_CSS}
 <button type="button" class="scn" data-scn="surcharge_void" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l6 3-6 3-6-3 6-3z"/><path d="M2.5 8.2L8 10.8l5.5-2.6"/><path d="M2.5 11.2L8 13.8l5.5-2.6"/></svg><b>Scenario 2</b><span>Surcharge (&gt;$320)</span></button>
 <button type="button" class="scn" data-scn="adversarial_hidden_dom" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4L2.5 8 6 12"/><path d="M10 4l3.5 4L10 12"/></svg><b>Scenario 3</b><span>Injection (ADVERSARIAL)</span></button>
 </div>
+<div class="channel3-catalog-bar">
+<label for="channel3-sku-select">
+<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--accent-blue)" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+Channel3 Catalog:
+</label>
+<select id="channel3-sku-select">
+<option value="APEX-27-4K-IPS">APEX-27-4K-IPS ($279 NEW) — Apex ProView 27 4K IPS Monitor</option>
+</select>
+</div>
 <div class="browser">
 <div class="browser-chrome"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="urlbar"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#15803d" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg><span id="store-url">https://store.example.com/product/APEX-27-4K-IPS</span></span></div>
 <iframe id="store-frame" class="store-frame" title="Synthetic merchant storefront" src="/store/normal" scrolling="no"></iframe>
@@ -435,10 +451,19 @@ ${WALLET_CSS}
 <div id="awaiting-card" hidden></div>
 </div>
 </div>
-${walletCardHtml()}
 <div class="tier-d">
 <div class="outcome-banner" id="checkout-outcome-banner" data-state="idle"><svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" stroke="#d0d5dd" stroke-width="2.5"/><path d="M15 23.5l5.5 5.5L31 18" stroke="#98a2b3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><h3>Awaiting checkout</h3><p>Run a witness pass, then authorize with PayPal.</p></div></div>
-<div class="card" id="checkout-result" hidden></div>
+<div class="card" id="checkout-result">
+<div class="card-head"><h2><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#175cd3" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.5 4.2L8 14.2 2.5 6 8 1.8z"/><path d="M2.5 6h11M8 1.8L5.5 6 8 14.2 10.5 6 8 1.8z" stroke-width="1.2"/></svg>Transaction Record</h2></div>
+<dl class="record-kv">
+<dt>Order ID</dt><dd class="mono">— (awaiting checkout)</dd>
+<dt>Authorization</dt><dd class="mono">—</dd>
+<dt>Capture</dt><dd class="mono">—</dd>
+<dt>Commitment</dt><dd class="mono">—</dd>
+<dt>PayPal Mode</dt><dd class="mono">Sandbox (Deterministic)</dd>
+</dl>
+<div class="post-purchase"><button type="button" class="btn" disabled>Verify it yourself ↓</button><button type="button" class="btn" disabled>Simulate Merchant Drift → File Dispute</button><button type="button" class="btn" disabled>Simulate Buyer Forgery → File Dispute</button></div>
+</div>
 <div class="card auditor-card">
 <div class="card-head"><h2><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#175cd3" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7.5a4 4 0 0 1 8 0v4"/><path d="M2.5 7.5a5.5 5.5 0 0 1 11 0v5"/><path d="M8 5.5v6"/><path d="M6 9.5v3M10 9.5v3"/></svg>Verify-It-Yourself (Auditor)</h2></div>
 <p class="status-line" style="margin-top:0">Your browser recomputes the receipt hash and compares it with the PayPal order record. Nothing here trusts the server.</p>
@@ -447,6 +472,7 @@ ${walletCardHtml()}
 </div></details>
 </div>
 </div>
+${walletCardHtml()}
 </section>
 <section id="view-desk" hidden aria-label="Contested dispute verifier desk">
 <div class="desk-grid">
@@ -520,7 +546,7 @@ var ICON_BAD='<svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hid
 var LINK_SVG='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 9.5a3 3 0 0 0 4.2 0l2-2a3 3 0 0 0-4.2-4.2l-1 1"/><path d="M9.5 6.5a3 3 0 0 0-4.2 0l-2 2a3 3 0 0 0 4.2 4.2l1-1"/></svg>';
 var DIAMOND_SVG='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#175cd3" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.5 4.2L8 14.2 2.5 6 8 1.8z"/><path d="M2.5 6h11M8 1.8L5.5 6 8 14.2 10.5 6 8 1.8z" stroke-width="1.2"/></svg>';
 /* ---------- state ---------- */
-var state={scenario:'normal',witness:null,checkout:null,verify:null,disputes:null,selectedCase:'buyer_forgery',dataset:'live',benchmark:null,grids:{},engine:'native'};
+var state={scenario:'normal',sku:'APEX-27-4K-IPS',witness:null,checkout:null,verify:null,disputes:null,selectedCase:'buyer_forgery',dataset:'live',benchmark:null,grids:{},engine:'native'};
 var CASE_META={
 buyer_forgery:{label:'Case B — Buyer forgery',buyerTerms:'60-day returns (self-signed SELF receipt)',sellerTerms:'Stands by witnessed terms',witnessed:'30-day returns · 0% fee',diffs:[{field:'return_window_days',left:'60',right:'30'}],blurb:'The buyer edited local JSON to claim 60-day returns. Signature verifies (self-signed) but the hash cannot match the PayPal-anchored commitment.'},
 merchant_drift:{label:'Case A — Merchant drift',buyerTerms:'30-day free returns (matches witness)',sellerTerms:'14-day returns · 25% restocking fee',witnessed:'30-day returns · 0% fee',diffs:[{field:'return_window_days',left:'30',right:'14'},{field:'restocking_fee_pct',left:'0%',right:'25%'}],blurb:'The seller changed the return policy after purchase. The buyer receipt still matches; the seller counter-claim diverges.'}};
@@ -555,15 +581,40 @@ ribbonTo(3,false);var c=r.snapshot.commitment;$('rb-commit').textContent=c.slice
 $('rb-regate').textContent='$'+Number(r.finalTotalUsd).toFixed(2)+' '+(r.outcome==='CAPTURED'?'CAPTURED':'AUTO-VOIDED');if(box)box.dataset.state=r.outcome==='CAPTURED'?'captured':'voided';}
 function showView(which){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');if(!c){ensureDesk().catch(function(){});}}
 function setView(which){showView(which);}
-function resetDemo(){return api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;state.mandate=null;resetWalletUi();refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);throw e;});}
+function resetDemo(){return api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;state.mandate=null;state.sku='APEX-27-4K-IPS';var sel=$('channel3-sku-select');if(sel)sel.value='APEX-27-4K-IPS';resetWalletUi();resetOutcomeBanner();resetTransactionRecord();refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);throw e;});}
 $('tab-checkout').addEventListener('click',function(){showView('checkout');});
 $('tab-desk').addEventListener('click',function(){showView('desk');});
 $('btn-reset').addEventListener('click',function(){resetDemo().catch(function(){});});
 /* ---------- view 1 ---------- */
 var scnBtns=Array.prototype.slice.call(document.querySelectorAll('[data-scn]'));
 function resetOutcomeBanner(){var b=$('checkout-outcome-banner');if(!b)return;b.dataset.state='idle';b.innerHTML=ICON_IDLE+'<div><h3>Awaiting checkout</h3><p>Run a witness pass, then authorize with PayPal.</p></div>';}
-function selectScenario(scn){state.scenario=scn;scnBtns.forEach(function(x){x.setAttribute('aria-pressed',x.getAttribute('data-scn')===scn?'true':'false');});$('store-frame').src='/store/'+scn;var su=$('store-url');if(su)su.textContent='https://store.example.com/product/APEX-27-4K-IPS'+(scn==='normal'?'':'/'+scn);$('checkout-result').hidden=true;$('awaiting-card').hidden=true;$('checkout-status').textContent='';resetOutcomeBanner();}
+function resetTransactionRecord(){var rEl=$('checkout-result');if(!rEl)return;var modeStr=state.hasPaypalCredentials?'Live PayPal Sandbox':'Sandbox (Deterministic)';var html='<div class="card-head"><h2>'+DIAMOND_SVG+'Transaction Record</h2></div><dl class="record-kv"><dt>Order ID</dt><dd class="mono">— (awaiting checkout)</dd><dt>Authorization</dt><dd class="mono">—</dd><dt>Capture</dt><dd class="mono">—</dd><dt>Commitment</dt><dd class="mono">—</dd><dt>PayPal Mode</dt><dd class="mono">'+esc(modeStr)+'</dd></dl><div class="post-purchase"><button type="button" class="btn" disabled>Verify it yourself ↓</button><button type="button" class="btn" disabled>Simulate Merchant Drift → File Dispute</button><button type="button" class="btn" disabled>Simulate Buyer Forgery → File Dispute</button></div>';rEl.innerHTML=html;}
+function selectScenario(scn){state.scenario=scn;scnBtns.forEach(function(x){x.setAttribute('aria-pressed',x.getAttribute('data-scn')===scn?'true':'false');});var sku=state.sku||'APEX-27-4K-IPS';$('store-frame').src='/store/'+scn+'?sku='+encodeURIComponent(sku);var su=$('store-url');if(su)su.textContent='https://store.example.com/product/'+sku+(scn==='normal'?'':'/'+scn);resetTransactionRecord();$('awaiting-card').hidden=true;$('checkout-status').textContent='';resetOutcomeBanner();}
 scnBtns.forEach(function(b){b.addEventListener('click',function(){selectScenario(b.getAttribute('data-scn'));});});
+/* ---------- Channel3 catalog discovery ---------- */
+function initChannel3Catalog(){
+  api('/api/catalog').then(function(res){
+    var sel=$('channel3-sku-select');
+    if(!sel||!res.products||!res.products.length)return;
+    sel.innerHTML=res.products.map(function(p){
+      var label=p.productId+' ($'+Number(p.priceUsd).toFixed(0)+' '+p.condition+') — '+p.title;
+      return '<option value="'+esc(p.productId)+'"'+(p.productId===(state.sku||'APEX-27-4K-IPS')?' selected':'')+'>'+esc(label)+'</option>';
+    }).join('');
+  }).catch(function(){});
+}
+initChannel3Catalog();
+var skuSelect=$('channel3-sku-select');
+if(skuSelect){
+  skuSelect.addEventListener('change',function(e){
+    var sku=e.target.value;
+    state.sku=sku;
+    var scn=state.scenario||'normal';
+    $('store-frame').src='/store/'+scn+'?sku='+encodeURIComponent(sku);
+    var su=$('store-url');
+    if(su)su.textContent='https://store.example.com/product/'+sku+(scn==='normal'?'':'/'+scn);
+    runWitnessFlow().catch(function(){});
+  });
+}
 $('mutate-toggle').addEventListener('change',function(e){$('mutate-panel').hidden=!e.target.checked;});
 /* ---------- custom merchant-HTML inspector lab ---------- */
 var CX_PRESETS={
@@ -601,7 +652,8 @@ $('btn-mandate-edit').addEventListener('click',function(){var ed=$('mandate-edit
 $('btn-mandate-save').addEventListener('click',function(){updateMandate().catch(function(){});});
 function rungTo(stage){$('rung-wit').className='rung-step'+(stage>=1?' on':'');$('rung-sign').className='rung-step'+(stage>=2?' on':'');}
 function runWitnessFlow(){var b=$('btn-witness');b.disabled=true;$('checkout-status').textContent='Witnessing offer…';
-return api('/api/witness/snapshot',{method:'POST',body:JSON.stringify({scenario:state.scenario})}).then(function(s){state.witness=s;suffPills(s.termReceipt.observedTerms);rungTo(1);ribbonFillWitness(s);gateBadge(s.gateResult);
+var sku=state.sku||'APEX-27-4K-IPS';
+return api('/api/witness/snapshot',{method:'POST',body:JSON.stringify({scenario:state.scenario,sku:sku})}).then(function(s){state.witness=s;suffPills(s.termReceipt.observedTerms);rungTo(1);ribbonFillWitness(s);gateBadge(s.gateResult);
 oracleLine(s.oracleResult);
 $('quote-badges').innerHTML=badgeHtml(s);
 $('checkout-status').textContent='Gate decision: '+s.gateResult.decision+' — '+s.gateResult.reasons.join('; ');return s;},function(e){$('checkout-status').textContent=e.message;throw e;}).finally(function(){b.disabled=false;});}
@@ -648,7 +700,7 @@ $('awaiting-card').hidden=false;$('checkout-status').textContent='Order '+r.orde
 $('btn-popup').addEventListener('click',function(){var w=window.open(r.approveUrl,'veripact-approval','width=620,height=760');if(!w){toast('Popup blocked — allow popups, then press Finalize after approving.');}$('checkout-status').textContent='Approval popup opened for '+r.orderId+'. Waiting…';});
 $('btn-finalize').addEventListener('click',function(){finalizeApproved(r.orderId);});}
 window.addEventListener('message',function(e){var d=e.data||{};var loc=window.location||{};var sameOrigin=!loc.origin||loc.origin==='null'||e.origin===loc.origin;if(sameOrigin&&d.type==='VERIPACT_ORDER_APPROVED'&&d.orderId&&state.awaiting&&d.orderId===state.awaiting.orderId){toast('Buyer approved '+d.orderId);finalizeApproved(d.orderId);}});
-function runCheckoutFlow(forceReplay){var b=$('btn-checkout');b.disabled=true;$('awaiting-card').hidden=true;$('checkout-result').hidden=true;
+function runCheckoutFlow(forceReplay){var b=$('btn-checkout');b.disabled=true;$('awaiting-card').hidden=true;
 var force=forceReplay===true||tourRunning===true;
 var twoStep=force?false:$('twostep-toggle').checked;
 var executionMode=force?'replay':((twoStep&&state.hasPaypalCredentials===true)?'live':'replay');

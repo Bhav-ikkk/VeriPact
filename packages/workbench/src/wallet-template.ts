@@ -531,14 +531,15 @@ function escHtml(value: string): string {
  * 1600×900 / 1366×768 / 1050×800 / 768×1024.
  */
 export const WALLET_CSS = [
-  '.wallet-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:16px}',
+  '#wallet-card{padding:14px 20px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);box-shadow:var(--shadow-card)}',
+  '.wallet-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:20px;align-items:start}',
   '.wallet-qr{display:flex;gap:14px;align-items:flex-start;min-width:0}',
   '#qr-svg-box{width:76px;height:76px;flex-shrink:0;border:1px solid var(--border-subtle);border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}',
   '#qr-svg-box svg{display:block}',
   '.qr-meta{min-width:0;flex:1;display:flex;flex-direction:column;gap:6px}',
   '#pair-code{font-size:22px;font-weight:800;letter-spacing:4px;font-variant-numeric:tabular-nums}',
-  '.pair-btns{display:flex;gap:8px;flex-wrap:wrap}',
-  '.pair-btns .btn{font-size:12px;min-height:32px;padding:5px 12px}',
+  '.pair-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}',
+  '.pair-btns .btn{font-size:12px;min-height:34px;padding:6px 14px;font-weight:600}',
   '.part-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}',
   '.part-metrics>div{min-width:0}',
   '.part-metrics b{display:block;font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}',
@@ -551,7 +552,7 @@ export const WALLET_CSS = [
   '#part-progress-fill[data-state="low"]{background:var(--status-warn-ink)}',
   '#part-progress-fill[data-state="wall"]{background:var(--status-danger-ink)}',
   '.part-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}',
-  '.part-actions .btn{font-size:12px;min-height:32px;padding:5px 12px}',
+  '.part-actions .btn{font-size:12px;min-height:34px;padding:6px 14px;font-weight:600}',
   '#part-cap-input{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--border-strong);border-radius:8px;width:110px;font-variant-numeric:tabular-nums}',
   '#connectors-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:12px}',
   '.conn-card{border:1px solid var(--border-subtle);border-radius:10px;padding:12px 14px;min-width:0;background:var(--bg-muted)}',
