@@ -95,13 +95,13 @@ invoke witnessing. Zero paid API keys anywhere.
 
 ### Verification & Evaluation
 
-- **240/240 unit + integration tests** across 16 files green
+- **244/244 unit + integration tests** across 16 files green
   (`lint`, `typecheck`, `build`, `test` all exit 0), including an
   8-case adversarial red-team suite (XSS, 1MB/413 caps, prototype
-  pollution, path traversal, zero secret leakage), plus a **23-step
+  pollution, path traversal, zero secret leakage), plus a **24-step
   Playwright E2E** (pairing, partition wall, refund, sync, mint,
-  4-viewport overflow gates) with zero 4xx/5xx and zero console
-  errors.
+  Channel3 multi-SKU sufficiency check, 4-viewport overflow gates)
+  with zero 4xx/5xx and zero console errors.
 - **JCS-Parity proof:** the in-browser canonicalizer is byte-tested
   against the server implementation, so client-side hash recomputation
   cannot drift.
