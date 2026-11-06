@@ -37,6 +37,7 @@ import {
   type WorkbenchResponse,
 } from './routes';
 import { PAIRING_PAYER_EMAIL, renderPairPage } from './wallet-template';
+import { findCatalogProduct } from './storefront-template';
 
 /** Wallet paths served by this module (mirrored in ROUTES). */
 export const WALLET_ROUTES = [
@@ -275,9 +276,14 @@ async function handleSpendCheck(body: Record<string, unknown>, res: WorkbenchRes
     return;
   }
   const scenarioId = asScenarioId(body['scenarioId'] ?? body['scenario']);
-  const requestedOverrideUsd = body['requestedOverrideUsd'];
+  const rawSku = body['sku'];
+  const sku = typeof rawSku === 'string' && rawSku.trim().length > 0 ? rawSku.trim() : undefined;
+  let requestedOverrideUsd = body['requestedOverrideUsd'];
   if (requestedOverrideUsd !== undefined) {
     asPositiveUsd(requestedOverrideUsd, 'requestedOverrideUsd');
+  } else if (sku && sku !== 'APEX-27-4K-IPS') {
+    const product = findCatalogProduct(sku);
+    requestedOverrideUsd = Number(((product.priceUsd ?? 279) + 11.50 + 6.50).toFixed(2));
   }
   const agentToken = body['agentToken'];
   if (agentToken !== undefined && (typeof agentToken !== 'string' || agentToken === '')) {
@@ -296,14 +302,16 @@ async function handleSpendCheck(body: Record<string, unknown>, res: WorkbenchRes
       appendLedger({
         kind: 'wallet-spend',
         summary:
-          `partition spend ${result.scenarioId}: ${result.outcome}` +
+          `partition spend ${result.scenarioId}` +
+          (sku ? ` (${sku})` : '') +
+          `: ${result.outcome}` +
           (result.finalTotalUsd !== undefined ? ` $${result.finalTotalUsd.toFixed(2)}` : '') +
           (result.orderId !== undefined ? ` (${result.orderId})` : ' (no order)') +
           `; ${result.partitionId} → $${partition.availableUsd.toFixed(2)} avail`,
         orderId: result.orderId,
         commitment: result.snapshot.commitment,
       });
-      sendJson(res, 200, { ...result, partition });
+      sendJson(res, 200, { ...result, partition, sku });
     } catch (e) {
       const inputError = asWalletInputError(e);
       if (inputError !== null) {

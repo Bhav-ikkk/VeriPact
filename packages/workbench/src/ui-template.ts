@@ -581,7 +581,7 @@ ribbonTo(3,false);var c=r.snapshot.commitment;$('rb-commit').textContent=c.slice
 $('rb-regate').textContent='$'+Number(r.finalTotalUsd).toFixed(2)+' '+(r.outcome==='CAPTURED'?'CAPTURED':'AUTO-VOIDED');if(box)box.dataset.state=r.outcome==='CAPTURED'?'captured':'voided';}
 function showView(which){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');if(!c){ensureDesk().catch(function(){});}}
 function setView(which){showView(which);}
-function resetDemo(){return api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;state.mandate=null;state.sku='APEX-27-4K-IPS';var sel=$('channel3-sku-select');if(sel)sel.value='APEX-27-4K-IPS';resetWalletUi();resetOutcomeBanner();resetTransactionRecord();refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);throw e;});}
+function resetDemo(){return api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;state.mandate=null;state.sku='APEX-27-4K-IPS';var sel=$('channel3-sku-select');if(sel)sel.value='APEX-27-4K-IPS';updateSpendBtnLabel();resetWalletUi();resetOutcomeBanner();resetTransactionRecord();refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);throw e;});}
 $('tab-checkout').addEventListener('click',function(){showView('checkout');});
 $('tab-desk').addEventListener('click',function(){showView('desk');});
 $('btn-reset').addEventListener('click',function(){resetDemo().catch(function(){});});
@@ -592,14 +592,24 @@ function resetTransactionRecord(){var rEl=$('checkout-result');if(!rEl)return;va
 function selectScenario(scn){state.scenario=scn;scnBtns.forEach(function(x){x.setAttribute('aria-pressed',x.getAttribute('data-scn')===scn?'true':'false');});var sku=state.sku||'APEX-27-4K-IPS';$('store-frame').src='/store/'+scn+'?sku='+encodeURIComponent(sku);var su=$('store-url');if(su)su.textContent='https://store.example.com/product/'+sku+(scn==='normal'?'':'/'+scn);resetTransactionRecord();$('awaiting-card').hidden=true;$('checkout-status').textContent='';resetOutcomeBanner();}
 scnBtns.forEach(function(b){b.addEventListener('click',function(){selectScenario(b.getAttribute('data-scn'));});});
 /* ---------- Channel3 catalog discovery ---------- */
+function updateSpendBtnLabel(){
+  var b=$('btn-part-spend');
+  if(!b)return;
+  var sku=state.sku||'APEX-27-4K-IPS';
+  var prod=state.catalog&&state.catalog.find?state.catalog.find(function(p){return p.productId===sku;}):null;
+  var amt=prod?(prod.priceUsd+18):297;
+  b.textContent='Agent Spend ($'+amt.toFixed(0)+' via Partition)';
+}
 function initChannel3Catalog(){
   api('/api/catalog').then(function(res){
+    state.catalog=res.products||[];
     var sel=$('channel3-sku-select');
     if(!sel||!res.products||!res.products.length)return;
     sel.innerHTML=res.products.map(function(p){
       var label=p.productId+' ($'+Number(p.priceUsd).toFixed(0)+' '+p.condition+') — '+p.title;
       return '<option value="'+esc(p.productId)+'"'+(p.productId===(state.sku||'APEX-27-4K-IPS')?' selected':'')+'>'+esc(label)+'</option>';
     }).join('');
+    updateSpendBtnLabel();
   }).catch(function(){});
 }
 initChannel3Catalog();
@@ -612,6 +622,7 @@ if(skuSelect){
     $('store-frame').src='/store/'+scn+'?sku='+encodeURIComponent(sku);
     var su=$('store-url');
     if(su)su.textContent='https://store.example.com/product/'+sku+(scn==='normal'?'':'/'+scn);
+    updateSpendBtnLabel();
     runWitnessFlow().catch(function(){});
   });
 }
@@ -705,7 +716,8 @@ var force=forceReplay===true||tourRunning===true;
 var twoStep=force?false:$('twostep-toggle').checked;
 var executionMode=force?'replay':((twoStep&&state.hasPaypalCredentials===true)?'live':'replay');
 $('checkout-status').textContent=executionMode==='live'?'Creating LIVE PayPal order + patching totals…':(twoStep?'Creating order + patching totals…':'Authorizing with PayPal…');
-return api('/api/merchant/checkout',{method:'POST',body:JSON.stringify({scenario:state.scenario,twoStep:twoStep,executionMode:executionMode})}).then(function(r){
+var sku=state.sku||'APEX-27-4K-IPS';
+return api('/api/merchant/checkout',{method:'POST',body:JSON.stringify({scenario:state.scenario,sku:sku,twoStep:twoStep,executionMode:executionMode})}).then(function(r){
 if(r.outcome==='AWAITING_BUYER_APPROVAL'){renderAwaiting(r);}else{renderCheckoutDone(r);}
 return r;},function(e){$('checkout-status').textContent=e.message;throw e;}).finally(function(){b.disabled=false;});}
 $('btn-checkout').addEventListener('click',function(){var rv=$('reviewed-toggle');if(rv&&!rv.checked){toast('Please confirm you have reviewed the merchant terms.');return;}runCheckoutFlow().catch(function(){});});
@@ -882,6 +894,7 @@ function held(r){if(r&&r.outcome==='AWAITING_BUYER_APPROVAL'){tourPaused=true;to
 function clickWitness(){var b=$('btn-witness');tourScroll(b);tourRing(b);return tourSleep(1300).then(function(){if(!tourRunning){tourUnring();return null;}b.click();tourUnring();return tourWaitFor(function(){return !$('btn-witness').disabled;});});}
 function clickCheckout(){var tok=state.checkout;var b=$('btn-checkout');tourScroll(b);tourRing(b);return tourSleep(1300).then(function(){if(!tourRunning){tourUnring();return null;}b.click();tourUnring();return tourWaitFor(function(){return state.checkout&&state.checkout!==tok?state.checkout:null;});});}
 return (async function(){
+state.sku='APEX-27-4K-IPS';var sel=$('channel3-sku-select');if(sel)sel.value='APEX-27-4K-IPS';updateSpendBtnLabel();
 tourStep(1,'Normal checkout — witness, then capture $297.00');showView('checkout');$('twostep-toggle').checked=false;
 await highlightAndClick(scnBtn('normal'),'Scenario 1: normal checkout',1300);if(!alive())return;
 tourSay('Witnessing the offer — watch Stage 2 WIT turn green');await clickWitness();if(!alive())return;
@@ -993,11 +1006,14 @@ if(e.origin!==window.location.origin)return;
 var d=e.data||{};
 if(d.type==='VERIPACT_WALLET_PAIRED'&&wallet.session&&d.sessionId===wallet.session.sessionId){stopPairPoll();pollPairStatusOnce(true);}});
 function partSpend(){
-setPartStatus('Agent spending $297.00 via partition...');
-api('/api/wallet/spend-check',{method:'POST',body:JSON.stringify({scenarioId:'normal'})}).then(function(r){
+var sku=state.sku||'APEX-27-4K-IPS';
+setPartStatus('Agent spending via partition...');
+api('/api/wallet/spend-check',{method:'POST',body:JSON.stringify({scenarioId:'normal',sku:sku})}).then(function(r){
 if(r.partition)paintPartition(r.partition);
-if(r.outcome==='CAPTURED'){setPartStatus('CAPTURED $297.00 — partition now $'+Number(r.partitionAvailableUsd).toFixed(2)+' avail.');toast('Partition spend captured');}
-else if(r.outcome==='AUTO_VOIDED_BY_PARTITION_WALL'){var av=$('part-available');av.setAttribute('data-state','wall');$('part-progress-fill').setAttribute('data-state','wall');setPartStatus('AUTO_VOIDED_BY_PARTITION_WALL ($297.00 > $'+Number(r.partitionAvailableUsd).toFixed(2)+' available)');toast('Partition wall blocked the spend');}
+var amt=r.finalTotalUsd?'$'+Number(r.finalTotalUsd).toFixed(2):'$297.00';
+if(r.outcome==='CAPTURED'){setPartStatus('CAPTURED '+amt+' — partition now $'+Number(r.partitionAvailableUsd).toFixed(2)+' avail.');toast('Partition spend captured');}
+else if(r.outcome==='AUTO_VOIDED_BY_PARTITION_WALL'){var av=$('part-available');av.setAttribute('data-state','wall');$('part-progress-fill').setAttribute('data-state','wall');setPartStatus('AUTO_VOIDED_BY_PARTITION_WALL ('+amt+' > $'+Number(r.partitionAvailableUsd).toFixed(2)+' available)');toast('Partition wall blocked the spend');}
+else if(r.outcome==='BLOCKED_PRE_CHECKOUT'){setPartStatus('BLOCKED_PRE_CHECKOUT — page integrity / cap exceeded');toast('Blocked pre-checkout');}
 else{setPartStatus(r.outcome+' — see partition meter.');}
 }).catch(function(e){setPartStatus(e.message);});}
 function partRefund(){

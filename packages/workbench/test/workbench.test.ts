@@ -310,6 +310,37 @@ describe('@veripact/workbench', () => {
     expect(json<{ orderId?: string }>(blocked).orderId).toBeUndefined();
   });
 
+  it('blocks refurbished Channel3 SKU pre-checkout with 0 PayPal orders created', async () => {
+    const res = await post('/api/merchant/checkout', {
+      scenario: 'normal',
+      sku: 'APEX-27-4K-IPS-RB',
+    });
+    expect(res.status).toBe(200);
+    const body = json<{ outcome: string; orderId?: string; gateResult?: { decision: string } }>(res);
+    expect(body.outcome).toBe('BLOCKED_PRE_CHECKOUT');
+    expect(body.orderId).toBeUndefined();
+    expect(body.gateResult?.decision).toBe('BLOCK');
+  });
+
+  it('captures compliant non-default NEW Channel3 SKU under cap at exact price', async () => {
+    // KANSO-Q35 is $149.00 NEW in channel3_catalog_cache.json -> all-in $149 + $11.50 + $6.50 = $167.00
+    const res = await post('/api/merchant/checkout', {
+      scenario: 'normal',
+      sku: 'KANSO-Q35',
+    });
+    expect(res.status).toBe(200);
+    const body = json<{
+      outcome: string;
+      orderId?: string;
+      finalTotalUsd?: number;
+      sku?: string;
+    }>(res);
+    expect(body.outcome).toBe('CAPTURED');
+    expect(body.orderId).toMatch(/^ORD-VP-/);
+    expect(body.finalTotalUsd).toBe(167);
+    expect(body.sku).toBe('KANSO-Q35');
+  });
+
   it('lists Case B first with live HATEOAS records and forensics', async () => {
     const res = await get('/api/merchant/disputes');
     expect(res.status).toBe(200);

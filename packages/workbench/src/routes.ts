@@ -18,12 +18,14 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {
+  canonicalizeJson,
   deriveEd25519KeyPairFromSeed,
   evaluateContestedDispute,
   repoPath,
   sha256Hex,
   signCanonicalPayload,
   verifyCanonicalPayload,
+  type CaptureAddendum,
   type MandateSpec,
 } from '@veripact/core';
 import {
@@ -45,6 +47,7 @@ import {
   type SandboxReplayEngine,
 } from '@veripact/paypal-client';
 import {
+  evaluatePostApprovalReGate,
   evaluateSufficiencyGate,
   extractObservedTerms,
   scanMerchantHtml,
@@ -74,7 +77,7 @@ import { renderApprovalPage } from './approval-template';
 import { buildOpenApiSpec } from './openapi-route';
 import { handleWalletRequest, WALLET_ROUTES } from './wallet-routes';
 import { renderIndexPage } from './ui-template';
-import { renderStorefront } from './storefront-template';
+import { findCatalogProduct, renderStorefront } from './storefront-template';
 
 export const WORKBENCH_VERSION = '0.1.0';
 
@@ -1302,48 +1305,226 @@ async function handleMerchantCheckout(
   res: WorkbenchResponse,
 ): Promise<void> {
   const scenario = asRequestScenario(body);
+  const rawSku = body['sku'];
+  const sku = typeof rawSku === 'string' && rawSku.trim().length > 0 ? rawSku.trim() : undefined;
   const client = demoClientFor(parseExecutionMode(body));
-  const result = await client.runWitnessedCheckoutFlow({
-    scenario,
-    mandate: effectiveMandate(scenario),
-    twoStepApproval: body['twoStep'] === true,
-  });
-  recordCapture(result, scenario);
-  if (result.outcome === 'AUTO_VOIDED') {
-    appendLedger({
-      kind: 'checkout-void',
-      summary: `${scenario} auto-voided at $${(result.finalTotalUsd ?? 0).toFixed(2)} (cap exceeded)`,
-      orderId: result.orderId,
-      commitment: result.snapshot.commitment,
+
+  if (!sku || sku === 'APEX-27-4K-IPS') {
+    const result = await client.runWitnessedCheckoutFlow({
+      scenario,
+      mandate: effectiveMandate(scenario),
+      twoStepApproval: body['twoStep'] === true,
     });
-  } else if (result.outcome === 'BLOCKED_PRE_CHECKOUT') {
+    recordCapture(result, scenario);
+    if (result.outcome === 'AUTO_VOIDED') {
+      appendLedger({
+        kind: 'checkout-void',
+        summary: `${scenario} auto-voided at $${(result.finalTotalUsd ?? 0).toFixed(2)} (cap exceeded)`,
+        orderId: result.orderId,
+        commitment: result.snapshot.commitment,
+      });
+    } else if (result.outcome === 'BLOCKED_PRE_CHECKOUT') {
+      appendLedger({
+        kind: 'checkout-block',
+        summary: `${scenario} blocked pre-checkout (${result.snapshot.gateResult.decision})`,
+      });
+    } else if (result.outcome === 'AWAITING_BUYER_APPROVAL' && result.orderId !== undefined) {
+      appendLedger({
+        kind: 'order-create',
+        summary: `${scenario} order ${result.orderId} awaiting buyer approval`,
+        orderId: result.orderId,
+        commitment: result.snapshot.commitment,
+      });
+    }
+    if (
+      result.outcome === 'AWAITING_BUYER_APPROVAL' &&
+      result.orderId !== undefined &&
+      result.buyerApprovalSignatureHex !== undefined &&
+      result.merchantSignatureHex !== undefined
+    ) {
+      pendingApprovals.set(result.orderId, {
+        scenario,
+        snapshot: result.snapshot,
+        buyerApprovalSignatureHex: result.buyerApprovalSignatureHex,
+        merchantSignatureHex: result.merchantSignatureHex,
+      });
+      savePendingApprovals();
+    }
+    sendJson(res, 200, { ...result, boundary: 'SIGN' });
+    return;
+  }
+
+  // Multi-product Channel3 SKU flow:
+  const product = findCatalogProduct(sku);
+  const html = await renderStorefront(scenario, sku);
+  const mandate = effectiveMandate(scenario);
+  const witness = readRungKey('witness');
+  let channel3Cache: Channel3CatalogCache = DEMO_CHANNEL3_CACHE;
+  try {
+    channel3Cache = loadChannel3CacheFromDisk(getCatalogCachePath());
+  } catch {
+    // fallback
+  }
+  const snapshot = await createWitnessSnapshot({
+    listingUrl: `https://store.apexdisplay.invalid/${scenario}?sku=${encodeURIComponent(sku)}`,
+    mandate,
+    witnessKeys: { publicKeyHex: witness.publicKeyHex, privateKeyHex: witness.privateKeyHex },
+    htmlFetcher: async () => ({ status: 200, html, tlsVerified: false }),
+    requirePublicHttps: false,
+    tsaMode: 'local',
+    channel3Mode: 'cache',
+    channel3Cache,
+  });
+
+  const base: CheckoutFlowResult = {
+    outcome: 'BLOCKED_PRE_CHECKOUT',
+    scenario,
+    transportMode: client.paypal.transportMode,
+    demoKeys: client.keys.demoKeys,
+    snapshot,
+  };
+
+  if (snapshot.gateResult.decision === 'BLOCK') {
     appendLedger({
       kind: 'checkout-block',
-      summary: `${scenario} blocked pre-checkout (${result.snapshot.gateResult.decision})`,
+      summary: `${scenario} (${sku}) blocked pre-checkout (${snapshot.gateResult.decision})`,
     });
-  } else if (result.outcome === 'AWAITING_BUYER_APPROVAL' && result.orderId !== undefined) {
+    sendJson(res, 200, { ...base, sku, boundary: 'SIGN', gateResult: snapshot.gateResult });
+    return;
+  }
+
+  const basePriceUsd = product.priceUsd ?? 279;
+  const shippingUsd = scenario === 'surcharge_void' ? 55.0 : 11.5;
+  const taxUsd = 6.5;
+
+  const buyerApprovalSignatureHex = signCanonicalPayload(
+    snapshot.receiptCore,
+    client.keys.buyer.privateKeyHex,
+  );
+  const merchantSignatureHex = signCanonicalPayload(
+    snapshot.receiptCore,
+    client.keys.merchant.privateKeyHex,
+  );
+
+  const order = await client.paypal.createAuthorizeOrder({
+    commitment: snapshot.commitment,
+    description: `VeriPact witnessed checkout: ${product.title}`,
+    itemTotalUsd: basePriceUsd,
+  });
+  const patched = await client.paypal.patchOrderShippingAndTax(order.orderId, {
+    itemTotalUsd: basePriceUsd,
+    shippingUsd,
+    taxUsd,
+  });
+
+  let liveCreated = false;
+  if (client.paypal.transportMode === 'LIVE_PAYPAL_SANDBOX') {
+    liveCreated = (await client.paypal.getOrder(order.orderId)).status === 'CREATED';
+  }
+  if (body['twoStep'] === true || liveCreated) {
+    const preview = evaluatePostApprovalReGate(mandate, snapshot.termReceipt, {
+      itemTotalUsd: basePriceUsd,
+      shippingUsd,
+      taxUsd,
+      finalTotalUsd: patched.finalTotalUsd,
+    });
+    const approveUrl =
+      order.approveUrl ?? (await client.paypal.getOrder(order.orderId)).approveUrl;
     appendLedger({
       kind: 'order-create',
-      summary: `${scenario} order ${result.orderId} awaiting buyer approval`,
-      orderId: result.orderId,
-      commitment: result.snapshot.commitment,
+      summary: `${scenario} (${sku}) order ${order.orderId} awaiting buyer approval`,
+      orderId: order.orderId,
+      commitment: snapshot.commitment,
     });
-  }
-  if (
-    result.outcome === 'AWAITING_BUYER_APPROVAL' &&
-    result.orderId !== undefined &&
-    result.buyerApprovalSignatureHex !== undefined &&
-    result.merchantSignatureHex !== undefined
-  ) {
-    pendingApprovals.set(result.orderId, {
+    pendingApprovals.set(order.orderId, {
       scenario,
-      snapshot: result.snapshot,
-      buyerApprovalSignatureHex: result.buyerApprovalSignatureHex,
-      merchantSignatureHex: result.merchantSignatureHex,
+      snapshot,
+      buyerApprovalSignatureHex,
+      merchantSignatureHex,
     });
     savePendingApprovals();
+    sendJson(res, 200, {
+      ...base,
+      sku,
+      boundary: 'SIGN',
+      outcome: 'AWAITING_BUYER_APPROVAL',
+      buyerApprovalSignatureHex,
+      merchantSignatureHex,
+      orderId: order.orderId,
+      approveUrl,
+      finalTotalUsd: patched.finalTotalUsd,
+      expectedPostApprovalAction: preview.action,
+      headroomRemainingUsd: preview.headroomRemainingUsd,
+    });
+    return;
   }
-  sendJson(res, 200, { ...result, boundary: 'SIGN' });
+
+  if (client.paypal.transportMode === 'DETERMINISTIC_SANDBOX_REPLAY') {
+    client.paypal.simulatePayerApproval(order.orderId);
+  }
+  const authorized = await client.paypal.authorizeOrder(order.orderId);
+  const authorizationId = authorized.authorizationId;
+  if (authorizationId === undefined) {
+    throw new Error(`veripact: authorize returned no authorization id (${order.orderId})`);
+  }
+
+  const regate = evaluatePostApprovalReGate(mandate, snapshot.termReceipt, {
+    itemTotalUsd: basePriceUsd,
+    shippingUsd,
+    taxUsd,
+    finalTotalUsd: patched.finalTotalUsd,
+  });
+
+  if (regate.action === 'VOID') {
+    await client.paypal.voidAuthorization({ authorizationId });
+    appendLedger({
+      kind: 'checkout-void',
+      summary: `${scenario} (${sku}) auto-voided at $${patched.finalTotalUsd.toFixed(2)} (cap exceeded)`,
+      orderId: order.orderId,
+      commitment: snapshot.commitment,
+    });
+    sendJson(res, 200, {
+      ...base,
+      sku,
+      boundary: 'SIGN',
+      outcome: 'AUTO_VOIDED',
+      buyerApprovalSignatureHex,
+      merchantSignatureHex,
+      orderId: order.orderId,
+      authorizationId,
+      finalTotalUsd: patched.finalTotalUsd,
+      voidReason: regate.reason,
+    });
+    return;
+  }
+
+  const addendum: CaptureAddendum = {
+    authorizationId,
+    capturedTotalUsd: patched.finalTotalUsd,
+    mandateCeilingUsd: mandate.constraints.maxAllInPriceUsd,
+    decision: 'CAPTURE',
+    decidedAtUtc: new Date().toISOString(),
+  };
+  const addendumSha256 = sha256Hex(canonicalizeJson(addendum));
+  const capture = await client.paypal.captureAuthorizationExact({
+    authorizationId,
+    addendumSha256,
+    amountUsd: patched.finalTotalUsd,
+    noteToPayer: 'VeriPact Verified Capture',
+  });
+
+  const result: CheckoutFlowResult = {
+    ...base,
+    outcome: 'CAPTURED',
+    buyerApprovalSignatureHex,
+    merchantSignatureHex,
+    orderId: order.orderId,
+    authorizationId,
+    captureId: capture.captureId,
+    finalTotalUsd: patched.finalTotalUsd,
+  };
+  recordCapture(result, scenario);
+  sendJson(res, 200, { ...result, sku, boundary: 'SIGN' });
 }
 
 /** Inspector copy for one dispute (server-owned so live cases render too). */

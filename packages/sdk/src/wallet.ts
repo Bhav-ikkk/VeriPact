@@ -547,13 +547,24 @@ export class VeriPactWallet {
       observed.itemTitle.status === 'DETERMINATE' && observed.itemTitle.value !== undefined
         ? observed.itemTitle.value
         : page.mandate.itemQuery;
+    const itemTotalUsd =
+      input.requestedOverrideUsd !== undefined
+        ? Number(
+            Math.max(
+              0.01,
+              input.requestedOverrideUsd -
+                page.callbackTotals.shippingUsd -
+                page.callbackTotals.taxUsd,
+            ).toFixed(2),
+          )
+        : observed.basePriceUsd.value;
     const order = await this.paypal.createAuthorizeOrder({
       commitment: snapshot.commitment,
       description: `VeriPact partitioned agent payment: ${title}`,
-      itemTotalUsd: observed.basePriceUsd.value,
+      itemTotalUsd,
     });
     const patched = await this.paypal.patchOrderShippingAndTax(order.orderId, {
-      itemTotalUsd: observed.basePriceUsd.value,
+      itemTotalUsd,
       shippingUsd: page.callbackTotals.shippingUsd,
       taxUsd: page.callbackTotals.taxUsd,
     });
@@ -611,7 +622,7 @@ export class VeriPactWallet {
       };
     }
     const regate = evaluatePostApprovalReGate(page.mandate, snapshot.termReceipt, {
-      itemTotalUsd: observed.basePriceUsd.value,
+      itemTotalUsd,
       shippingUsd: page.callbackTotals.shippingUsd,
       taxUsd: page.callbackTotals.taxUsd,
       finalTotalUsd: patched.finalTotalUsd,
