@@ -377,6 +377,17 @@ export class VeriPactWallet {
     return { ...spec };
   }
 
+  /** One pairing session by id (copy; undefined when unknown). */
+  getPairingSession(sessionId: string): PairingSession | undefined {
+    const found = this.state.pairingSessions.find((s) => s.sessionId === sessionId);
+    return found === undefined ? undefined : { ...found };
+  }
+
+  /** All persisted wallet orders, oldest first (copies). */
+  listOrders(): WalletOrderRecord[] {
+    return this.state.orders.map((o) => ({ ...o }));
+  }
+
   /** Active partition (or by id) with freshly recomputed availability. */
   getPartitionStatus(partitionId?: string): PartitionSpec {
     const found =

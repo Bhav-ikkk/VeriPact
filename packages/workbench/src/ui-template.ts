@@ -9,7 +9,19 @@
  * call shapes, security guards (finalizing lock, origin-checked
  * postMessage, overflow rules) and the byte-identical inline `jcs`
  * canonicalizer are preserved from the pre-redesign contract.
+ *
+ * v5 Step 2 adds the Agentic Wallet card (QR pairing + partition bar),
+ * the Tier B partition pill, the View 2 connectors strip, and the sync
+ * dataset — strictly additive partials from `wallet-template.ts`.
  */
+import {
+  connectorsRowHtml,
+  QR_CLIENT_JS,
+  syncShellHtml,
+  WALLET_CSS,
+  walletCardHtml,
+} from './wallet-template';
+
 export function renderIndexPage(): string {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -329,6 +341,7 @@ body{background:#fff}
 .modal-back{position:static;background:none;padding:0;display:block}
 .modal{max-width:none;max-height:none;border:0}
 }
+${WALLET_CSS}
 </style></head>
 <body>
 <a class="skip" href="#main">Skip to workspace</a>
@@ -347,7 +360,7 @@ body{background:#fff}
 </header>
 <main id="main">
 <nav id="pipeline-ribbon" class="ribbon" aria-label="Cryptographic evidence pipeline">
-<div class="rb-title"><b>Evidence Pipeline</b><span>Verifiable · Tamper-proof · PayPal-anchored</span></div>
+<div class="rb-title"><b>Evidence Pipeline</b><span>Verifiable · Tamper-proof · PayPal-anchored</span><span class="pill pill-info" id="rb-partition">Wallet Partition: $350.00 cap &middot; $350.00 avail</span></div>
 <div class="ribbon-step" id="rb-1"><span class="rb-num" aria-hidden="true">1</span><div style="min-width:0"><b>1. SELF — Buyer mandate locked</b><div class="rb-badges"><span class="badge" id="rb-buyer-fp" title="Ed25519 buyer key fingerprint">buyer key fp …</span><span class="badge" id="rb-ceiling">ceiling: $320.00</span></div></div></div>
 <div class="rb-connector" id="rb-conn-1" aria-hidden="true"></div>
 <div class="ribbon-step" id="rb-2"><span class="rb-num" aria-hidden="true">2</span><div style="min-width:0"><b>2. WIT — Independent HTTPS witness</b><div class="rb-badges"><span class="badge" id="rb-tsa">RFC 3161 …</span><span class="badge" id="rb-dom">DOM scan …</span><span class="badge" id="rb-ch3">Channel3 …</span></div></div></div>
@@ -422,6 +435,7 @@ body{background:#fff}
 <div id="awaiting-card" hidden></div>
 </div>
 </div>
+${walletCardHtml()}
 <div class="tier-d">
 <div class="outcome-banner" id="checkout-outcome-banner" data-state="idle"><svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" stroke="#d0d5dd" stroke-width="2.5"/><path d="M15 23.5l5.5 5.5L31 18" stroke="#98a2b3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><h3>Awaiting checkout</h3><p>Run a witness pass, then authorize with PayPal.</p></div></div>
 <div class="card" id="checkout-result" hidden></div>
@@ -439,13 +453,15 @@ body{background:#fff}
 <div>
 <div class="card">
 <h2>Contested dispute verifier desk</h2>
+${connectorsRowHtml()}
 <div class="desk-tools" role="group" aria-label="Dataset toggle">
-<span class="seg"><button type="button" class="btn" id="ds-live" aria-pressed="true">Live contested disputes (Case B &amp; Case A)</button><button type="button" class="btn" id="ds-regression" aria-pressed="false">24-scenario regression suite (72 runs, Wilson 95% CIs)</button></span>
+<span class="seg"><button type="button" class="btn" id="ds-live" aria-pressed="true">Live contested disputes (Case B &amp; Case A)</button><button type="button" class="btn" id="ds-regression" aria-pressed="false">24-scenario regression suite (72 runs, Wilson 95% CIs)</button><button type="button" class="btn" id="ds-sync" aria-pressed="false">Payment Sync (Legacy vs Protected)</button></span>
 <span id="grid-engine" class="pill pill-info">Grid engine: detecting…</span>
 <button type="button" class="btn" id="grid-csv" title="Export the visible grid to CSV (AG Grid engine)">Export CSV</button>
 </div>
 <div class="ag-shell"><div id="ag-live-disputes-grid" class="ag-theme-quartz" role="grid" aria-label="Live contested disputes grid"></div></div>
 <div class="ag-shell" id="regression-shell" hidden><div id="ag-regression-benchmark-grid" class="ag-theme-quartz" role="grid" aria-label="Regression benchmark grid"></div></div>
+${syncShellHtml()}
 <div id="matrix-wrap"></div>
 </div>
 <div class="inspector" id="inspector" data-widget="ContestedClaimInspectorWidget" aria-label="Contested claim inspector">
@@ -539,7 +555,7 @@ ribbonTo(3,false);var c=r.snapshot.commitment;$('rb-commit').textContent=c.slice
 $('rb-regate').textContent='$'+Number(r.finalTotalUsd).toFixed(2)+' '+(r.outcome==='CAPTURED'?'CAPTURED':'AUTO-VOIDED');if(box)box.dataset.state=r.outcome==='CAPTURED'?'captured':'voided';}
 function showView(which){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');if(!c){ensureDesk().catch(function(){});}}
 function setView(which){showView(which);}
-function resetDemo(){return api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;state.mandate=null;refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);throw e;});}
+function resetDemo(){return api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;state.mandate=null;resetWalletUi();refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);throw e;});}
 $('tab-checkout').addEventListener('click',function(){showView('checkout');});
 $('tab-desk').addEventListener('click',function(){showView('desk');});
 $('btn-reset').addEventListener('click',function(){resetDemo().catch(function(){});});
@@ -711,13 +727,14 @@ function renderMatrix(){if(!state.benchmark)return;var m=state.benchmark.gateCon
 var h='<h3>Gate confusion matrix (expected × actual, 72 runs)</h3><table class="matrix"><thead><tr><th></th>';ds.forEach(function(d){h+='<th>'+esc(d)+'</th>';});h+='</tr></thead><tbody>';
 ds.forEach(function(e){h+='<tr><th>'+esc(e)+'</th>';ds.forEach(function(a){var v=m[e][a];h+='<td class="'+(e===a?(v>0?'cell-good':''):(v>0?'cell-bad':''))+'">'+v+'</td>';});h+='</tr>';});
 $('matrix-wrap').innerHTML=h+'</tbody></table>';}
-function setDataset(ds){state.dataset=ds;var live=ds==='live';
-$('ds-live').setAttribute('aria-pressed',live?'true':'false');$('ds-regression').setAttribute('aria-pressed',live?'false':'true');
-$('ag-live-disputes-grid').parentElement.hidden=!live;$('regression-shell').hidden=live;$('matrix-wrap').style.display=live?'none':'';
-if(live){destroyGrid('ag-regression-benchmark-grid');mountLive();}else{destroyGrid('ag-live-disputes-grid');mountRegression();}}
+function setDataset(ds){state.dataset=ds;var live=ds==='live';var reg=ds==='regression';var sync=ds==='sync';
+$('ds-live').setAttribute('aria-pressed',live?'true':'false');$('ds-regression').setAttribute('aria-pressed',reg?'true':'false');$('ds-sync').setAttribute('aria-pressed',sync?'true':'false');
+$('ag-live-disputes-grid').parentElement.hidden=!live;$('regression-shell').hidden=!reg;$('matrix-wrap').style.display=reg?'':'none';$('sync-shell').hidden=!sync;
+if(live){destroyGrid('ag-regression-benchmark-grid');mountLive();}else if(reg){destroyGrid('ag-live-disputes-grid');mountRegression();}else{destroyGrid('ag-live-disputes-grid');destroyGrid('ag-regression-benchmark-grid');loadSync();}}
 $('ds-live').addEventListener('click',function(){setDataset('live');});
 $('ds-regression').addEventListener('click',function(){setDataset('regression');});
-function exportGridCsv(){var id=state.dataset==='live'?'ag-live-disputes-grid':'ag-regression-benchmark-grid';var g=state.grids[id];if(g&&g.exportDataAsCsv){g.exportDataAsCsv({fileName:'veripact-'+state.dataset+'.csv'});toast('CSV exported');}else{toast('CSV export needs the AG Grid engine');}}
+$('ds-sync').addEventListener('click',function(){setDataset('sync');});
+function exportGridCsv(){if(state.dataset==='sync'){toast('CSV export covers the Live and Regression grids');return;}var id=state.dataset==='live'?'ag-live-disputes-grid':'ag-regression-benchmark-grid';var g=state.grids[id];if(g&&g.exportDataAsCsv){g.exportDataAsCsv({fileName:'veripact-'+state.dataset+'.csv'});toast('CSV exported');}else{toast('CSV export needs the AG Grid engine');}}
 $('grid-csv').addEventListener('click',function(){exportGridCsv();});
 function matchBadge(ok){return '<span class="match '+(ok?'yes':'no')+'">'+(ok?'MATCH':'DIFF')+'</span>';}
 function currentCase(){return state.disputes.disputes.filter(function(d){return d.case===state.selectedCase;})[0];}
@@ -862,6 +879,161 @@ function stopTour(){if(tourRunning){runTour();}else{hideDemoToast();}}
 var autoStarted=false;
 function autoPopulate(){if(autoStarted)return;autoStarted=true;
 runWitnessFlow().then(function(){return runCheckoutFlow(true);}).then(function(r){if(r&&r.outcome==='CAPTURED'){$('auditor').open=true;runAuditor();}}).catch(function(){});}
+/* ---------- v5 agentic wallet: QR pairing + partition bar ---------- */
+${QR_CLIENT_JS}
+var wallet={session:null,partition:null,pollTimer:null,pollCount:0};
+var syncLoaded=false;
+function wpMoney(n){return '$'+Number(n).toFixed(2);}
+function setPairStatus(txt){var st=$('pair-status');if(st)st.textContent=txt||'';}
+function setPartStatus(txt){var st=$('part-status');if(st)st.textContent=txt||'';}
+function paintPartition(p){
+wallet.partition=p;
+var cap=p?p.totalAllocatedUsd:350,used=p?p.capturedUsd:0,avail=p?p.availableUsd:350;
+$('part-allocated').textContent=wpMoney(cap);
+$('part-captured').textContent=wpMoney(used);
+var av=$('part-available');av.textContent=wpMoney(avail);
+var st=avail<=0?'wall':(avail<150?'low':'healthy');
+av.setAttribute('data-state',st);
+var fill=$('part-progress-fill');fill.style.width=(cap>0?Math.min(100,Math.max(0,used/cap*100)):0)+'%';fill.setAttribute('data-state',st);
+var rb=$('rb-partition');if(rb)rb.textContent='Wallet Partition: '+wpMoney(cap)+' cap  ·  '.replace(/ /g,'')+wpMoney(avail)+' avail';}
+function paintQr(){
+var box=$('qr-svg-box');if(!box)return;
+var s=wallet.session;
+if(!s){box.innerHTML='<span class="status-line" style="font-size:11px;text-align:center">No session yet</span>';return;}
+try{var m=qrEncodeMatrix(s.qrPairUrl);box.innerHTML=qrMatrixToSvg(m,76);}
+catch(e){box.innerHTML='<span class="status-line" style="font-size:11px">QR unavailable</span>';}}
+function paintPair(){
+var s=wallet.session;
+$('pair-code').textContent=s?s.pairingCode:'      '.replace(/ /g,'·');
+var pill=$('pair-status-pill');
+if(!s){pill.textContent='Not paired';pill.className='pill pill-info';}
+else if(s.status==='APPROVED'){pill.textContent='● Vault Paired ('+(s.vaultId||'vault')+')';pill.className='pill pill-ok';}
+else{pill.textContent='Pending Scan';pill.className='pill pill-warn';}
+var a=$('btn-pair-approve');
+if(s){a.setAttribute('href','/pair/'+s.sessionId);a.setAttribute('aria-disabled','false');}
+else{a.setAttribute('href','#');a.setAttribute('aria-disabled','true');}
+paintQr();}
+function stopPairPoll(){if(wallet.pollTimer){clearTimeout(wallet.pollTimer);wallet.pollTimer=null;}}
+function pollPairStatusOnce(continuePolling){
+var s=wallet.session;if(!s)return;
+api('/api/wallet/pair/status?sessionId='+encodeURIComponent(s.sessionId)).then(function(r){
+wallet.session=r.session;if(r.partition)paintPartition(r.partition);paintPair();
+if(r.session.status==='APPROVED'){setPairStatus('Wallet paired from phone. Partition active.');toast('Wallet paired');}
+else if(continuePolling){pollPairStatus();}
+}).catch(function(e){setPairStatus(e.message);});}
+function pollPairStatus(){
+stopPairPoll();
+var s=wallet.session;if(!s||s.status!=='PENDING_SCAN')return;
+if(wallet.pollCount>150){setPairStatus('Pairing timed out — start a new session.');return;}
+wallet.pollCount++;
+wallet.pollTimer=setTimeout(function(){pollPairStatusOnce(true);},2000);}
+function startPair(){
+stopPairPoll();wallet.pollCount=0;setPairStatus('Starting pairing session...');
+api('/api/wallet/pair/start',{method:'POST',body:'{}'}).then(function(r){
+wallet.session=r.session;paintPair();
+setPairStatus('Scan the QR with your phone, then approve. Polling for approval...');
+pollPairStatus();
+}).catch(function(e){setPairStatus(e.message);});}
+window.addEventListener('message',function(e){
+if(e.origin!==window.location.origin)return;
+var d=e.data||{};
+if(d.type==='VERIPACT_WALLET_PAIRED'&&wallet.session&&d.sessionId===wallet.session.sessionId){stopPairPoll();pollPairStatusOnce(true);}});
+function partSpend(){
+setPartStatus('Agent spending $297.00 via partition...');
+api('/api/wallet/spend-check',{method:'POST',body:JSON.stringify({scenarioId:'normal'})}).then(function(r){
+if(r.partition)paintPartition(r.partition);
+if(r.outcome==='CAPTURED'){setPartStatus('CAPTURED $297.00 — partition now $'+Number(r.partitionAvailableUsd).toFixed(2)+' avail.');toast('Partition spend captured');}
+else if(r.outcome==='AUTO_VOIDED_BY_PARTITION_WALL'){var av=$('part-available');av.setAttribute('data-state','wall');$('part-progress-fill').setAttribute('data-state','wall');setPartStatus('AUTO_VOIDED_BY_PARTITION_WALL ($297.00 > $'+Number(r.partitionAvailableUsd).toFixed(2)+' available)');toast('Partition wall blocked the spend');}
+else{setPartStatus(r.outcome+' — see partition meter.');}
+}).catch(function(e){setPartStatus(e.message);});}
+function partRefund(){
+setPartStatus('Refunding last capture...');
+api('/api/wallet/refund',{method:'POST',body:'{}'}).then(function(r){
+if(r.partition)paintPartition(r.partition);
+setPartStatus('Refunded +$'+Number(r.refund.amountUsd).toFixed(2)+' — partition restored to $'+Number(r.partition.availableUsd).toFixed(2)+' avail.');
+toast('Refund restored partition');
+}).catch(function(e){setPartStatus(e.message);});}
+function partConfig(){
+var v=parseFloat($('part-cap-input').value);
+if(!isFinite(v)||v<=0){setPartStatus('Enter a cap above $0.');return;}
+setPartStatus('Setting partition...');
+api('/api/wallet/partitions',{method:'POST',body:JSON.stringify({label:'Agentic Partition',totalAllocatedUsd:v,maxPerOrderUsd:Math.min(v,320),askHumanAboveUsd:Math.min(v,300)})}).then(function(p){
+paintPartition(p);setPartStatus('Partition set: '+wpMoney(p.totalAllocatedUsd)+' cap, '+wpMoney(p.availableUsd)+' avail.');toast('Partition updated');
+}).catch(function(e){setPartStatus(e.message);});}
+function refreshWallet(){api('/api/wallet/partitions').then(function(r){if(r.partition)paintPartition(r.partition);}).catch(function(){});}
+function resetWalletUi(){stopPairPoll();wallet.session=null;wallet.partition=null;wallet.pollCount=0;syncLoaded=false;paintPair();paintPartition(null);var sb=$('sync-body');if(sb)sb.innerHTML='<p class="status-line">Loading synced payments...</p>';var co=$('chatgpt-token-out');if(co){co.hidden=true;co.textContent='';}var mo=$('mcp-token-out');if(mo){mo.hidden=true;mo.textContent='';}setPairStatus('');setPartStatus('');}
+$('btn-pair-start').addEventListener('click',function(){startPair();});
+$('btn-part-spend').addEventListener('click',function(){partSpend();});
+$('btn-part-refund').addEventListener('click',function(){partRefund();});
+$('btn-part-config').addEventListener('click',function(){partConfig();});
+/* ---------- v5 connectors + sync dataset ---------- */
+function mintConnector(platform,outId){
+var out=$(outId);out.hidden=false;out.textContent='Minting...';
+api('/api/wallet/connectors',{method:'POST',body:JSON.stringify({platform:platform})}).then(function(r){
+if(platform==='CHATGPT_ACTION'){out.textContent='Token (copy now — shown once):\\n'+r.bearerTokenOnce+'\\n\\nImport: GET '+r.connector.openapiUrl+' as your GPT Action schema path.';}
+else{out.textContent='MCP config (copy now — shown once):\\n{\\n  "command": "'+r.connector.mcpCommand+'",\\n  "env": { "VERIPACT_CONNECTOR_TOKEN": "'+r.bearerTokenOnce+'" }\\n}\\nToken '+r.connector.tokenId+' scoped to '+r.connector.partitionId+'.';}
+toast('Connector token minted');
+}).catch(function(e){out.textContent=e.message;});}
+$('btn-mint-chatgpt').addEventListener('click',function(){mintConnector('CHATGPT_ACTION','chatgpt-token-out');});
+$('btn-mint-mcp').addEventListener('click',function(){mintConnector('CLAUDE_MCP','mcp-token-out');});
+function loadSync(){
+$('sync-shell').hidden=false;
+if(syncLoaded)return;syncLoaded=true;
+$('sync-body').innerHTML='<p class="status-line">Loading synced payments...</p>';
+api('/api/wallet/sync').then(function(r){
+var h='<div class="sync-scroll"><table class="matrix"><thead><tr><th>Order</th><th>Merchant</th><th>Amount</th><th>Status</th><th>Class</th><th>Commitment</th><th>Terms / risk note</th></tr></thead><tbody>';
+h+=r.records.map(function(p){
+var pc=p.protectionClass==='VERIPACT_PROTECTED';
+var terms=p.returnWindowDays!=null?(p.returnWindowDays+'-day / '+p.restockingFeePct+'%'):'—';
+return '<tr><td class="mono">'+esc(p.orderId)+'</td><td>'+esc(p.merchantName)+'</td><td class="num">'+wpMoney(p.amountUsd)+'</td><td><span class="pill '+pillFor(p.status)+'">'+esc(p.status)+'</span></td><td><span class="pill '+(pc?'pill-ok':'pill-bad')+'">'+esc(p.protectionClass)+'</span></td><td class="mono">'+(p.commitment?esc(String(p.commitment).slice(0,18))+'…':'—')+'</td><td>'+esc(p.driftRiskNote)+(p.channel3ProductId?' <span class="mono">'+esc(p.channel3ProductId)+'</span>':'')+'</td></tr>';
+}).join('');
+$('sync-body').innerHTML=h+'</tbody></table></div><p class="status-line">'+r.summary.protectedCount+' protected · '+r.summary.legacyUnwitnessedCount+' legacy unwitnessed</p>';
+}).catch(function(e){syncLoaded=false;$('sync-body').innerHTML='<p class="status-line">'+esc(e.message)+'</p>';});}
+/* v5 wallet string overrides (ASCII-safe redefinitions win over the NBSP-artifact originals above) */
+function paintPartition(p){
+wallet.partition=p;
+var cap=p?p.totalAllocatedUsd:350,used=p?p.capturedUsd:0,avail=p?p.availableUsd:350;
+$('part-allocated').textContent=wpMoney(cap);
+$('part-captured').textContent=wpMoney(used);
+var av=$('part-available');av.textContent=wpMoney(avail);
+var st=avail<=0?'wall':(avail<150?'low':'healthy');
+av.setAttribute('data-state',st);
+var fill=$('part-progress-fill');fill.style.width=(cap>0?Math.min(100,Math.max(0,used/cap*100)):0)+'%';fill.setAttribute('data-state',st);
+var rb=$('rb-partition');if(rb)rb.textContent='Wallet Partition: '+wpMoney(cap)+' cap  ·  '.replace(/ /g,' ')+wpMoney(avail)+' avail';}
+function paintPair(){
+var s=wallet.session;
+$('pair-code').textContent=s?s.pairingCode:'      '.replace(/ /g,'·');
+var pill=$('pair-status-pill');
+if(!s){pill.textContent='Not paired';pill.className='pill pill-info';}
+else if(s.status==='APPROVED'){pill.textContent='● Vault Paired ('+(s.vaultId||'vault')+')';pill.className='pill pill-ok';}
+else{pill.textContent='Pending Scan';pill.className='pill pill-warn';}
+var a=$('btn-pair-approve');
+if(s){a.setAttribute('href','/pair/'+s.sessionId);a.setAttribute('aria-disabled','false');}
+else{a.setAttribute('href','#');a.setAttribute('aria-disabled','true');}
+paintQr();}
+/* v5 wallet authoritative strings (single spaces plus u-escapes only) */
+function paintPartition(p){
+wallet.partition=p;
+var cap=p?p.totalAllocatedUsd:350,used=p?p.capturedUsd:0,avail=p?p.availableUsd:350;
+$('part-allocated').textContent=wpMoney(cap);
+$('part-captured').textContent=wpMoney(used);
+var av=$('part-available');av.textContent=wpMoney(avail);
+var st=avail<=0?'wall':(avail<150?'low':'healthy');
+av.setAttribute('data-state',st);
+var fill=$('part-progress-fill');fill.style.width=(cap>0?Math.min(100,Math.max(0,used/cap*100)):0)+'%';fill.setAttribute('data-state',st);
+var rb=$('rb-partition');if(rb)rb.textContent='Wallet Partition: '+wpMoney(cap)+' cap \u00B7 '+wpMoney(avail)+' avail';}
+function paintPair(){
+var s=wallet.session;
+$('pair-code').textContent=s?s.pairingCode:'\u00B7\u00B7\u00B7\u00B7\u00B7\u00B7';
+var pill=$('pair-status-pill');
+if(!s){pill.textContent='Not paired';pill.className='pill pill-info';}
+else if(s.status==='APPROVED'){pill.textContent='\u25CF Vault Paired ('+(s.vaultId||'vault')+')';pill.className='pill pill-ok';}
+else{pill.textContent='Pending Scan';pill.className='pill pill-warn';}
+var a=$('btn-pair-approve');
+if(s){a.setAttribute('href','/pair/'+s.sessionId);a.setAttribute('aria-disabled','false');}
+else{a.setAttribute('href','#');a.setAttribute('aria-disabled','true');}
+paintQr();}
+paintPair();refreshWallet();
 document.addEventListener('DOMContentLoaded',function(){autoPopulate();});
 </script>
 </body></html>`;

@@ -67,6 +67,7 @@ import {
 } from '@veripact/sdk';
 import { renderApprovalPage } from './approval-template';
 import { buildOpenApiSpec } from './openapi-route';
+import { handleWalletRequest, WALLET_ROUTES } from './wallet-routes';
 import { renderIndexPage } from './ui-template';
 import { renderStorefront } from './storefront-template';
 
@@ -101,6 +102,7 @@ export const ROUTES = [
   '/api/system/status',
   '/api/demo/reset',
   '/openapi.json',
+  ...WALLET_ROUTES,
 ];
 
 export interface HealthPayload {
@@ -150,12 +152,14 @@ export function securityHeaders(
   };
 }
 
-function sendJson(res: WorkbenchResponse, code: number, payload: unknown): void {
+/** @internal Exported for the v5 wallet route module (same security headers). */
+export function sendJson(res: WorkbenchResponse, code: number, payload: unknown): void {
   res.writeHead(code, securityHeaders('application/json; charset=utf-8'));
   res.end(JSON.stringify(payload));
 }
 
-function sendHtml(
+/** @internal Exported for the v5 wallet route module (pairing ceremony page). */
+export function sendHtml(
   res: WorkbenchResponse,
   code: number,
   html: string,
@@ -166,7 +170,7 @@ function sendHtml(
 }
 
 /** HTTP error with a status code (message must never carry secrets). */
-class HttpError extends Error {
+export class HttpError extends Error {
   readonly status: number;
 
   constructor(status: number, message: string) {
@@ -180,7 +184,8 @@ class HttpError extends Error {
  * Read the request body with a hard cap. Test fakes supply `bodyText`;
  * live requests stream with early abort past the cap.
  */
-async function readBody(req: WorkbenchRequest): Promise<string> {
+/** @internal Exported for the v5 wallet route module (same 1MB cap). */
+export async function readBody(req: WorkbenchRequest): Promise<string> {
   if (typeof req.bodyText === 'string') {
     if (Buffer.byteLength(req.bodyText, 'utf8') > MAX_BODY_BYTES) {
       throw new HttpError(413, 'request body too large');
@@ -219,7 +224,8 @@ async function readBody(req: WorkbenchRequest): Promise<string> {
   });
 }
 
-function parseJsonBody(text: string): Record<string, unknown> {
+/** @internal Exported for the v5 wallet route module (same object-only rule). */
+export function parseJsonBody(text: string): Record<string, unknown> {
   if (text.trim().length === 0) {
     return {};
   }
@@ -347,7 +353,8 @@ export function isLiveFallbackEngaged(): boolean {
  * replay mode and retry the whole operation once against the deterministic
  * engine. Non-auth errors (400s, referee mismatches, bugs) propagate.
  */
-async function withLiveFallback<T>(op: () => Promise<T>): Promise<T> {
+/** @internal Exported for the v5 wallet route module (hybrid harmony). */
+export async function withLiveFallback<T>(op: () => Promise<T>): Promise<T> {
   try {
     return await op();
   } catch (e) {
@@ -543,7 +550,8 @@ export interface LedgerEntry {
 
 const ledger: LedgerEntry[] = [];
 
-function appendLedger(entry: Omit<LedgerEntry, 'seq' | 'tsUtc'>): LedgerEntry {
+/** @internal Exported for the v5 wallet route module (witness-signed export). */
+export function appendLedger(entry: Omit<LedgerEntry, 'seq' | 'tsUtc'>): LedgerEntry {
   const row: LedgerEntry = {
     seq: ledger.length + 1,
     tsUtc: new Date().toISOString(),
@@ -614,7 +622,8 @@ export type ExecutionMode = 'replay' | 'live' | 'auto';
  * credential-aware routing). `replay` forces the fast deterministic engine
  * without touching `.env`; `live` forces the real PayPal Sandbox.
  */
-function parseExecutionMode(body: Record<string, unknown>): ExecutionMode {
+/** @internal Exported for the v5 wallet route module (hybrid harmony). */
+export function parseExecutionMode(body: Record<string, unknown>): ExecutionMode {
   const mode = body['executionMode'];
   if (mode === undefined) {
     return 'auto';
@@ -667,7 +676,8 @@ function paypalOptionsFor(mode: ExecutionMode): {
 }
 
 /** Demo SDK client for one execution mode (keys are mode-independent). */
-function demoClientFor(mode: ExecutionMode): VeriPactClient {
+/** @internal Exported for the v5 wallet route module (same shared engine). */
+export function demoClientFor(mode: ExecutionMode): VeriPactClient {
   return new VeriPactClient({ lenientKeys: true, paypal: paypalOptionsFor(mode) });
 }
 
@@ -2226,6 +2236,15 @@ export async function handleWorkbenchRequest(
         await withLiveFallback(() => handleVerify(body, res));
       }
       return;
+    }
+    if (
+      pathname === '/pair' ||
+      pathname.startsWith('/pair/') ||
+      pathname.startsWith('/api/wallet/')
+    ) {
+      if (await handleWalletRequest(req, res)) {
+        return;
+      }
     }
     const knownPaths = [
       '/health',
