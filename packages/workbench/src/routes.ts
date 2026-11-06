@@ -33,6 +33,7 @@ import {
   loadChannel3CacheFromDisk,
   verifyWithChannel3Oracle,
   type Channel3CatalogCache,
+  type WitnessSnapshotOutput,
 } from '@veripact/witness-client';
 import {
   createSandboxReplayEngine,
@@ -508,7 +509,7 @@ let sessionMandate: MandateSpec | null = null;
 let forceReplay = false;
 
 /** Mandate actually gated under: session override wins over the fixture. */
-function effectiveMandate(scenario: ScenarioName): MandateSpec {
+export function effectiveMandate(scenario: ScenarioName): MandateSpec {
   return sessionMandate ?? getScenario(scenario).mandate;
 }
 
@@ -1016,7 +1017,7 @@ async function handleStore(
   sendHtml(res, 200, await renderStorefront(scenario, sku), 'SAMEORIGIN');
 }
 
-function getCatalogCachePath(): string {
+export function getCatalogCachePath(): string {
   return repoPath('benchmark', 'responses', 'channel3_catalog_cache.json');
 }
 
@@ -1174,26 +1175,25 @@ async function handleBuyerMandateUpdate(
 }
 
 /**
- * POST /api/witness/snapshot — WITNESS rung only. Snapshots a scenario
- * storefront (in-memory HTML, local TSA, demo Channel3 cache). Zero PayPal
- * calls. Never touches buyer/merchant keys.
+ * Witnesses a scenario storefront under the effective mandate and optional SKU.
+ * Renders dynamic storefront HTML if `sku` is supplied, else static fixture HTML.
  */
-async function handleWitnessSnapshot(
-  body: Record<string, unknown>,
-  res: WorkbenchResponse,
-): Promise<void> {
-  const scenario = asRequestScenario(body);
-  const sku = typeof body['sku'] === 'string' && body['sku'].length > 0 ? (body['sku'] as string) : undefined;
-  const witness = readRungKey('witness');
+export async function witnessSnapshotForSku(
+  scenario: ScenarioName,
+  sku?: string,
+): Promise<WitnessSnapshotOutput> {
   const page = getScenario(scenario);
+  const witness = readRungKey('witness');
   let channel3Cache: Channel3CatalogCache = DEMO_CHANNEL3_CACHE;
   try {
     channel3Cache = loadChannel3CacheFromDisk(getCatalogCachePath());
   } catch {
     // fallback
   }
-  const snapshot = await createWitnessSnapshot({
-    listingUrl: page.listingUrl,
+  return await createWitnessSnapshot({
+    listingUrl: sku
+      ? `https://store.apexdisplay.invalid/${scenario}?sku=${encodeURIComponent(sku)}`
+      : page.listingUrl,
     mandate: effectiveMandate(scenario),
     witnessKeys: { publicKeyHex: witness.publicKeyHex, privateKeyHex: witness.privateKeyHex },
     htmlFetcher: async () => {
@@ -1208,6 +1208,21 @@ async function handleWitnessSnapshot(
     channel3Mode: 'cache',
     channel3Cache,
   });
+}
+
+/**
+ * POST /api/witness/snapshot — WITNESS rung only. Snapshots a scenario
+ * storefront (in-memory HTML, local TSA, demo Channel3 cache). Zero PayPal
+ * calls. Never touches buyer/merchant keys.
+ */
+async function handleWitnessSnapshot(
+  body: Record<string, unknown>,
+  res: WorkbenchResponse,
+): Promise<void> {
+  const scenario = asRequestScenario(body);
+  const sku = typeof body['sku'] === 'string' && body['sku'].length > 0 ? (body['sku'] as string) : undefined;
+  const witness = readRungKey('witness');
+  const snapshot = await witnessSnapshotForSku(scenario, sku);
   appendLedger({
     kind: 'witness-snapshot',
     summary: `${scenario} (${sku ?? 'default'}) witnessed → ${snapshot.gateResult.decision}`,
@@ -1356,25 +1371,8 @@ async function handleMerchantCheckout(
 
   // Multi-product Channel3 SKU flow:
   const product = findCatalogProduct(sku);
-  const html = await renderStorefront(scenario, sku);
   const mandate = effectiveMandate(scenario);
-  const witness = readRungKey('witness');
-  let channel3Cache: Channel3CatalogCache = DEMO_CHANNEL3_CACHE;
-  try {
-    channel3Cache = loadChannel3CacheFromDisk(getCatalogCachePath());
-  } catch {
-    // fallback
-  }
-  const snapshot = await createWitnessSnapshot({
-    listingUrl: `https://store.apexdisplay.invalid/${scenario}?sku=${encodeURIComponent(sku)}`,
-    mandate,
-    witnessKeys: { publicKeyHex: witness.publicKeyHex, privateKeyHex: witness.privateKeyHex },
-    htmlFetcher: async () => ({ status: 200, html, tlsVerified: false }),
-    requirePublicHttps: false,
-    tsaMode: 'local',
-    channel3Mode: 'cache',
-    channel3Cache,
-  });
+  const snapshot = await witnessSnapshotForSku(scenario, sku);
 
   const base: CheckoutFlowResult = {
     outcome: 'BLOCKED_PRE_CHECKOUT',

@@ -794,11 +794,11 @@ $('matrix-wrap').innerHTML=h+'</tbody></table>';}
 function setDataset(ds){state.dataset=ds;var live=ds==='live';var reg=ds==='regression';var sync=ds==='sync';
 $('ds-live').setAttribute('aria-pressed',live?'true':'false');$('ds-regression').setAttribute('aria-pressed',reg?'true':'false');$('ds-sync').setAttribute('aria-pressed',sync?'true':'false');
 $('ag-live-disputes-grid').parentElement.hidden=!live;$('regression-shell').hidden=!reg;$('matrix-wrap').style.display=reg?'':'none';$('sync-shell').hidden=!sync;
-if(live){destroyGrid('ag-regression-benchmark-grid');mountLive();}else if(reg){destroyGrid('ag-live-disputes-grid');mountRegression();}else{destroyGrid('ag-live-disputes-grid');destroyGrid('ag-regression-benchmark-grid');loadSync();}}
+if(live){destroyGrid('ag-regression-benchmark-grid');destroyGrid('ag-sync-payments-grid');mountLive();}else if(reg){destroyGrid('ag-live-disputes-grid');destroyGrid('ag-sync-payments-grid');mountRegression();}else{destroyGrid('ag-live-disputes-grid');destroyGrid('ag-regression-benchmark-grid');loadSync();}}
 $('ds-live').addEventListener('click',function(){setDataset('live');});
 $('ds-regression').addEventListener('click',function(){setDataset('regression');});
 $('ds-sync').addEventListener('click',function(){setDataset('sync');});
-function exportGridCsv(){if(state.dataset==='sync'){toast('CSV export covers the Live and Regression grids');return;}var id=state.dataset==='live'?'ag-live-disputes-grid':'ag-regression-benchmark-grid';var g=state.grids[id];if(g&&g.exportDataAsCsv){g.exportDataAsCsv({fileName:'veripact-'+state.dataset+'.csv'});toast('CSV exported');}else{toast('CSV export needs the AG Grid engine');}}
+function exportGridCsv(){var id=state.dataset==='live'?'ag-live-disputes-grid':(state.dataset==='regression'?'ag-regression-benchmark-grid':'ag-sync-payments-grid');var g=state.grids[id];if(g&&g.exportDataAsCsv){g.exportDataAsCsv({fileName:'veripact-'+state.dataset+'.csv'});toast('CSV exported');}else{toast('CSV export needs the AG Grid engine');}}
 $('grid-csv').addEventListener('click',function(){exportGridCsv();});
 function matchBadge(ok){return '<span class="match '+(ok?'yes':'no')+'">'+(ok?'MATCH':'DIFF')+'</span>';}
 function currentCase(){return state.disputes.disputes.filter(function(d){return d.case===state.selectedCase;})[0];}
@@ -1013,7 +1013,13 @@ if(r.partition)paintPartition(r.partition);
 var amt=r.finalTotalUsd?'$'+Number(r.finalTotalUsd).toFixed(2):'$297.00';
 if(r.outcome==='CAPTURED'){setPartStatus('CAPTURED '+amt+' — partition now $'+Number(r.partitionAvailableUsd).toFixed(2)+' avail.');toast('Partition spend captured');}
 else if(r.outcome==='AUTO_VOIDED_BY_PARTITION_WALL'){var av=$('part-available');av.setAttribute('data-state','wall');$('part-progress-fill').setAttribute('data-state','wall');setPartStatus('AUTO_VOIDED_BY_PARTITION_WALL ('+amt+' > $'+Number(r.partitionAvailableUsd).toFixed(2)+' available)');toast('Partition wall blocked the spend');}
-else if(r.outcome==='BLOCKED_PRE_CHECKOUT'){setPartStatus('BLOCKED_PRE_CHECKOUT — page integrity / cap exceeded');toast('Blocked pre-checkout');}
+else if(r.outcome==='BLOCKED_PRE_CHECKOUT'){
+var reason=r.reason||(r.gateResult&&r.gateResult.reasons?r.gateResult.reasons.join('; '):'page integrity / cap exceeded');
+setPartStatus('BLOCKED_PRE_CHECKOUT — '+reason);
+var banner=$('checkout-outcome-banner');
+if(banner){banner.dataset.state='blocked';banner.innerHTML=ICON_BAD+'<div><h3>Blocked Pre-Checkout</h3><p>'+esc(reason)+' · 0 PayPal API calls</p></div>';}
+toast('Blocked pre-checkout');
+}
 else{setPartStatus(r.outcome+' — see partition meter.');}
 }).catch(function(e){setPartStatus(e.message);});}
 function partRefund(){
@@ -1031,7 +1037,7 @@ api('/api/wallet/partitions',{method:'POST',body:JSON.stringify({label:'Agentic 
 paintPartition(p);setPartStatus('Partition set: '+wpMoney(p.totalAllocatedUsd)+' cap, '+wpMoney(p.availableUsd)+' avail.');toast('Partition updated');
 }).catch(function(e){setPartStatus(e.message);});}
 function refreshWallet(){api('/api/wallet/partitions').then(function(r){if(r.partition)paintPartition(r.partition);}).catch(function(){});}
-function resetWalletUi(){stopPairPoll();wallet.session=null;wallet.partition=null;wallet.pollCount=0;syncLoaded=false;paintPair();paintPartition(null);var sb=$('sync-body');if(sb)sb.innerHTML='<p class="status-line">Loading synced payments...</p>';var co=$('chatgpt-token-out');if(co){co.hidden=true;co.textContent='';}var mo=$('mcp-token-out');if(mo){mo.hidden=true;mo.textContent='';}setPairStatus('');setPartStatus('');}
+function resetWalletUi(){stopPairPoll();wallet.session=null;wallet.partition=null;wallet.pollCount=0;syncLoaded=false;destroyGrid('ag-sync-payments-grid');paintPair();paintPartition(null);var sb=$('sync-body');if(sb)sb.innerHTML='<p class="status-line">Loading synced payments...</p>';var co=$('chatgpt-token-out');if(co){co.hidden=true;co.textContent='';}var mo=$('mcp-token-out');if(mo){mo.hidden=true;mo.textContent='';}setPairStatus('');setPartStatus('');}
 $('btn-pair-start').addEventListener('click',function(){startPair();});
 $('btn-part-spend').addEventListener('click',function(){partSpend();});
 $('btn-part-refund').addEventListener('click',function(){partRefund();});
@@ -1046,11 +1052,39 @@ toast('Connector token minted');
 }).catch(function(e){out.textContent=e.message;});}
 $('btn-mint-chatgpt').addEventListener('click',function(){mintConnector('CHATGPT_ACTION','chatgpt-token-out');});
 $('btn-mint-mcp').addEventListener('click',function(){mintConnector('CLAUDE_MCP','mcp-token-out');});
+function mountSyncGrid(records){
+destroyGrid('ag-sync-payments-grid');
+var rows=records.map(function(p){
+var pc=p.protectionClass==='VERIPACT_PROTECTED';
+var terms=p.returnWindowDays!=null?(p.returnWindowDays+'-day / '+p.restockingFeePct+'%'):'—';
+return {
+id:p.orderId,
+protectionClass:p.protectionClass,
+orderId:p.orderId,
+merchantItem:p.merchantName+(p.channel3ProductId?' ('+p.channel3ProductId+')':''),
+amountFormatted:wpMoney(p.amountUsd),
+status:p.status,
+commitment:p.commitment||'—',
+driftRiskTerms:(p.driftRiskNote?p.driftRiskNote+' · ':'')+terms
+};
+});
+var cols=[
+{headerName:'Protection Class',field:'protectionClass',pinned:'left'},
+{headerName:'Transaction / Order ID',field:'orderId',cellClass:'mono'},
+{headerName:'Merchant & Item',field:'merchantItem'},
+{headerName:'Amount ($)',field:'amountFormatted'},
+{headerName:'Status',field:'status'},
+{headerName:'Commitment (VP1)',field:'commitment',cellRenderer:'hash',cellClass:'mono'},
+{headerName:'Drift Risk / Terms',field:'driftRiskTerms'}
+];
+mountAg('ag-sync-payments-grid',rows,cols,function(){});
+}
 function loadSync(){
 $('sync-shell').hidden=false;
 if(syncLoaded)return;syncLoaded=true;
 $('sync-body').innerHTML='<p class="status-line">Loading synced payments...</p>';
 api('/api/wallet/sync').then(function(r){
+mountSyncGrid(r.records);
 var h='<div class="sync-scroll"><table class="matrix"><thead><tr><th>Order</th><th>Merchant</th><th>Amount</th><th>Status</th><th>Class</th><th>Commitment</th><th>Terms / risk note</th></tr></thead><tbody>';
 h+=r.records.map(function(p){
 var pc=p.protectionClass==='VERIPACT_PROTECTED';

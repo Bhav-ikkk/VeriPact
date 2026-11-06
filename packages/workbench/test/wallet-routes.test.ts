@@ -340,6 +340,42 @@ describe('@veripact/workbench v5 wallet routes', () => {
     expect((await post('/api/wallet/spend-check', { scenarioId: 'nope' })).status).toBe(400);
   });
 
+  it('blocks partition spend on refurbished SKU due to condition gate and keeps partition balance untouched', async () => {
+    await pairAndApprove();
+    const res = await post('/api/wallet/spend-check', {
+      scenarioId: 'normal',
+      sku: 'APEX-27-4K-IPS-RB',
+    });
+    expect(res.status).toBe(200);
+    const body = json<{
+      outcome: string;
+      reason: string;
+      gateResult: { decision: string; reasons: string[] };
+      partition: PartitionSpec;
+      sku: string;
+    }>(res);
+    expect(body.outcome).toBe('BLOCKED_PRE_CHECKOUT');
+    expect(body.gateResult.decision).toBe('BLOCK');
+    expect(body.reason).toMatch(/condition/i);
+    expect(body.partition.capturedUsd).toBe(0);
+    expect(body.partition.availableUsd).toBe(350);
+  });
+
+  it('captures compliant SKU (KANSO-Q35) on partition spend with exact amount $167.00', async () => {
+    await pairAndApprove();
+    const res = await post('/api/wallet/spend-check', {
+      scenarioId: 'normal',
+      sku: 'KANSO-Q35',
+    });
+    expect(res.status).toBe(200);
+    const body = json<SpendFullPayload & { sku: string }>(res);
+    expect(body.outcome).toBe('CAPTURED');
+    expect(body.sku).toBe('KANSO-Q35');
+    expect(body.finalTotalUsd).toBe(167);
+    expect(body.partition.capturedUsd).toBe(167);
+    expect(body.partition.availableUsd).toBe(183);
+  });
+
   it('refunds the capture and restores $53 back to $350', async () => {
     await pairAndApprove();
     const spent = json<SpendFullPayload>(await post('/api/wallet/spend-check', { scenarioId: 'normal' }));
@@ -490,6 +526,7 @@ describe('@veripact/workbench v5 byte-cleanliness guards', () => {
       'connectors-row',
       'ds-sync',
       'sync-shell',
+      'ag-sync-payments-grid',
       'btn-pair-start',
       'btn-part-spend',
       'btn-part-refund',

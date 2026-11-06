@@ -21,7 +21,7 @@ import {
   type PartitionSpec,
 } from '@veripact/core';
 import { REPORTING_INDEXING_DELAY_DISCLOSURE } from '@veripact/paypal-client';
-import { SCENARIO_NAMES, type VeriPactWallet } from '@veripact/sdk';
+import { SCENARIO_NAMES, type ScenarioName, type VeriPactWallet } from '@veripact/sdk';
 import {
   appendLedger,
   demoClientFor,
@@ -32,6 +32,7 @@ import {
   sendHtml,
   sendJson,
   withLiveFallback,
+  witnessSnapshotForSku,
   type ExecutionMode,
   type WorkbenchRequest,
   type WorkbenchResponse,
@@ -122,14 +123,14 @@ function asConnectorPlatform(value: unknown): ConnectorPlatform {
   return value as ConnectorPlatform;
 }
 
-function asScenarioId(value: unknown): string {
+function asScenarioId(value: unknown): ScenarioName {
   if (value === undefined || value === null) {
     return 'normal';
   }
-  if (typeof value !== 'string' || !(SCENARIO_NAMES as string[]).includes(value)) {
+  if (typeof value !== 'string' || !(SCENARIO_NAMES as readonly string[]).includes(value)) {
     throw new HttpError(400, `unknown scenarioId (expected one of ${SCENARIO_NAMES.join(', ')})`);
   }
-  return value;
+  return value as ScenarioName;
 }
 
 /** Active partition, or `null` before pairing (never a throw for readers). */
@@ -292,6 +293,27 @@ async function handleSpendCheck(body: Record<string, unknown>, res: WorkbenchRes
   const run = async (): Promise<void> => {
     try {
       const wallet = walletFor(mode);
+      if (sku && sku !== 'APEX-27-4K-IPS') {
+        const skuSnapshot = await witnessSnapshotForSku(scenarioId, sku);
+        if (skuSnapshot.gateResult.decision === 'BLOCK') {
+          const reason = skuSnapshot.gateResult.reasons.join('; ');
+          appendLedger({
+            kind: 'wallet-spend',
+            summary: `partition spend ${scenarioId} (${sku}): BLOCKED_PRE_CHECKOUT (${skuSnapshot.gateResult.decision} — ${reason})`,
+            commitment: skuSnapshot.commitment,
+          });
+          const partition = wallet.getPartitionStatus();
+          sendJson(res, 200, {
+            outcome: 'BLOCKED_PRE_CHECKOUT',
+            reason,
+            gateResult: skuSnapshot.gateResult,
+            snapshot: skuSnapshot,
+            partition,
+            sku,
+          });
+          return;
+        }
+      }
       const result = await wallet.executePartitionedAgentPayment({
         scenarioId,
         requestedOverrideUsd:

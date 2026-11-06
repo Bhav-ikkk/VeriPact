@@ -633,6 +633,37 @@ async function fullFlow(browser: Browser): Promise<void> {
   assert(openapiSpec.status === 200, 'openapi-status', `status=${openapiSpec.status}`);
   assert(openapiSpec.openapi === '3.1.0', 'openapi-version', String(openapiSpec.openapi));
 
+  step('Channel3 multi-SKU selection: refurbished blocked on spend, compliant captured, resets to default');
+  await page.click('#tab-checkout');
+  await page.waitForSelector('#channel3-sku-select');
+  await page.selectOption('#channel3-sku-select', 'APEX-27-4K-IPS-RB');
+  await page.waitForFunction(
+    () => document.getElementById('gate-badge')?.textContent?.includes('BLOCKED') === true,
+  );
+  await page.click('#btn-part-spend');
+  await page.waitForFunction(
+    () => document.getElementById('part-status')?.textContent?.includes('BLOCKED_PRE_CHECKOUT') === true,
+  );
+  const blockedAvail = await page.textContent('#part-available');
+  assert(blockedAvail === '$350.00', 'part-avail-blocked', `expected $350.00, got ${blockedAvail}`);
+
+  await page.selectOption('#channel3-sku-select', 'KANSO-Q35');
+  await page.waitForFunction(
+    () => {
+      const txt = document.getElementById('gate-badge')?.textContent ?? '';
+      return txt.includes('ASK_HUMAN_DELTA') || txt.includes('SUFFICIENT');
+    },
+  );
+  await page.click('#btn-checkout');
+  await waitBanner(page, 'captured', 'Purchase Captured');
+  const outcomeText = await page.textContent('#checkout-outcome-banner');
+  assert((outcomeText ?? '').includes('$167.00'), 'kanso-checkout-167', String(outcomeText));
+
+  await page.click('#btn-reset');
+  await page.waitForFunction(
+    () => (document.getElementById('channel3-sku-select') as HTMLSelectElement | null)?.value === 'APEX-27-4K-IPS',
+  );
+
   await context.close();
 }
 
