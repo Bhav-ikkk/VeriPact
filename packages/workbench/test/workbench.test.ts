@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
 import { createContext, runInContext } from 'node:vm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -24,6 +25,7 @@ import {
   WORKBENCH_VERSION,
   type HealthPayload,
   type SystemStatusPayload,
+  type WorkbenchRequest,
   type WorkbenchResponse,
 } from '../src/index';
 
@@ -186,6 +188,7 @@ describe('@veripact/workbench', () => {
       'diff-pill',
       'JCS-PARITY',
       'sameOrigin',
+      'channel3-sku-select',
     ]) {
       expect(res.body).toContain(needle);
     }
@@ -203,6 +206,28 @@ describe('@veripact/workbench', () => {
     expect(adversarial.body).toContain('display:none');
     expect(adversarial.body).toContain('paypal.me/attacker-sink');
     expect((await get('/store/nope')).status).toBe(400);
+
+    const laptop = await get('/store/normal?sku=NORTHLOOP-14-AIR');
+    expect(laptop.status).toBe(200);
+    expect(laptop.body).toContain('NORTHLOOP-14-AIR');
+    expect(laptop.body).toContain('Northloop Air 14 Laptop');
+    expect(laptop.body).toContain('$899.00');
+
+    const refurb = await get('/store/normal?sku=APEX-27-4K-IPS-RB');
+    expect(refurb.status).toBe(200);
+    expect(refurb.body).toContain('APEX-27-4K-IPS-RB');
+    expect(refurb.body).toContain('REFURBISHED');
+  });
+
+  it('serves Channel3 8-product catalog via GET /api/catalog', async () => {
+    const res = await get('/api/catalog');
+    expect(res.status).toBe(200);
+    const body = json<{ products: Array<{ productId: string; priceUsd: number; condition: string }>; source: string }>(res);
+    expect(body.source).toBe('CHANNEL3_ORACLE_CATALOG');
+    expect(body.products).toHaveLength(8);
+    expect(body.products.map((p) => p.productId)).toContain('APEX-27-4K-IPS');
+    expect(body.products.map((p) => p.productId)).toContain('NORTHLOOP-14-AIR');
+    expect(body.products.map((p) => p.productId)).toContain('KANSO-Q35');
   });
 
   it('signs and verifies buyer mandates on the SELF boundary', async () => {
@@ -251,6 +276,15 @@ describe('@veripact/workbench', () => {
     expect(body.anchor.authority).toBe('LOCAL_TEST');
     const blocked = await post('/api/witness/snapshot', { scenario: 'adversarial_hidden_dom' });
     expect(json<{ gateResult: { decision: string } }>(blocked).gateResult.decision).toBe('BLOCK');
+
+    const blockedRefurb = await post('/api/witness/snapshot', { scenario: 'normal', sku: 'APEX-27-4K-IPS-RB' });
+    expect(json<{ gateResult: { decision: string } }>(blockedRefurb).gateResult.decision).toBe('BLOCK');
+
+    const blockedOverCap = await post('/api/witness/snapshot', { scenario: 'normal', sku: 'NORTHLOOP-14-AIR' });
+    expect(json<{ gateResult: { decision: string } }>(blockedOverCap).gateResult.decision).toBe('BLOCK');
+
+    const compliantHeadphones = await post('/api/witness/snapshot', { scenario: 'normal', sku: 'KANSO-Q35' });
+    expect(json<{ gateResult: { decision: string } }>(compliantHeadphones).gateResult.decision).toBe('ASK_HUMAN_DELTA');
   });
 
   it('checks out all three scenarios with honest outcomes', async () => {
@@ -447,6 +481,7 @@ describe('@veripact/workbench', () => {
     expect((await get('/health')).body).toContain('LIVE_PAYPAL_SANDBOX');
     expect(isLiveFallbackEngaged()).toBe(false);
     expect(isLiveAuthFailure(new Error('paypal POST /v1/oauth2/token failed: HTTP 401'))).toBe(true);
+    expect(isLiveAuthFailure(new Error('paypal POST /v3/vault/setup-tokens failed: HTTP 403 {"name":"NOT_AUTHORIZED"}'))).toBe(true);
     expect(isLiveAuthFailure(new Error('fetch failed'))).toBe(true);
     expect(isLiveAuthFailure(new Error('unknown scenario (expected one of normal)'))).toBe(false);
     noteLiveAuthFailure();
@@ -1327,5 +1362,39 @@ describe('@veripact/workbench', () => {
     runInContext('stopTour()', ctx);
     await tour;
     await Promise.allSettled(pending as Array<Promise<unknown>>);
+  });
+
+  it('reads request body from real Node Readable stream without throwing _events', async () => {
+    async function callStream(pathname: string): Promise<CapturedResponse> {
+      const captured: CapturedResponse = { status: 0, headers: {}, body: '' };
+      const res: WorkbenchResponse = {
+        writeHead(code: number, headers: Record<string, string>): void {
+          captured.status = code;
+          captured.headers = headers;
+        },
+        end(responseBody: string): void {
+          captured.body = responseBody;
+        },
+      };
+      const stream = Readable.from([Buffer.from('{"scenario":"normal"}')]);
+      const req = Object.assign(stream, {
+        method: 'POST',
+        url: pathname,
+        headers: { 'content-type': 'application/json' },
+      });
+      await handleWorkbenchRequest(req as unknown as WorkbenchRequest, res);
+      return captured;
+    }
+
+    const snapRes = await callStream('/api/witness/snapshot');
+    expect(snapRes.status).toBe(200);
+    const snapBody = json<{ commitment: string; boundary: string }>(snapRes);
+    expect(snapBody.boundary).toBe('WIT');
+    expect(snapBody.commitment).toBeDefined();
+
+    const resetRes = await callStream('/api/demo/reset');
+    expect(resetRes.status).toBe(200);
+    const resetBody = json<{ ok: boolean }>(resetRes);
+    expect(resetBody.ok).toBe(true);
   });
 });
