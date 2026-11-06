@@ -469,6 +469,12 @@ async function fullFlow(browser: Browser): Promise<void> {
   await page.screenshot({ path: join(ROOT, '.vitest-tmp', 'e2e-tour-done.png') });
 
   step('v5 wallet clean load: null-safe partitions + wallet DOM present');
+  await page.evaluate(async () => {
+    const r = await fetch('/api/demo/reset', { method: 'POST', body: '{}' });
+    if (!r.ok) {
+      throw new Error('e2e: wallet-phase reset failed');
+    }
+  });
   await page.goto(`${ORIGIN}/`, { waitUntil: 'domcontentloaded' });
   await waitBanner(page, 'captured', 'Purchase Captured');
   const prePair = await page.evaluate(async () => {
@@ -619,6 +625,13 @@ async function fullFlow(browser: Browser): Promise<void> {
     assert(!ledgerAfterMint.includes(secret), 'mint-no-leak', 'raw credential present in ledger export');
   }
   assert(ledgerAfterMint.includes('wallet-connector-mint'), 'mint-ledger', 'missing mint ledger kind');
+  const openapiSpec = await page.evaluate(async () => {
+    const r = await fetch('/openapi.json');
+    const j = (await r.json()) as { openapi: string };
+    return { status: r.status, openapi: j.openapi };
+  });
+  assert(openapiSpec.status === 200, 'openapi-status', `status=${openapiSpec.status}`);
+  assert(openapiSpec.openapi === '3.1.0', 'openapi-version', String(openapiSpec.openapi));
 
   await context.close();
 }

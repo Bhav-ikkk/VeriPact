@@ -1,12 +1,13 @@
 /**
- * `npm run assets:generate` — render the 5 committed README screenshots as
+ * `npm run assets:generate` — render the 6 committed README screenshots as
  * crisp SVG from REAL SDK + workbench data (zero hand-typed numbers).
  * Drives `handleWorkbenchRequest` directly (no sockets — sandbox-safe).
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   handleWorkbenchRequest,
+  resetDemoState,
   type WorkbenchResponse,
 } from '@veripact/workbench';
 
@@ -102,6 +103,29 @@ interface StatusSlice {
   keyFingerprints?: { buyer?: string; witness?: string; merchant?: string };
   totalScenarios?: number;
   regressionPassRate?: string;
+}
+
+interface WalletSlice {
+  sessionId?: string;
+  pairingCode?: string;
+  vaultId?: string;
+  capUsd?: number;
+  capturedUsd?: number;
+  availUsd?: number;
+  maxPerOrderUsd?: number;
+  spendOutcome?: string;
+  spendTotalUsd?: number;
+  wallOutcome?: string;
+  wallAvailUsd?: number;
+  refundAvailUsd?: number;
+  commitment?: string;
+  syncTotal?: number;
+  syncProtected?: number;
+  syncLegacy?: number;
+  chatMasked?: string;
+  chatOpenapi?: string;
+  mcpMasked?: string;
+  mcpCommand?: string;
 }
 
 const str = (v: unknown, fb = '…'): string => (typeof v === 'string' && v !== '' ? v : fb);
@@ -216,6 +240,7 @@ interface AssetData {
   adversarial: CheckoutSlice;
   disputes: DisputesSlice;
   bench: BenchmarkSlice;
+  wallet: WalletSlice;
 }
 
 function obs(s: SnapshotSlice | undefined, key: string): CriterionSlice {
@@ -485,9 +510,59 @@ function svgRegression(d: AssetData, footer: string): string {
   );
 }
 
+function svgWallet(d: AssetData, footer: string): string {
+  const w = d.wallet;
+  const y = 150;
+  let b = card(40, y, 362, 590, 'QR pairing ceremony', C.accent);
+  b += t(62, y + 92, 15, C.muted, 'Phone ceremony link', {});
+  b += t(62, y + 120, 14, C.ink, short(str(w.sessionId), 30), { mono: true });
+  b += pill(62, y + 150, `code ${str(w.pairingCode, '…')}`, C.accent, C.accentBg);
+  b += t(62, y + 228, 15, C.muted, 'Vaulted payer', {});
+  b += t(62, y + 256, 14, C.ink, short(str(w.vaultId), 30), { mono: true });
+  b += t(62, y + 320, 15, C.ink, `${money(w.capUsd)} partition armed`, { weight: '700' });
+  b += t(62, y + 360, 14, C.muted, `per-order cap ${money(w.maxPerOrderUsd)}`, {});
+  b += card(426, y, 362, 590, 'Partition wall', C.crimson);
+  b += pill(448, y + 60, `${str(w.spendOutcome)} ${money(w.spendTotalUsd)}`, C.emerald, C.emeraldBg);
+  b += t(448, y + 140, 16, C.ink, `${money(w.availUsd)} left of ${money(w.capUsd)}`, { mono: true });
+  b += pill(448, y + 176, str(w.wallOutcome), C.crimson, C.crimsonBg);
+  b += t(448, y + 254, 15, C.ink, `${money(w.spendTotalUsd)} > ${money(w.wallAvailUsd)} headroom`, { mono: true });
+  b += t(448, y + 320, 14, C.muted, 'Second spend voided pre-capture', {});
+  b += t(448, y + 360, 14, C.muted, `Refund Undo restores ${money(w.refundAvailUsd)}`, {});
+  b += card(812, y, 362, 590, 'Sync — legacy vs protected', C.amber);
+  b += pill(834, y + 60, `LEGACY x${String(w.syncLegacy ?? '?')}`, C.crimson, C.crimsonBg);
+  b += pill(834, y + 108, `PROTECTED x${String(w.syncProtected ?? '?')}`, C.emerald, C.emeraldBg);
+  b += t(834, y + 190, 15, C.muted, 'Session commitment', {});
+  b += t(834, y + 218, 13, C.ink, short(str(w.commitment), 30), { mono: true });
+  b += t(834, y + 280, 14, C.muted, '3-hour SLA · FALLBACK scope', {});
+  b += t(834, y + 320, 14, C.muted, 'Ledger holds real-time truth', {});
+  b += card(1198, y, 362, 590, 'Connectors', C.emerald);
+  b += t(1220, y + 92, 15, C.ink, 'ChatGPT Actions', { weight: '700' });
+  b += t(1220, y + 120, 14, C.muted, `GET ${str(w.chatOpenapi)}`, { mono: true });
+  b += t(1220, y + 148, 14, C.ink, str(w.chatMasked), { mono: true });
+  b += t(1220, y + 220, 15, C.ink, 'Claude / Cursor MCP', { weight: '700' });
+  b += t(1220, y + 248, 14, C.muted, short(str(w.mcpCommand), 32), { mono: true });
+  b += t(1220, y + 276, 14, C.ink, str(w.mcpMasked), { mono: true });
+  b += t(1220, y + 340, 14, C.muted, 'Scoped · shown once · masked', {});
+  b += t(1220, y + 380, 14, C.muted, 'in ledger + later reads', {});
+  return frame(
+    'v5 Agentic Wallet — QR pair, partition wall, sync, connectors',
+    'PayPal moves money · VeriPact clears intent — witnessed clearing for agent spend',
+    b,
+    footer,
+  );
+}
+
 async function main(): Promise<void> {
   const outDir = join(process.cwd(), 'docs', 'screenshots');
   mkdirSync(outDir, { recursive: true });
+  delete process.env['PAYPAL_CLIENT_ID'];
+  delete process.env['PAYPAL_CLIENT_SECRET'];
+  delete process.env['BUYER_ED25519_PRIVATE_KEY'];
+  delete process.env['WITNESS_ED25519_PRIVATE_KEY'];
+  delete process.env['MERCHANT_ED25519_PRIVATE_KEY'];
+  process.env['VERIPACT_ENV_FILE'] = join(process.cwd(), '.vitest-tmp', 'absent-credentials.env');
+  process.env['VERIPACT_WALLET_STATE_FILE'] = join(process.cwd(), '.vitest-tmp', 'assets-wallet-state.json');
+  resetDemoState();
   await call('POST', '/api/demo/reset', {});
   const status = (await call('GET', '/api/system/status')).json as unknown as StatusSlice;
   const normal = (await call('POST', '/api/merchant/checkout', { scenario: 'normal' }))
@@ -499,7 +574,58 @@ async function main(): Promise<void> {
   ).json as unknown as CheckoutSlice;
   const disputes = (await call('GET', '/api/merchant/disputes')).json as unknown as DisputesSlice;
   const bench = (await call('GET', '/api/benchmark')).json as unknown as BenchmarkSlice;
-  const d: AssetData = { status, normal, surcharge, adversarial, disputes, bench };
+  const pairStart = (await call('POST', '/api/wallet/pair/start', {})).json as unknown as {
+    session?: { sessionId?: string; pairingCode?: string };
+  };
+  const pairApprove = (
+    await call('POST', '/api/wallet/pair/approve', { sessionId: pairStart.session?.sessionId ?? '' })
+  ).json as unknown as {
+    session?: { vaultId?: string };
+    partition?: { totalAllocatedUsd?: number; maxPerOrderUsd?: number };
+  };
+  const spend1 = (await call('POST', '/api/wallet/spend-check', { scenarioId: 'normal' }))
+    .json as unknown as {
+    outcome?: string;
+    finalTotalUsd?: number;
+    partitionAvailableUsd?: number;
+    snapshot?: { commitment?: string };
+    partition?: { capturedUsd?: number };
+  };
+  const spend2 = (await call('POST', '/api/wallet/spend-check', { scenarioId: 'normal' }))
+    .json as unknown as { outcome?: string; partitionAvailableUsd?: number };
+  const refunded = (await call('POST', '/api/wallet/refund', {})).json as unknown as {
+    partition?: { availableUsd?: number };
+  };
+  const sync = (await call('GET', '/api/wallet/sync')).json as unknown as {
+    summary?: { totalCount?: number; protectedCount?: number; legacyUnwitnessedCount?: number };
+  };
+  const chat = (await call('POST', '/api/wallet/connectors', { platform: 'CHATGPT_ACTION' }))
+    .json as unknown as { connector?: { maskedToken?: string; openapiUrl?: string } };
+  const mcp = (await call('POST', '/api/wallet/connectors', { platform: 'CLAUDE_MCP' }))
+    .json as unknown as { connector?: { maskedToken?: string; mcpCommand?: string } };
+  const wallet: WalletSlice = {
+    sessionId: pairStart.session?.sessionId,
+    pairingCode: pairStart.session?.pairingCode,
+    vaultId: pairApprove.session?.vaultId,
+    capUsd: pairApprove.partition?.totalAllocatedUsd,
+    capturedUsd: spend1.partition?.capturedUsd,
+    availUsd: spend1.partitionAvailableUsd,
+    maxPerOrderUsd: pairApprove.partition?.maxPerOrderUsd,
+    spendOutcome: spend1.outcome,
+    spendTotalUsd: spend1.finalTotalUsd,
+    wallOutcome: spend2.outcome,
+    wallAvailUsd: spend2.partitionAvailableUsd,
+    refundAvailUsd: refunded.partition?.availableUsd,
+    commitment: spend1.snapshot?.commitment,
+    syncTotal: sync.summary?.totalCount,
+    syncProtected: sync.summary?.protectedCount,
+    syncLegacy: sync.summary?.legacyUnwitnessedCount,
+    chatMasked: chat.connector?.maskedToken,
+    chatOpenapi: chat.connector?.openapiUrl,
+    mcpMasked: mcp.connector?.maskedToken,
+    mcpCommand: mcp.connector?.mcpCommand,
+  };
+  const d: AssetData = { status, normal, surcharge, adversarial, disputes, bench, wallet };
   const footer =
     `Generated ${new Date().toISOString()} · ${str(status.transportMode)} · ` +
     `commitment ${short(str(normal.snapshot?.commitment), 20)} · zero hand-typed numbers`;
@@ -509,16 +635,19 @@ async function main(): Promise<void> {
     ['03-view1-surcharge-void-and-dom-block.svg', svgView1Edge(d, footer)],
     ['04-view2-contested-dispute-desk.svg', svgView2(d, footer)],
     ['05-regression-suite-wilson-ci.svg', svgRegression(d, footer)],
+    ['06-v5-agentic-wallet-partition-and-sync.svg', svgWallet(d, footer)],
   ];
   for (const [name, svg] of files) {
     const path = join(outDir, name);
     writeFileSync(path, `${svg}\n`);
     console.log(`assets: wrote ${path} (${svg.length} bytes)`);
   }
+  rmSync(join(process.cwd(), '.vitest-tmp', 'assets-wallet-state.json'), { force: true });
   console.log(
     `assets: normal=${str(normal.outcome)} ${money(normal.finalTotalUsd)} ` +
       `surcharge=${str(surcharge.outcome)} adversarial=${str(adversarial.outcome)} ` +
-      `regression=${str(status.regressionPassRate)}`,
+      `regression=${str(status.regressionPassRate)} ` +
+      `wallet=${str(spend1.outcome)}/${str(spend2.outcome)}`,
   );
 }
 

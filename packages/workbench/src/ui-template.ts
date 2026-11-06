@@ -500,7 +500,7 @@ ${syncShellHtml()}
 <div class="creds-actions"><button type="button" class="btn" id="btn-ledger-download">Download Signed Ledger (.json)</button></div>
 </div></div></div>
 <div id="toast" role="status" aria-live="polite"></div>
-<div id="demo-toast" hidden role="status" aria-live="polite"><span id="demo-step">STEP 1 / 6</span><span id="demo-text">Starting the guided tour…</span><span id="demo-progress" aria-hidden="true"><i id="demo-bar"></i></span><button type="button" id="demo-stop">Stop Tour</button></div>
+<div id="demo-toast" hidden role="status" aria-live="polite"><span id="demo-step">STEP 1 / 7</span><span id="demo-text">Starting the guided tour…</span><span id="demo-progress" aria-hidden="true"><i id="demo-bar"></i></span><button type="button" id="demo-stop">Stop Tour</button></div>
 <script src="/vendor/ag-grid-community.min.js" defer></script>
 <script>
 'use strict';
@@ -802,11 +802,11 @@ $('sheet-modal').hidden=false;}
 $('sheet-close').addEventListener('click',function(){$('sheet-modal').hidden=true;});
 $('sheet-print').addEventListener('click',function(){window.print();});
 $('sheet-modal').addEventListener('click',function(e){if(e.target.classList&&e.target.classList.contains('modal-back'))$('sheet-modal').hidden=true;});
-/* ---------- visual autopilot tour: 6 narrated steps, spotlight + real clicks ---------- */
+/* ---------- visual autopilot tour: 7 narrated steps, spotlight + real clicks ---------- */
 var tourRunning=false;var tourPaused=false;var tourRingEl=null;
 function tourSleep(ms){var rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;return new Promise(function(res){setTimeout(res,rm?Math.min(ms,400):ms);});}
 function tourSay(t){$('tour-status').textContent=t;$('tour-status').title=t;toast(t);}
-function tourStep(n,label){tourSay('Step '+n+'/6: '+label);demoToast(n,6,label);}
+function tourStep(n,label){tourSay('Step '+n+'/7: '+label);demoToast(n,7,label);}
 function selectCase(c){state.selectedCase=c;renderInspector();}
 function tourScroll(el){if(!el||!el.scrollIntoView)return;var rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;try{el.scrollIntoView({behavior:rm?'auto':'smooth',block:'center'});}catch(e){}}
 function tourRing(el){tourUnring();if(!el||!el.classList)return;tourRingEl=el;el.classList.add('tour-highlight');}
@@ -870,6 +870,29 @@ var presets=$('preset-list').children;await highlightAndClick(presets[2],'Charti
 await tourSleep(800);if(!alive())return;
 await highlightOnly($('agent-chart'),'72 of 72 runs green — Gate, Post-auth, Referee, Overall',2200);if(!alive())return;
 await highlightOnly($('matrix-wrap'),'Confusion matrix: 24 PROCEED, 33 ASK_HUMAN_DELTA, 15 BLOCK',2200);if(!alive())return;
+if($('btn-pair-approve')){
+tourStep(7,'Agentic Wallet — QR pair, partition wall, sync');
+showView('checkout');
+await highlightOnly($('wallet-card'),'Agentic Wallet — phone QR pairing plus partition guard',1800);if(!alive())return;
+await highlightAndClick($('btn-pair-start'),'Minting a QR pairing session',1300);if(!alive())return;
+await tourWaitFor(function(){return wallet.session&&wallet.session.sessionId;});
+await highlightOnly($('btn-pair-approve'),'Scan with a phone — tapping Approve links the vault',1600);if(!alive())return;
+tourSay('Approving on the paired phone');
+await api('/api/wallet/pair/approve',{method:'POST',body:JSON.stringify({sessionId:wallet.session.sessionId})});
+await tourWaitFor(function(){return $('pair-status-pill').textContent.indexOf('Vault Paired')>=0;});if(!alive())return;
+await highlightOnly($('part-available'),'Partition active — $350.00 available to agents',1800);if(!alive())return;
+await highlightAndClick($('btn-part-spend'),'Agent spend — capturing $297.00',1300);if(!alive())return;
+await tourWaitFor(function(){return $('part-available').textContent==='$53.00';});if(!alive())return;
+await highlightAndClick($('btn-part-spend'),'Second $297.00 — the wall blocks it',1300);if(!alive())return;
+await tourWaitFor(function(){return $('part-status').textContent.indexOf('AUTO_VOIDED_BY_PARTITION_WALL')>=0;});if(!alive())return;
+await highlightAndClick($('btn-part-refund'),'Refund Undo — restoring $350.00',1300);if(!alive())return;
+await tourWaitFor(function(){return $('part-available').textContent==='$350.00';});if(!alive())return;
+await highlightAndClick($('tab-desk'),'Opening the clearing desk',1200);if(!alive())return;
+await ensureDesk();if(!alive())return;
+await highlightAndClick($('ds-sync'),'Legacy versus Protected payment sync',1300);if(!alive())return;
+await tourWaitFor(function(){return $('sync-body').textContent.indexOf('VERIPACT_PROTECTED')>=0;});if(!alive())return;
+await highlightOnly($('connectors-row'),'ChatGPT Actions plus Claude MCP connectors',2000);if(!alive())return;
+}
 tourSay('Tour complete — VeriPact proved what the merchant promised.');demoDone('Tour complete — VeriPact proved what the merchant promised.');
 }()).catch(function(e){tourUnring();if(e.message!=='__TOUR_ABORT__')tourSay('Tour stopped: '+e.message);}).finally(function(){var done=tourRunning&&!tourPaused;tourRunning=false;tourUnring();$('btn-tour').textContent='▶ Run 60s Guided Demo Tour';if(!done&&!tourPaused){tourSay('Tour stopped.');hideDemoToast();}});}
 $('btn-tour').addEventListener('click',function(){runTour();});

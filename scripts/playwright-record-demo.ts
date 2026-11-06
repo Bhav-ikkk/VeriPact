@@ -4,7 +4,7 @@
  * Uses the exact same battle-tested harness as `scripts/verify-ui-e2e.ts`
  * (portable-browser discovery, route fulfillment of the REAL
  * `handleWorkbenchRequest`, hermetic zero-key replay pin) so the video
- * can never drift from what E2E proves. Records a 5-beat walkthrough at
+ * can never drift from what E2E proves. Records an 8-beat walkthrough at
  * 1600x900 with natural pacing pauses, saves PNGs to
  * `docs/screenshots/live-*.png`, and the `.webm` to
  * `videos/veripact-demo-tour.webm` (gitignored).
@@ -148,6 +148,7 @@ async function main(): Promise<void> {
   delete process.env['WITNESS_ED25519_PRIVATE_KEY'];
   delete process.env['MERCHANT_ED25519_PRIVATE_KEY'];
   process.env['VERIPACT_ENV_FILE'] = join(ROOT, '.vitest-tmp', 'absent-credentials.env');
+  process.env['VERIPACT_WALLET_STATE_FILE'] = join(ROOT, '.vitest-tmp', 'demo-wallet-state.json');
   mkdirSync(VIDEOS, { recursive: true });
   mkdirSync(SHOTS, { recursive: true });
   resetDemoState();
@@ -162,7 +163,82 @@ async function main(): Promise<void> {
     watchPage(page);
     page.setDefaultTimeout(30000);
 
-    console.log('demo: beat 1 — normal checkout ($297.00 CAPTURED) + auditor');
+    console.log('demo: beat 1 — QR pair + $350 partition');
+    await page.goto(`${ORIGIN}/`, { waitUntil: 'domcontentloaded' });
+    await waitBanner(page, 'captured');
+    await page.evaluate(() => {
+      document.getElementById('wallet-card')?.scrollIntoView({ block: 'start' });
+    });
+    await hold(page, 600);
+    await page.click('#btn-pair-start');
+    await page.waitForSelector('#qr-svg-box svg', { timeout: 8000 });
+    await hold(page, 1200);
+    await shot(page, 'live-01-wallet-qr.png');
+    await page.evaluate(async () => {
+      const href = document.getElementById('btn-pair-approve')?.getAttribute('href') ?? '';
+      const sessionId = href.split('/pair/')[1] ?? '';
+      const r = await fetch('/api/wallet/pair/approve', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+      if (!r.ok) {
+        throw new Error('demo: wallet approve failed');
+      }
+    });
+    await page.waitForFunction(
+      () => document.getElementById('pair-status-pill')?.textContent?.includes('Vault Paired') === true,
+    );
+    await hold(page, 1200);
+    await shot(page, 'live-02-wallet-paired.png');
+
+    console.log('demo: beat 2 — partition spend, wall block, refund undo');
+    await page.click('#btn-part-spend');
+    await page.waitForFunction(() => document.getElementById('part-available')?.textContent === '$53.00');
+    await hold(page, 1200);
+    await shot(page, 'live-03-partition-spend.png');
+    await page.click('#btn-part-spend');
+    await page.waitForFunction(
+      () =>
+        document.getElementById('part-status')?.textContent?.includes('AUTO_VOIDED_BY_PARTITION_WALL') === true,
+    );
+    await hold(page, 1200);
+    await shot(page, 'live-04-partition-wall.png');
+    await page.click('#btn-part-refund');
+    await page.waitForFunction(() => document.getElementById('part-available')?.textContent === '$350.00');
+    await hold(page, 1200);
+    await shot(page, 'live-05-partition-refund.png');
+
+    console.log('demo: beat 3 — sync grid + connectors');
+    await page.click('#tab-desk');
+    await page.click('#ds-sync');
+    await page.waitForFunction(
+      () => document.getElementById('sync-body')?.textContent?.includes('VERIPACT_PROTECTED') === true,
+    );
+    await page.evaluate(() => {
+      document.getElementById('sync-shell')?.scrollIntoView({ block: 'start' });
+    });
+    await hold(page, 1200);
+    await shot(page, 'live-06-sync-grid.png');
+    await page.click('#btn-mint-chatgpt');
+    await page.waitForFunction(
+      () =>
+        !(document.getElementById('chatgpt-token-out')?.hidden ?? true) &&
+        ((document.getElementById('chatgpt-token-out')?.textContent ?? '').length > 40),
+    );
+    await page.click('#btn-mint-mcp');
+    await page.waitForFunction(
+      () =>
+        !(document.getElementById('mcp-token-out')?.hidden ?? true) &&
+        ((document.getElementById('mcp-token-out')?.textContent ?? '').length > 40),
+    );
+    await page.evaluate(() => {
+      document.getElementById('connectors-row')?.scrollIntoView({ block: 'start' });
+    });
+    await hold(page, 1200);
+    await shot(page, 'live-07-connectors.png');
+
+    console.log('demo: beat 4 — normal checkout ($297.00 CAPTURED) + auditor');
     await page.goto(`${ORIGIN}/`, { waitUntil: 'domcontentloaded' });
     await waitBanner(page, 'captured');
     await hold(page, 1200);
@@ -177,17 +253,17 @@ async function main(): Promise<void> {
         document.getElementById('auditor-body')?.textContent?.includes('JCS-PARITY MATCH') === true,
     );
     await hold(page, 1500);
-    await shot(page, 'live-01-capture-auditor.png');
+    await shot(page, 'live-08-capture-auditor.png');
 
-    console.log('demo: beat 2 — surcharge auto-void ($340.50 > $320.00 cap)');
+    console.log('demo: beat 5 — surcharge auto-void ($340.50 > $320.00 cap)');
     await page.click('button[data-scn="surcharge_void"]');
     await hold(page, 800);
     await page.click('#btn-checkout');
     await waitBanner(page, 'voided');
     await hold(page, 1500);
-    await shot(page, 'live-02-void.png');
+    await shot(page, 'live-09-void.png');
 
-    console.log('demo: beat 3 — adversarial DOM blocked pre-checkout');
+    console.log('demo: beat 6 — adversarial DOM blocked pre-checkout');
     await page.click('button[data-scn="adversarial_hidden_dom"]');
     await hold(page, 800);
     await page.click('#btn-witness');
@@ -198,9 +274,9 @@ async function main(): Promise<void> {
     await page.click('#btn-checkout');
     await waitBanner(page, 'blocked');
     await hold(page, 1500);
-    await shot(page, 'live-03-block.png');
+    await shot(page, 'live-10-block.png');
 
-    console.log('demo: beat 4 — restore capture, file + resolve buyer forgery');
+    console.log('demo: beat 7 — restore capture, file + resolve buyer forgery');
     await page.click('button[data-scn="normal"]');
     await hold(page, 800);
     await page.click('#btn-checkout');
@@ -214,15 +290,15 @@ async function main(): Promise<void> {
           ?.textContent?.includes('BUYER_FORGERY_DETECTED') === true,
     );
     await hold(page, 1500);
-    await shot(page, 'live-04-forgery-filed.png');
+    await shot(page, 'live-11-forgery-filed.png');
     await page.click('#btn-resolve');
     await page.waitForFunction(
       () => document.getElementById('insp-seller')?.textContent?.includes('RESOLVED') === true,
     );
     await hold(page, 1200);
-    await shot(page, 'live-05-forgery-resolved.png');
+    await shot(page, 'live-12-forgery-resolved.png');
 
-    console.log('demo: beat 5 — Case A drift + 24-scenario regression suite');
+    console.log('demo: beat 8 — Case A drift + 24-scenario regression suite');
     await clickCaseRow(page, 'merchant_drift');
     await page.waitForFunction(
       () =>
@@ -235,7 +311,7 @@ async function main(): Promise<void> {
       document.getElementById('inspector')?.scrollIntoView({ block: 'start' });
     });
     await hold(page, 600);
-    await shot(page, 'live-06-drift-inspected.png');
+    await shot(page, 'live-13-drift-inspected.png');
     await page.click('#btn-resolve');
     await page.waitForFunction(
       () => document.getElementById('insp-seller')?.textContent?.includes('RESOLVED') === true,
@@ -252,7 +328,7 @@ async function main(): Promise<void> {
       () => document.getElementById('chart-table')?.textContent?.includes('72/72') === true,
     );
     await hold(page, 1500);
-    await shot(page, 'live-07-regression.png');
+    await shot(page, 'live-14-regression.png');
 
     const video = page.video();
     await context.close();
@@ -270,6 +346,7 @@ async function main(): Promise<void> {
   } finally {
     await browser.close();
     resetDemoState();
+    rmSync(join(ROOT, '.vitest-tmp', 'demo-wallet-state.json'), { force: true });
   }
   if (problems.length > 0) {
     console.log(`demo: FAIL — ${problems.length} page problem(s):`);
@@ -278,7 +355,7 @@ async function main(): Promise<void> {
     }
     process.exitCode = 1;
   } else {
-    console.log('demo: DONE — 7 PNGs + .webm, zero page problems');
+    console.log('demo: DONE — 14 PNGs + .webm, zero page problems');
   }
 }
 

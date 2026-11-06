@@ -9,6 +9,10 @@ Repository: `https://github.com/Bhav-ikkk/VeriPact`.
 
 **Tagline (125 chars):** Independent witness infrastructure for agentic commerce — VeriPact proves what the merchant actually promised, inside PayPal.
 
+## v5 Thesis
+
+> PayPal moves the money. VeriPact clears the intent — combining a Partitioned Agentic Wallet (QR pairing, hard sub-balance caps, ChatGPT/Claude connectors) with automatic 3-Rung (SELF → WIT → SIGN) merchant-promise witnessing on every payment.
+
 ## 2. Sandbox receipts & verification strip
 
 Live sandbox receipts (committed, `docs/sandbox-receipts.json`,
@@ -124,7 +128,9 @@ invoke witnessing. Zero paid API keys anywhere.
 7. Live receipts are CREATED-only; live capture/void needs
    founder-manual buyer approval plus Finalize per order.
 8. The surcharge custom_id match is withheld: TSA real-clock hashes
-   are non-reproducible, so judge re-witness stays untested.
+   are non-reproducible, so judge re-witness stays untested. Persisted
+   `receiptCore` keeps `computeCommitment` deterministic and
+   re-verifiable without re-witnessing.
 9. Transaction Search sync is async reconciliation only
    (`FALLBACK_TO_REPLAY_AND_SESSION_ORDERS` uncredentialed, 3-hour
    SLA, non-unique IDs); real-time balances come from the Clearing
@@ -136,6 +142,12 @@ invoke witnessing. Zero paid API keys anywhere.
 `paypal-orders-v2`, `paypal-disputes-v1`, `ed25519`, `rfc3161`,
 `rfc8785`, `ag-grid`, `channel3-mcp`, `playwright`, `vitest`, `render`.
 
+**Try it:** `npx veripact wallet-pair` (approve from the ceremony
+URL), then spend through the $350 partition; `wallet-sync`,
+`partition-create`, `partition-list`; ChatGPT Actions import
+`GET /openapi.json`; Claude/Cursor run the 7-tool
+`@veripact/mcp-server` over stdio.
+
 - **Best Use of PayPal + AI:** full Orders v2 AUTHORIZE/PATCH/capture
   + Disputes v1 HATEOAS engine with the `VP1:` commitment bound into
   `custom_id`, re-gated post-approval — plus Vault pairing, Refunds
@@ -145,8 +157,15 @@ invoke witnessing. Zero paid API keys anywhere.
   now with QR-paired sub-balance partitions, deterministic
   pre-authorization spend checks, and ChatGPT/Claude connectors.
 - **Best Demo Delivery:** 60-second guided in-app tour, one-command
-  Playwright video recorder, 5 committed SVG visuals, zero-key judging.
+  Playwright video recorder, 6 committed SVG visuals, zero-key judging.
 - **Best Use of AG Grid:** dispute desk + 72-run regression grids with
   remount-by-design datasets and an offline native fallback.
 - **Best Use of Channel3:** MCP catalog oracle cross-checking every
   witnessed listing (condition + baseline price) with cache replay.
+
+## 5. Founder ship checklist (paste live links before submitting)
+
+- Hosted demo URL: `TBD_OWNER_RENDER_URL` (`render.yaml` ships the
+  one-click Render deploy; paste the live URL here and on Devpost).
+- Demo video URL: `TBD_OWNER_YOUTUBE_URL` (upload the recorded
+  `videos/veripact-demo-tour.webm`, sub-3-min, unlisted or public).

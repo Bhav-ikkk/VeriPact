@@ -13,6 +13,8 @@ evidence instead of screenshots.
 Built for [Build What's Next with PayPal and
 AI](https://paypalaihackathon.devpost.com). Solo build + AI agents.
 
+> **v5 thesis:** PayPal moves the money. VeriPact clears the intent — combining a Partitioned Agentic Wallet (QR pairing, hard sub-balance caps, ChatGPT/Claude connectors) with automatic 3-Rung (SELF → WIT → SIGN) merchant-promise witnessing on every payment.
+
 ## Visual Tour (60 Seconds)
 
 Press **▶ Run 60s Guided Demo Tour** in the workbench header, or record it
@@ -34,6 +36,9 @@ chromium` once). Every frame below is rendered from a live SDK run via
 
 ![24-scenario regression suite: confusion matrix and Wilson CIs](./docs/screenshots/05-regression-suite-wilson-ci.svg)
 *72/72 runs, diagonal confusion matrix, honest 95% Wilson intervals.*
+
+![v5 agentic wallet: QR pairing, partition wall, sync, connectors](./docs/screenshots/06-v5-agentic-wallet-partition-and-sync.svg)
+*v5: QR pair + $350 partition wall + legacy-vs-protected sync + ChatGPT/Claude connectors.*
 
 ## Sandbox Receipts Strip
 
@@ -128,6 +133,10 @@ npx veripact witness --scenario normal
 npx veripact checkout --scenario surcharge_void
 npx veripact audit-dispute --case buyer_forgery
 npx veripact verify --scenario normal
+npx veripact wallet-pair
+npx veripact partition-create --label "Agentic" --total 350 --max-order 320 --ask-above 300
+npx veripact partition-list
+npx veripact wallet-sync
 
 # 3. MCP server (stdio JSON-RPC for shopping agents)
 node packages/mcp-server/dist/index.js
@@ -141,10 +150,10 @@ npm run regression
 # 5. Live sandbox seeder (writes docs/sandbox-receipts.json)
 npm run seed:sandbox
 
-# 6. Visual assets (5 SVGs from live SDK data → docs/screenshots/)
+# 6. Visual assets (6 SVGs from live SDK data → docs/screenshots/)
 npm run assets:generate
 
-# 7. Demo recorder (Playwright 1920x1080 video + PNGs → videos/)
+# 7. Demo recorder (Playwright 1600x900 video + PNGs → videos/)
 npx playwright install chromium # once, on machines that allow sockets
 npm run demo:record
 ```
@@ -226,7 +235,9 @@ Gate confusion (expected × actual): PROCEED 24, ASK_HUMAN_DELTA 33, BLOCK
    a real clock, so re-witnessing a live order yields a different
    hash; judge re-witness of live orders stays untested until a
    reproducible strategy lands — the withheld match is disclosed,
-   not buried.
+   not buried. Every order persists its `receiptCore`, so
+   `computeCommitment(receiptCore)` stays deterministic and
+   re-verifiable without re-witnessing.
 9. **Transaction Search sync is async reconciliation.** Uncredentialed
    sync reports `FALLBACK_TO_REPLAY_AND_SESSION_ORDERS`; PayPal
    reporting carries up to a 3-hour indexing SLA plus non-unique

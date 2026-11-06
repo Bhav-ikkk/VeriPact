@@ -186,3 +186,23 @@ route). All closed; clean checkouts behaved identically before/after.
   (offline-first native grid, zero console errors). The AG Grid
   mount branch stays as a progressive enhancement if
   `window.agGrid` ever exists.
+
+## 8. Run 15 v5 addendum (2026-11-06, wallet surface review)
+
+Full gate at review time: 238/238 unit tests (16 files), 23/23
+Playwright E2E, `lint` + `typecheck` + `build` exit 0. v5 wallet
+findings (demo-model unless noted):
+
+- **Pairing ceremony is possession-only (demo model).** Session IDs
+  are sequential (`PAIR-VP-0001` ...) and the `/pair/:sessionId`
+  page approves whoever opens the link inside the 15-minute TTL.
+  Safe for the local demo; production needs owner-bound sessions.
+- **One-time credentials stay one-time.** The raw connector value
+  leaves the server exactly once (mint response); the ledger and
+  all later reads carry the masked form only (unit + E2E asserted).
+- **Ceremony page is injection-safe.** Session fields are
+  HTML-escaped server-side (committed script-escape test); the
+  paired notification is a same-origin `postMessage`.
+- **No new PayPal or key-boundary risk.** Wallet routes reuse the
+  Step-1 vault/refund/reporting modules and the Rule-2 route
+  boundaries; no foreign keys cross buyer/witness/merchant code.
