@@ -377,16 +377,17 @@ function hasPaypalCredentials(): boolean {
 }
 
 /**
- * Shared replay engine for the demo desk: granular HATEOAS actions
+ * Shared deterministic engine for the demo desk: granular HATEOAS actions
  * (require → provide → escalate → adjudicate) must observe each other's
- * state across HTTP requests, which per-request engines cannot do. Live
- * mode returns undefined (PayPal itself holds the state). Tests reset via
- * `resetDemoState()` in `beforeEach` for isolation.
+ * state across HTTP requests, which per-request engines cannot do. This
+ * engine is ALWAYS available — even with live PayPal credentials on disk —
+ * because the contested-dispute desk is a local simulation surface (PayPal
+ * exposes no file-dispute API): filings from live-minted orders anchor to
+ * their real orderId + VP1 commitment here and every record stays labeled
+ * DETERMINISTIC_SANDBOX_REPLAY (Rule 3). Tests reset via `resetDemoState()`
+ * in `beforeEach` for isolation.
  */
-function demoEngine(): SandboxReplayEngine | undefined {
-  if (hasPaypalCredentials()) {
-    return undefined;
-  }
+function demoEngine(): SandboxReplayEngine {
   if (sharedEngine === null) {
     sharedEngine = createSandboxReplayEngine();
   }
@@ -599,27 +600,79 @@ function scrubEnvCredential(value: string | undefined): string | undefined {
   return value;
 }
 
-/** Demo SDK client bound to the shared engine (replay) or live PayPal. */
-function demoClient(): VeriPactClient {
-  return new VeriPactClient({
-    lenientKeys: true,
-    paypal: {
-      clientId: scrubEnvCredential(process.env['PAYPAL_CLIENT_ID']),
-      clientSecret: scrubEnvCredential(process.env['PAYPAL_CLIENT_SECRET']),
-      replay: demoEngine(),
-      ...(forceReplay || liveFallbackEngaged() ? { mode: 'replay' as const } : {}),
-    },
-  });
+/** Per-request PayPal execution override for hybrid live/replay harmony. */
+export type ExecutionMode = 'replay' | 'live' | 'auto';
+
+/**
+ * Parse `executionMode` from a request body (default `auto` = legacy
+ * credential-aware routing). `replay` forces the fast deterministic engine
+ * without touching `.env`; `live` forces the real PayPal Sandbox.
+ */
+function parseExecutionMode(body: Record<string, unknown>): ExecutionMode {
+  const mode = body['executionMode'];
+  if (mode === undefined) {
+    return 'auto';
+  }
+  if (mode === 'replay' || mode === 'live' || mode === 'auto') {
+    return mode;
+  }
+  throw new HttpError(400, "executionMode must be 'replay', 'live', or 'auto'");
+}
+
+/** True when the caller explicitly forced live execution (never falls back). */
+function isExplicitLive(body: Record<string, unknown>): boolean {
+  return body['executionMode'] === 'live';
+}
+
+/**
+ * Build PayPal options for one execution mode. `replay` always binds the
+ * shared deterministic engine (even with live credentials on disk) so
+ * per-request replay checkouts share dispute/order state with the desk.
+ * `live` without credentials is an honest 400, never a silent replay.
+ */
+function paypalOptionsFor(mode: ExecutionMode): {
+  clientId: string | undefined;
+  clientSecret: string | undefined;
+  replay: SandboxReplayEngine;
+  mode: 'replay' | 'live';
+} | {
+  clientId: string | undefined;
+  clientSecret: string | undefined;
+  replay: SandboxReplayEngine;
+} {
+  const base = {
+    clientId: scrubEnvCredential(process.env['PAYPAL_CLIENT_ID']),
+    clientSecret: scrubEnvCredential(process.env['PAYPAL_CLIENT_SECRET']),
+    replay: demoEngine(),
+  };
+  if (mode === 'replay' || (mode === 'auto' && (forceReplay || liveFallbackEngaged()))) {
+    return { ...base, mode: 'replay' as const };
+  }
+  if (mode === 'live') {
+    if (base.clientId === undefined || base.clientSecret === undefined) {
+      throw new HttpError(
+        400,
+        'live execution requires PAYPAL_CLIENT_ID + PAYPAL_CLIENT_SECRET in .env',
+      );
+    }
+    return { ...base, mode: 'live' as const };
+  }
+  return base;
+}
+
+/** Demo SDK client for one execution mode (keys are mode-independent). */
+function demoClientFor(mode: ExecutionMode): VeriPactClient {
+  return new VeriPactClient({ lenientKeys: true, paypal: paypalOptionsFor(mode) });
+}
+
+/** Demo PayPal client for one execution mode (same shared engine). */
+function demoPayPalFor(mode: ExecutionMode): PayPalClient {
+  return new PayPalClient(paypalOptionsFor(mode));
 }
 
 /** Demo PayPal client for granular dispute actions (same shared engine). */
 function demoPayPal(): PayPalClient {
-  return new PayPalClient({
-    clientId: scrubEnvCredential(process.env['PAYPAL_CLIENT_ID']),
-    clientSecret: scrubEnvCredential(process.env['PAYPAL_CLIENT_SECRET']),
-    replay: demoEngine(),
-    ...(forceReplay || liveFallbackEngaged() ? { mode: 'replay' as const } : {}),
-  });
+  return demoPayPalFor('auto');
 }
 
 function asScenarioName(value: unknown): ScenarioName {
@@ -1189,13 +1242,15 @@ async function handleWitnessCustomHtml(
  * POST /api/merchant/checkout — documented composition point: runs the
  * full bilateral flow (needs all three rung keys + PayPal) so one click
  * completes checkout. Non-composition routes above stay single-rung.
+ * Honors per-request `executionMode` (`replay` = instant deterministic,
+ * `live` = real sandbox, `auto` = legacy credential-aware default).
  */
 async function handleMerchantCheckout(
   body: Record<string, unknown>,
   res: WorkbenchResponse,
 ): Promise<void> {
   const scenario = asRequestScenario(body);
-  const client = demoClient();
+  const client = demoClientFor(parseExecutionMode(body));
   const result = await client.runWitnessedCheckoutFlow({
     scenario,
     mandate: effectiveMandate(scenario),
@@ -1368,10 +1423,14 @@ function contestedForensics(
  * GET /api/merchant/disputes — live filed disputes FIRST (newest first),
  * then Case B, then Case A, each with its live HATEOAS record plus
  * computed forensics (referee verdict, 3-way hash comparison,
- * provenance). Read-only: dispute state is never mutated here.
+ * provenance). Read-only: dispute state is never mutated here. The desk
+ * ALWAYS runs on the shared deterministic engine (even with live PayPal
+ * credentials on disk): the canned fixtures exist only there, and filings
+ * from live-minted orders keep their real orderId + VP1 commitment in
+ * `meta`/`live` while the HATEOAS record stays honestly labeled replay.
  */
 async function handleMerchantDisputes(res: WorkbenchResponse): Promise<void> {
-  const client = demoClient();
+  const client = demoClientFor('replay');
   // Canned baseline always runs the FIXTURE mandate: the two seeded cases
   // are deterministic fixtures and must stay resolvable even while the
   // founder stress-tests a tighter session mandate in View 1.
@@ -1470,7 +1529,7 @@ async function handleDisputeResolve(
     return;
   }
   const disputeCase = asDisputeCase(body['case']);
-  const client = demoClient();
+  const client = demoClientFor('replay');
   const result = await client.auditAndResolveDispute({ case: disputeCase });
   sendJson(res, 200, { ...result, boundary: 'SIGN' });
 }
@@ -1478,8 +1537,13 @@ async function handleDisputeResolve(
 /**
  * POST /api/merchant/disputes/create-from-order — file a NEW contested
  * dispute anchored to an order captured in THIS session (View 1 → View 2).
- * Replay-only: PayPal exposes no file-dispute API, so live orders cannot
- * be charged back from this desk (honest 400, never a fake filing).
+ * Works for replay AND live-minted orders: the filing registers in the
+ * shared local dispute-desk engine anchored to the exact orderId + VP1
+ * commitment. Honesty note (Rule 3): PayPal exposes no file-dispute API,
+ * so this desk is a LOCAL SIMULATION surface — the HATEOAS record is
+ * labeled DETERMINISTIC_SANDBOX_REPLAY even when the anchored order is a
+ * real sandbox order. That is why this route returns 200 instead of an
+ * honest-but-useless 400: the simulation is labeled, never a fake filing.
  */
 async function handleDisputeCreateFromOrder(
   body: Record<string, unknown>,
@@ -1490,13 +1554,6 @@ async function handleDisputeCreateFromOrder(
   if (kind !== 'drift' && kind !== 'forgery') {
     throw new HttpError(400, 'kind must be drift or forgery');
   }
-  const paypal = demoPayPal();
-  if (paypal.transportMode !== 'DETERMINISTIC_SANDBOX_REPLAY') {
-    throw new HttpError(
-      400,
-      'post-purchase dispute filing is replay-only: PayPal exposes no file-dispute API',
-    );
-  }
   const ctx = capturedOrders.get(orderId);
   if (ctx === undefined) {
     throw new HttpError(
@@ -1505,9 +1562,6 @@ async function handleDisputeCreateFromOrder(
     );
   }
   const engine = demoEngine();
-  if (engine === undefined) {
-    throw new HttpError(400, 'shared replay engine unavailable');
-  }
   liveDisputeSeq += 1;
   const n = liveDisputeSeq;
   const disputeId = kind === 'drift' ? `PP-D-LIVE-DRIFT-${n}` : `PP-D-LIVE-FORGERY-${n}`;
@@ -1525,7 +1579,7 @@ async function handleDisputeCreateFromOrder(
     filedAtUtc: new Date().toISOString(),
   };
   liveDisputes.set(caseKey, entry);
-  const client = demoClient();
+  const client = demoClientFor('replay');
   const forensics = contestedForensics(
     ctx.receiptCore,
     ctx.commitment,
@@ -1554,11 +1608,17 @@ async function handleDisputeCreateFromOrder(
     record,
     forensics,
     meta: liveDisputeMeta(entry, ctx),
+    /** Local simulation desk (PayPal exposes no file-dispute API). */
+    simulationDesk: true,
     boundary: 'SIGN',
   });
 }
 
-/** Resolve a live filed dispute through the HATEOAS evidence chain. */
+/**
+ * Resolve a live filed dispute through the HATEOAS evidence chain. Always
+ * runs on the shared local desk engine (even for live-anchored filings):
+ * the evidence chain is a labeled simulation, never a PayPal chargeback.
+ */
 async function resolveLiveDispute(caseKey: string, res: WorkbenchResponse): Promise<void> {
   const entry = liveDisputes.get(caseKey);
   if (entry === undefined) {
@@ -1568,11 +1628,8 @@ async function resolveLiveDispute(caseKey: string, res: WorkbenchResponse): Prom
   if (ctx === undefined) {
     throw new HttpError(409, `capture evidence for ${entry.orderId} is gone (demo was reset)`);
   }
-  const paypal = demoPayPal();
-  if (paypal.transportMode !== 'DETERMINISTIC_SANDBOX_REPLAY') {
-    throw new HttpError(400, 'live dispute resolution is replay-only in this desk');
-  }
-  const client = demoClient();
+  const paypal = demoPayPalFor('replay');
+  const client = demoClientFor('replay');
   const forensics = contestedForensics(
     ctx.receiptCore,
     ctx.commitment,
@@ -1700,10 +1757,12 @@ async function resolveLiveDispute(caseKey: string, res: WorkbenchResponse): Prom
 /**
  * POST /api/verify — independent bundle verification plus the raw
  * `receiptCore` and live `custom_id` read-back the browser auditor needs.
+ * Honors per-request `executionMode` (the browser auditor pins `replay`
+ * so first paint stays instant with live credentials on disk).
  */
 async function handleVerify(body: Record<string, unknown>, res: WorkbenchResponse): Promise<void> {
   const scenario = asRequestScenario(body);
-  const client = demoClient();
+  const client = demoClientFor(parseExecutionMode(body));
   const checkout = await client.runWitnessedCheckoutFlow({
     scenario,
     mandate: effectiveMandate(scenario),
@@ -1731,6 +1790,7 @@ async function handleVerify(body: Record<string, unknown>, res: WorkbenchRespons
  * POST /api/merchant/disputes/action — one granular HATEOAS-gated action.
  * Runs against the shared demo engine so multi-step chains persist across
  * requests. Gating is enforced inside paypal-client (rel must be advertised).
+ * Always the local desk engine: canned + PP-D-LIVE-* ids exist only there.
  */
 async function handleDisputeAction(
   body: Record<string, unknown>,
@@ -1739,14 +1799,14 @@ async function handleDisputeAction(
   const disputeId = body['disputeId'];
   const action = body['action'];
   if (typeof disputeId !== 'string' || !ORDER_TOKEN_RE.test(disputeId)) {
-    // Token allowlist (mirrors orderId): disputeId is interpolated into live
+    // Token allowlist (mirrors orderId): disputeId is interpolated into
     // PayPal URL paths, so `..`, `/`, and control chars are rejected here.
     throw new HttpError(400, 'disputeId must be a non-empty token (letters, digits, _ -)');
   }
   if (typeof action !== 'string') {
     throw new HttpError(400, 'action is required');
   }
-  const paypal = demoPayPal();
+  const paypal = demoPayPalFor('replay');
   if (action === 'require-evidence') {
     const which = body['requireAction'];
     if (which !== 'BUYER_EVIDENCE' && which !== 'SELLER_EVIDENCE') {
@@ -1832,7 +1892,10 @@ async function handleSandboxCheckout(req: WorkbenchRequest, res: WorkbenchRespon
     );
     return;
   }
-  const paypal = demoPayPal();
+  // Hybrid routing: deterministic ids always resolve against the shared
+  // desk engine (even with live credentials on disk); anything else goes
+  // to the credential-aware client (live 302-redirect when applicable).
+  const paypal = token.startsWith('ORD-VP-') ? demoPayPalFor('replay') : demoPayPal();
   let order;
   try {
     order = await paypal.getOrder(token);
@@ -1886,10 +1949,10 @@ async function handleSandboxApprove(
   res: WorkbenchResponse,
 ): Promise<void> {
   const orderId = asOrderId(body['orderId']);
-  const paypal = demoPayPal();
-  if (paypal.transportMode !== 'DETERMINISTIC_SANDBOX_REPLAY') {
+  if (!orderId.startsWith('ORD-VP-')) {
     throw new HttpError(400, 'live orders approve at PayPal, not via the sandbox popup');
   }
+  const paypal = demoPayPalFor('replay');
   let order;
   try {
     order = await paypal.getOrder(orderId);
@@ -1953,6 +2016,8 @@ function appendSandboxReceipt(entry: Record<string, unknown>): void {
  * POST /api/merchant/checkout/finalize — step 2: authorize the approved
  * order, re-gate, capture/void, and refresh the receipts file. Prior
  * evidence resolves browser echo → server pending map → re-witness.
+ * Honors per-request `executionMode` so step 2 runs on the same transport
+ * as step 1 (the UI echoes the awaiting order's transport explicitly).
  */
 async function handleCheckoutFinalize(
   body: Record<string, unknown>,
@@ -1972,7 +2037,7 @@ async function handleCheckoutFinalize(
         merchantSignatureHex: pending.merchantSignatureHex,
       }
       : undefined;
-  const client = demoClient();
+  const client = demoClientFor(parseExecutionMode(body));
   const result = await client.completeApprovedCheckout({
     orderId,
     scenario,
@@ -2100,7 +2165,13 @@ export async function handleWorkbenchRequest(
     }
     if (method === 'POST' && pathname === '/api/merchant/checkout') {
       const body = parseJsonBody(await readBody(req));
-      await withLiveFallback(() => handleMerchantCheckout(body, res));
+      // Explicit `live` never falls back: a forced live call that cannot
+      // reach PayPal must surface honestly, not silently replay (Rule 3).
+      if (isExplicitLive(body)) {
+        await handleMerchantCheckout(body, res);
+      } else {
+        await withLiveFallback(() => handleMerchantCheckout(body, res));
+      }
       return;
     }
     if (method === 'POST' && pathname === '/api/merchant/disputes/resolve') {
@@ -2130,12 +2201,20 @@ export async function handleWorkbenchRequest(
     }
     if (method === 'POST' && pathname === '/api/merchant/checkout/finalize') {
       const body = parseJsonBody(await readBody(req));
-      await withLiveFallback(() => handleCheckoutFinalize(body, res));
+      if (isExplicitLive(body)) {
+        await handleCheckoutFinalize(body, res);
+      } else {
+        await withLiveFallback(() => handleCheckoutFinalize(body, res));
+      }
       return;
     }
     if (method === 'POST' && pathname === '/api/verify') {
       const body = parseJsonBody(await readBody(req));
-      await withLiveFallback(() => handleVerify(body, res));
+      if (isExplicitLive(body)) {
+        await handleVerify(body, res);
+      } else {
+        await withLiveFallback(() => handleVerify(body, res));
+      }
       return;
     }
     const knownPaths = [

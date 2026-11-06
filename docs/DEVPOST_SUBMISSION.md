@@ -11,24 +11,19 @@ Repository: `https://github.com/Bhav-ikkk/VeriPact`.
 
 ## 2. Sandbox receipts & verification strip
 
-Replay receipts (committed, `docs/sandbox-receipts.json`,
-`DETERMINISTIC_SANDBOX_REPLAY`, generated 2026-11-02T07:05:19Z):
+Live sandbox receipts (committed, `docs/sandbox-receipts.json`,
+`LIVE_PAYPAL_SANDBOX`, generated 2026-11-06T05:52:02.665Z by
+`npm run seed:sandbox` against `api-m.sandbox.paypal.com`):
 
 | Scenario | Order ID | custom_id | Total | Status |
 |---|---|---|---|---|
-| normal | `ORD-VP-0001` | `VP1:7615e5ea…c48f6f6` | $297.00 | CREATED (read-back match=true) |
-| surcharge_void | `ORD-VP-0002` | `VP1:d1250b9a…f19ebe` | $340.50 | created |
+| normal | `1D1495603B138083R` | `VP1:e1c9eabe3c821dd3a72d47e7bcd6eba731024dc5ed42a3a2f7a0b03873134627` | $297.00 | CREATED (read-back match=true) |
+| surcharge_void | `1DM45086A58528407` | `VP1:e0ea946fd40916eb1db67a7d9b2778d291c9d6f4e541fb0e976887fe10c10c56` | $340.50 | CREATED (read-back) |
 
-Disputes: `PP-D-CASE-B-FORGERY` (INQUIRY / OPEN_INQUIRIES / OPEN),
-`PP-D-CASE-A-DRIFT` (INQUIRY / OPEN_INQUIRIES / OPEN).
-
-Live sandbox receipts (pending the 24h PayPal SMS cooldown — placeholders,
-to be replaced by `npm run seed:sandbox` output):
-
-| Scenario | Live order_id | Live capture_id | custom_id | Total |
-|---|---|---|---|---|
-| normal | `LIVE-ORDER-ID-TBD` | `LIVE-CAPTURE-ID-TBD` | `VP1:<64-hex>-TBD` | $297.00 |
-| surcharge_void | `LIVE-ORDER-ID-TBD` | void (no capture) | `VP1:<64-hex>-TBD` | $340.50 |
+Live dispute listing at seed time: none on the account (`"disputes": []`).
+Zero-key judges get the same flows against the labeled
+`DETERMINISTIC_SANDBOX_REPLAY` engine (`ORD-VP-…` orders,
+`PP-D-CASE-B-FORGERY` / `PP-D-CASE-A-DRIFT` fixtures).
 
 ## 3. Full Devpost story
 

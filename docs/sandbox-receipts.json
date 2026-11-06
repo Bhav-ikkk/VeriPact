@@ -1,37 +1,25 @@
 {
-  "generatedAtUtc": "2026-11-02T12:09:22.693Z",
-  "transportMode": "DETERMINISTIC_SANDBOX_REPLAY",
+  "generatedAtUtc": "2026-11-06T05:52:02.665Z",
+  "transportMode": "LIVE_PAYPAL_SANDBOX",
   "orders": [
     {
-      "scenario": "surcharge_void",
-      "orderId": "ORD-VP-0002",
-      "customId": "VP1:d1250b9a150c635d4715da05ba461598862ab7542af62c1d3cbe8ee7f3f19ebe",
-      "finalTotalUsd": 340.5
-    },
-    {
       "scenario": "normal",
-      "orderId": "ORD-VP-0001",
-      "authorizationId": "AUTH-VP-0001",
-      "captureId": "CAP-VP-0001",
-      "customId": "VP1:a99e4e467db931173cc2439658ae010f55bc468771bc145903dcf5e9bbf71696",
+      "orderId": "1D1495603B138083R",
+      "customId": "",
+      "readBackCustomId": "VP1:e1c9eabe3c821dd3a72d47e7bcd6eba731024dc5ed42a3a2f7a0b03873134627",
+      "customIdMatch": true,
       "finalTotalUsd": 297,
-      "transportMode": "DETERMINISTIC_SANDBOX_REPLAY",
-      "finalizedAtUtc": "2026-11-02T12:09:22.692Z"
-    }
-  ],
-  "disputes": [
-    {
-      "disputeId": "PP-D-CASE-B-FORGERY",
-      "stage": "INQUIRY",
-      "state": "OPEN_INQUIRIES",
-      "status": "OPEN"
+      "status": "CREATED"
     },
     {
-      "disputeId": "PP-D-CASE-A-DRIFT",
-      "stage": "INQUIRY",
-      "state": "OPEN_INQUIRIES",
-      "status": "OPEN"
+      "scenario": "surcharge_void",
+      "orderId": "1DM45086A58528407",
+      "customId": "",
+      "readBackCustomId": "VP1:e0ea946fd40916eb1db67a7d9b2778d291c9d6f4e541fb0e976887fe10c10c56",
+      "finalTotalUsd": 340.5,
+      "status": "CREATED"
     }
   ],
-  "notes": "Replay run. Drop PAYPAL_CLIENT_ID + PAYPAL_CLIENT_SECRET into .env and re-run for live sandbox receipts."
+  "disputes": [],
+  "notes": "Live sandbox run. Approve each order in a browser (PayPal sandbox buyer), then authorize/capture via the workbench or SDK."
 }

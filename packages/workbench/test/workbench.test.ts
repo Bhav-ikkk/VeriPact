@@ -977,6 +977,105 @@ describe('@veripact/workbench', () => {
     expect(unknownCase.status).toBe(404);
   });
 
+  it('files and resolves disputes from captured orders with live credentials configured', async () => {
+    // Hybrid live/replay (run 12): per-request replay plus the local
+    // dispute desk keep working with live PayPal credentials on disk —
+    // filing must never 400 just because the server can reach the live
+    // sandbox. Server-level mode stays LIVE (honest); the desk is local.
+    process.env.PAYPAL_CLIENT_ID = 'shaped-but-fake-client-id-2';
+    process.env.PAYPAL_CLIENT_SECRET = 'shaped-but-fake-client-secret-2';
+    expect((await get('/health')).body).toContain('LIVE_PAYPAL_SANDBOX');
+    const checkout = await post('/api/merchant/checkout', {
+      scenario: 'normal',
+      executionMode: 'replay',
+    });
+    expect(checkout.status).toBe(200);
+    const body = json<{ orderId: string; outcome: string; transportMode: string }>(checkout);
+    expect(body.outcome).toBe('CAPTURED');
+    expect(body.transportMode).toBe('DETERMINISTIC_SANDBOX_REPLAY');
+    for (const kind of ['drift', 'forgery'] as const) {
+      const filed = await post('/api/merchant/disputes/create-from-order', {
+        orderId: body.orderId,
+        kind,
+      });
+      expect(filed.status).toBe(200);
+      expect(json<{ simulationDesk: boolean }>(filed).simulationDesk).toBe(true);
+    }
+    const list = await get('/api/merchant/disputes');
+    expect(list.status).toBe(200);
+    const cases = json<{ disputes: Array<{ case: string }> }>(list);
+    expect(cases.disputes.map((d) => d.case)).toContain('live_forgery_2');
+    // Granular desk actions stay local too (canned ids exist only there).
+    const acted = await post('/api/merchant/disputes/action', {
+      disputeId: 'PP-D-CASE-B-FORGERY',
+      action: 'require-evidence',
+      requireAction: 'SELLER_EVIDENCE',
+    });
+    expect(acted.status).toBe(200);
+    const resolved = await post('/api/merchant/disputes/resolve', { case: 'live_drift_1' });
+    expect(resolved.status).toBe(200);
+    expect(json<{ finalState: { status: string } }>(resolved).finalState.status).toBe('RESOLVED');
+  });
+
+  it("honors per-request executionMode ('replay' vs 'live' vs invalid)", async () => {
+    // 'live' without credentials is an honest 400 (never a silent replay),
+    // and unknown modes are rejected before any PayPal traffic.
+    expect(
+      (await post('/api/merchant/checkout', { scenario: 'normal', executionMode: 'live' })).status,
+    ).toBe(400);
+    expect(
+      (await post('/api/merchant/checkout', { scenario: 'normal', executionMode: 'quantum' }))
+        .status,
+    ).toBe(400);
+    process.env.PAYPAL_CLIENT_ID = 'shaped-but-fake-client-id-3';
+    process.env.PAYPAL_CLIENT_SECRET = 'shaped-but-fake-client-secret-3';
+    const replay = await post('/api/merchant/checkout', {
+      scenario: 'normal',
+      executionMode: 'replay',
+    });
+    expect(replay.status).toBe(200);
+    expect(json<{ outcome: string; transportMode: string }>(replay)).toEqual(
+      expect.objectContaining({
+        outcome: 'CAPTURED',
+        transportMode: 'DETERMINISTIC_SANDBOX_REPLAY',
+      }),
+    );
+    // Verify + two-step finalize honor the same override.
+    const verify = await post('/api/verify', { scenario: 'normal', executionMode: 'replay' });
+    expect(verify.status).toBe(200);
+    const receiptsBefore = snapshotReceipts();
+    try {
+      const step1 = json<AwaitingBody>(
+        await post('/api/merchant/checkout', {
+          scenario: 'normal',
+          twoStep: true,
+          executionMode: 'replay',
+        }),
+      );
+      expect(step1.outcome).toBe('AWAITING_BUYER_APPROVAL');
+      expect((await post('/api/sandbox/approve-order', { orderId: step1.orderId })).status).toBe(
+        200,
+      );
+      const fin = await post('/api/merchant/checkout/finalize', {
+        orderId: step1.orderId,
+        scenario: 'normal',
+        executionMode: 'replay',
+      });
+      expect(fin.status).toBe(200);
+      expect(json<{ outcome: string }>(fin).outcome).toBe('CAPTURED');
+    } finally {
+      restoreReceipts(receiptsBefore);
+    }
+    // Explicit 'live' with unreachable credentials surfaces the failure
+    // loudly (500) and never engages the silent replay-fallback latch.
+    const live = await post('/api/merchant/checkout', {
+      scenario: 'normal',
+      executionMode: 'live',
+    });
+    expect(live.status).toBe(500);
+    expect(isLiveFallbackEngaged()).toBe(false);
+  });
+
   it('scans custom merchant HTML and flags injected traps', async () => {
     const clean = await post('/api/witness/custom-html', {
       html: '<h1>Apex ProView 27 4K IPS Monitor</h1><p>Brand New in Box. Sale Price: $279.00.</p><p>Free 30-day returns. No restocking fee.</p>',

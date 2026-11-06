@@ -37,14 +37,14 @@ chromium` once). Every frame below is rendered from a live SDK run via
 
 ## Sandbox Receipts Strip
 
-`transport: DETERMINISTIC_SANDBOX_REPLAY` · regenerate with `npm run
-seed:sandbox` (live credentials in `.env` switch it to the real sandbox;
-full values in `docs/sandbox-receipts.json`).
+`transport: LIVE_PAYPAL_SANDBOX` · generated 2026-11-06T05:52:02.665Z by
+`npm run seed:sandbox` against `api-m.sandbox.paypal.com` (full values in
+`docs/sandbox-receipts.json`).
 
 | Scenario | Order ID | custom_id | Total | Status |
 |---|---|---|---|---|
-| normal | `ORD-VP-0001` | `VP1:7615e5ea63d4f8…` | $297.00 | CREATED (match=true) |
-| surcharge_void | `ORD-VP-0002` | `VP1:d1250b9a150c63…` | $340.50 | created |
+| normal | `1D1495603B138083R` | `VP1:e1c9eabe3c821dd3a72d47e7bcd6eba731024dc5ed42a3a2f7a0b03873134627` | $297.00 | CREATED (read-back match=true) |
+| surcharge_void | `1DM45086A58528407` | `VP1:e0ea946fd40916eb1db67a7d9b2778d291c9d6f4e541fb0e976887fe10c10c56` | $340.50 | CREATED (read-back) |
 
 ## Verified Research Context
 
@@ -139,13 +139,17 @@ reports `transportMode`, credential presence, key fingerprints, and the
 `72/72 (100%)` regression rate — never secret values.
 
 **Live PayPal Sandbox (BYOK).** Drop `PAYPAL_CLIENT_ID` and
-`PAYPAL_CLIENT_SECRET` into `.env` (see `.env.example`) — the next
-checkout hot-swaps to `LIVE_PAYPAL_SANDBOX` with no restart: orders are
-created via Orders v2 AUTHORIZE, step 1 auto-returns
-`AWAITING_BUYER_APPROVAL` with PayPal's real `checkoutnow` approve link,
-you approve in the sandbox as the buyer, and Finalize runs
-authorize → re-gate → capture/void against the live order. Replay
-simulation is never invoked on live paths (`AGENTS.md` Rule 3).
+`PAYPAL_CLIENT_SECRET` into `.env` (see `.env.example`) — the header flips
+to `● Live Sandbox Ready` with no restart, while first paint and the
+guided tour keep running the instant 1-click deterministic flow (no live
+order is minted until you ask). Check **Two-step approval (Live PayPal
+checkoutnow)** and press **Authorize with PayPal** to mint a real sandbox
+order: approve at PayPal's `checkoutnow` link as the buyer, then Finalize
+runs authorize → re-gate → capture/void against the live order.
+Post-purchase dispute simulation files into the labeled local desk
+(`simulationDesk: true`) anchored to the real orderId + `VP1:` commitment —
+PayPal exposes no file-dispute API, so the desk never claims to be a
+PayPal chargeback (`AGENTS.md` Rule 3).
 
 ## 24-Scenario Regression Results (72 Runs, 95% Wilson CIs)
 

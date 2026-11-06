@@ -20,6 +20,7 @@ export {
   securityHeaders,
   WORKBENCH_VERSION,
   type DisputeMeta,
+  type ExecutionMode,
   type HealthPayload,
   type LedgerEntry,
   type SystemStatusPayload,
