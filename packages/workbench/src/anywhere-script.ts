@@ -46,7 +46,7 @@ function parseTarget(text){
 var m=String(text||"").match(/\\$\\s*(\\d+(?:\\.\\d+)?)/);
 if(!m){return 300;}
 var n=Number(m[1]);
-if(!isFinite(n)||n<1||n>10000){return 300;}
+if(!isFinite(n)||n<1||n>10000){return null;}
 return n;
 }
 function detectSku(){
@@ -89,7 +89,8 @@ var resultsEl=root.getElementById("vp-intent-results");
 function isOpen(){return modal.className.indexOf("open")>=0;}
 function openBar(target,raw){
 var next=typeof target==="number"?target:parseTarget(raw||input.value);
-input.value=raw&&String(raw).toLowerCase().indexOf("@veripact")>=0?String(raw):intentLine(next);
+if(raw&&String(raw).toLowerCase().indexOf("@veripact")>=0){input.value=String(raw);}
+else if(typeof next==="number"){input.value=intentLine(next);}
 modal.className="open";
 try{input.focus();}catch(err){}
 }
@@ -126,6 +127,11 @@ window.parent.postMessage({type:"VERIPACT_SNIPER_COMPLETED",report:data},window.
 function runHunt(){
 var sku=detectSku();
 var target=parseTarget(input.value);
+if(typeof target!=="number"){
+statusEl.textContent="targetMaxAllInUsd must be between 1 and 10000";
+resultsEl.innerHTML="";
+return;
+}
 runBtn.disabled=true;
 statusEl.textContent="Hunting "+sku+" under $"+money(target)+"…";
 resultsEl.innerHTML="";

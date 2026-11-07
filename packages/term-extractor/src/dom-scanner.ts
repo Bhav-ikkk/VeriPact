@@ -631,6 +631,23 @@ export function scanMerchantHtml(html: string): DomScanResult {
   }
 
   const visibleBlocks = emitVisibleBlocks(root, state);
+  // A zero-width joiner can hide an injection inside text that is otherwise
+  // visible. Plain editorial text with no invisible code points stays clean.
+  for (const block of visibleBlocks) {
+    if (!/[\u200B\u200C\u200D\u2060\uFEFF]/.test(block.text)) {
+      continue;
+    }
+    const matched = findAdversarialPattern(block.text);
+    if (matched !== undefined) {
+      findings.push({
+        tag: block.tag,
+        path: block.blockId,
+        hiddenReason: 'tainted-attribute',
+        matchedPattern: matched,
+        snippet: snippetOf(block.text),
+      });
+    }
+  }
   return {
     visibleBlocks,
     hiddenFindings: findings,

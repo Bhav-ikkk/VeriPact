@@ -537,12 +537,12 @@ export const WALLET_CSS = [
   '#qr-svg-box{width:76px;height:76px;flex-shrink:0;border:1px solid var(--border-subtle);border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}',
   '#qr-svg-box svg{display:block}',
   '.qr-meta{min-width:0;flex:1;display:flex;flex-direction:column;gap:6px}',
-  '#pair-code{font-size:22px;font-weight:800;letter-spacing:4px;font-variant-numeric:tabular-nums}',
+  '#pair-code{font-family:var(--font-mono);font-size:20px;font-weight:650;letter-spacing:.18em;font-variant-numeric:tabular-nums}',
   '.pair-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}',
   '.pair-btns .btn{font-size:12px;min-height:34px;padding:6px 14px;font-weight:600}',
   '.part-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}',
   '.part-metrics>div{min-width:0}',
-  '.part-metrics b{display:block;font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}',
+  '.part-metrics b{display:block;font-size:22px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}',
   '.part-metrics span{font-size:12px;color:var(--text-muted)}',
   '#part-available[data-state="healthy"]{color:var(--status-success-ink)}',
   '#part-available[data-state="low"]{color:var(--status-warn-ink)}',
@@ -639,28 +639,28 @@ export function renderPairPage(session: PairingSession): string {
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VeriPact Wallet — Phone QR Pairing Ceremony</title>
 <style>
-:root{--ink:#101828;--muted:#475467;--line:#e4e7ec;--bg:#f6f7f9;--card:#ffffff;--blue:#175cd3;--green:#067647;--green-bg:#ecfdf3;--green-bd:#a6f4c5}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.wrap{max-width:520px;margin:0 auto;padding:20px 16px 48px}
-.brand{display:flex;align-items:center;gap:10px;margin:6px 0 16px}
-.brand h1{font-size:19px;margin:0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 1px 3px rgba(16,24,40,.08)}
-.card h2{margin:0 0 4px;font-size:17px}
-.sub{margin:0 0 14px;color:var(--muted);font-size:13px}
+:root{--ink:#1a2332;--muted:#3d4a5c;--line:#d5dbe3;--bg:#e7ebf0;--card:#ffffff;--blue:#1a2332;--green:#0f6e56;--green-bg:#e7f6f1;--green-bd:#b7e0d2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,sans-serif}
+.wrap{max-width:480px;margin:0 auto;padding:28px 16px 48px}
+.brand{display:flex;align-items:center;gap:10px;margin:0 0 16px}
+.brand h1{font-family:"Palatino Linotype",Palatino,Georgia,serif;font-size:22px;font-weight:600;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px}
+.card h2{margin:0 0 4px;font-size:17px;font-weight:650}
+.sub{margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.45}
 .kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 12px;font-size:13.5px;margin:12px 0}
 .kv dt{color:var(--muted)}.kv dd{margin:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
-.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
-.code{font-size:30px;font-weight:800;letter-spacing:6px;text-align:center;margin:8px 0 2px;font-variant-numeric:tabular-nums}
-.terms{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13px;margin:12px 0}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
+.code{font-family:ui-monospace,Consolas,monospace;font-size:28px;font-weight:650;letter-spacing:.22em;text-align:center;margin:8px 0 2px;font-variant-numeric:tabular-nums}
+.terms{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:13px;margin:12px 0;line-height:1.45}
 .terms b{display:block;margin-bottom:2px}
-.btn{display:block;width:100%;border:0;border-radius:10px;background:var(--blue);color:#fff;font-size:16px;font-weight:700;padding:14px;cursor:pointer;font-family:inherit;margin-top:14px}
+.btn{display:block;width:100%;border:0;border-radius:8px;background:var(--blue);color:#fff;font-size:15px;font-weight:650;padding:13px;cursor:pointer;font-family:inherit;margin-top:14px}
 .btn:disabled{opacity:.55;cursor:default}
-.done{background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:14px;text-align:center;color:var(--green);font-weight:700;font-size:15px;margin-top:14px}
+.done{background:var(--green-bg);border:1px solid var(--green-bd);border-radius:8px;padding:14px;text-align:center;color:var(--green);font-weight:650;font-size:15px;margin-top:14px}
 #pair-status{margin-top:10px;font-size:13px;color:var(--muted);text-align:center;min-height:20px}
-.fine{font-size:12px;color:var(--muted);margin-top:14px;text-align:center}
+.fine{font-size:12px;color:var(--muted);margin-top:14px;text-align:center;line-height:1.4}
 </style></head><body>
 <main class="wrap">
-<div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M3 8l7.5 10" stroke="#182230" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.5 18L23 5" stroke="#175cd3" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><h1>VeriPact Wallet</h1></div>
+<div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><rect x="1" y="1" width="24" height="24" rx="6" fill="#1a2332"/><path d="M7 13.2l3.2 3.2L19 8.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><h1>VeriPact Wallet</h1></div>
 <div class="card">
 <h2>Phone QR Pairing Ceremony</h2>
 <p class="sub">Approve on this phone to link the PayPal sandbox account and initialize the agentic partition.</p>

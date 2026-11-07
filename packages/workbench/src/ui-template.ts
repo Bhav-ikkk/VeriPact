@@ -4,7 +4,7 @@
  * One self-contained HTML page: Tier A header, Tier B 3-stage evidence
  * pipeline, Tier C 2-column checkout workspace, Tier D outcome/record/
  * auditor strip, plus View 2 (dispute desk + deterministic studio agent).
- * Flat light tokens (#F8F9FB canvas, #FFFFFF cards, #182230 actions);
+ * Flat desk tokens (#E7EBF0 canvas, #FFFFFF cards, #1A2332 ink);
  * tabular numerals everywhere a number renders. All element IDs, API
  * call shapes, security guards (finalizing lock, origin-checked
  * postMessage, overflow rules) and the byte-identical inline `jcs`
@@ -33,29 +33,30 @@ export function renderIndexPage(): string {
 <link rel="stylesheet" href="/vendor/ag-theme-quartz.min.css">
 <style>
 :root{
---bg-canvas:#f8f9fb;--bg-surface:#ffffff;--bg-subtle:#f2f4f7;--bg-muted:#f9fafb;
---text-primary:#101828;--text-secondary:#475467;--text-muted:#667085;
---border-subtle:#e5e7eb;--border-strong:#d0d5dd;
---accent-charcoal:#182230;--accent-charcoal-hover:#253346;--accent-blue:#175cd3;
---status-success-bg:#ecfdf3;--status-success-border:#abefc6;--status-success-ink:#15803d;--status-success-solid:#16a34a;
---status-warn-bg:#fffaeb;--status-warn-border:#fedf89;--status-warn-ink:#b54708;
---status-danger-bg:#fef3f2;--status-danger-border:#fecdca;--status-danger-ink:#b42318;
---radius-card:12px;--radius-control:8px;
---shadow-card:0 1px 2px rgba(16,24,40,.04);
---font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
---font-mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+--bg-canvas:#e7ebf0;--bg-surface:#ffffff;--bg-subtle:#f3f5f8;--bg-muted:#f7f8fa;
+--text-primary:#1a2332;--text-secondary:#3d4a5c;--text-muted:#5c6b7e;
+--border-subtle:#d5dbe3;--border-strong:#c3ccd6;
+--accent-charcoal:#1a2332;--accent-charcoal-hover:#2a384c;--accent-blue:#1d4e89;
+--status-success-bg:#e7f6f1;--status-success-border:#b7e0d2;--status-success-ink:#0f6e56;--status-success-solid:#0f6e56;
+--status-warn-bg:#fbf6ea;--status-warn-border:#ead7a6;--status-warn-ink:#8a5a12;
+--status-danger-bg:#fdf2f1;--status-danger-border:#f0c9c6;--status-danger-ink:#9f2d2d;
+--radius-card:10px;--radius-control:6px;
+--shadow-card:none;
+--font-sans:"Segoe UI",system-ui,-apple-system,sans-serif;
+--font-display:"Palatino Linotype",Palatino,"Iowan Old Style",Georgia,serif;
+--font-mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
 }
 *{box-sizing:border-box}
-body{font-family:var(--font-sans);margin:0;background:var(--bg-canvas);color:var(--text-primary);font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums}
+body{font-family:var(--font-sans);margin:0;background:var(--bg-canvas);color:var(--text-primary);font-size:14px;line-height:1.45;font-variant-numeric:tabular-nums}
 .skip{position:absolute;left:-999px;top:8px;background:var(--accent-charcoal);color:#fff;padding:8px 14px;border-radius:var(--radius-control);z-index:99;font-size:13px}
 .skip:focus{left:8px;color:#fff}
 :focus-visible{outline:2px solid var(--accent-blue);outline-offset:2px;border-radius:4px}
-h1{font-size:18px;font-weight:800;margin:0;white-space:nowrap}
-h2{font-size:15px;font-weight:700;margin:0 0 10px}
-h3{font-size:13px;margin:14px 0 8px;color:var(--text-secondary);font-weight:600}
+h1{font-family:var(--font-display);font-size:22px;font-weight:600;letter-spacing:-.02em;margin:0;white-space:nowrap}
+h2{font-size:15px;font-weight:650;letter-spacing:-.01em;margin:0 0 10px}
+h3{font-size:13px;margin:14px 0 8px;color:var(--text-secondary);font-weight:650}
 .num,.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
 /* Tier A — top header bar */
-.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;height:58px;background:var(--bg-surface);border-bottom:1px solid var(--border-subtle);padding:0 24px}
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;height:60px;background:var(--bg-surface);border-bottom:1px solid var(--border-subtle);padding:0 24px}
 .brand{display:flex;align-items:center;gap:10px;min-width:0;flex-shrink:0}
 .brand .divider{width:1px;height:18px;background:var(--border-strong);flex-shrink:0}
 .brand .tagline{font-size:13px;font-weight:500;color:var(--text-muted);white-space:nowrap}
@@ -78,9 +79,9 @@ button.mode-pill:hover{filter:brightness(.97)}
 .mandate-editor .row-end{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 #mandate-editor[hidden]{display:none}
 /* Post-purchase lifecycle buttons under the Transaction Record */
-.post-purchase{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;border-top:1px dashed var(--border-strong);padding-top:12px}
+.post-purchase{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;border-top:1px solid var(--border-subtle);padding-top:12px}
 /* Custom merchant-HTML inspector lab */
-.custom-lab{border-top:1px dashed var(--border-strong);margin-top:14px;padding-top:12px}
+.custom-lab{border-top:1px solid var(--border-subtle);margin-top:14px;padding-top:12px}
 .custom-lab textarea{width:100%;min-height:120px;font-family:var(--font-mono);font-size:12px;border:1px solid var(--border-strong);border-radius:var(--radius-control);padding:10px;margin:8px 0;background:#fff;color:var(--text-primary);resize:vertical}
 .preset-row{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .preset-row .btn{font-size:12px;min-height:32px;padding:5px 12px}
@@ -119,14 +120,14 @@ main{max-width:1560px;margin:0 auto;padding:12px 20px 26px;display:flex;flex-dir
 .hash-chip.mid span{direction:rtl;text-align:left}
 .mono-scroll{overflow-x:auto;white-space:pre;font-family:var(--font-mono);font-size:12px;background:#101828;color:#e8eef6;border-radius:var(--radius-control);padding:10px 12px;max-width:100%}
 /* Tier B — connected 3-stage evidence pipeline */
-.ribbon{display:grid;grid-template-columns:220px minmax(0,1fr) 20px minmax(0,1.05fr) 20px minmax(0,1.1fr);align-items:stretch;gap:12px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:12px 18px;box-shadow:var(--shadow-card)}
+.ribbon{display:grid;grid-template-columns:200px minmax(0,1fr) 16px minmax(0,1.05fr) 16px minmax(0,1.1fr);align-items:center;gap:10px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:12px 16px;box-shadow:none}
 .rb-title{border-right:1px solid var(--border-subtle);padding-right:14px;display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0}
 .rb-title b{display:block;font-size:14.5px;font-weight:700;color:var(--text-primary)}
 .rb-title span{font-size:11.5px;color:var(--text-muted)}
 #rb-partition{font-size:11px;padding:2px 8px;margin-top:4px;align-self:flex-start}
-.ribbon-step{display:flex;gap:10px;align-items:center;min-width:0;background:var(--bg-muted);border:1px solid var(--border-subtle);border-radius:10px;padding:8px 12px;transition:all .2s ease}
-.ribbon-step.on{border-color:var(--status-success-border)}
-.ribbon-step.bad{background:var(--status-danger-bg);border-color:var(--status-danger-border)}
+.ribbon-step{display:flex;gap:10px;align-items:center;min-width:0;background:transparent;border:0;border-radius:0;padding:2px 0;transition:color .2s ease}
+.ribbon-step.on{color:var(--text-primary)}
+.ribbon-step.bad{color:var(--status-danger-ink)}
 .rb-num{font-family:var(--font-mono);font-weight:700;font-size:13px;background:#fff;color:var(--text-muted);border:1px solid var(--border-strong);border-radius:50%;min-width:26px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ribbon-step.on .rb-num{background:var(--status-success-solid);border-color:var(--status-success-solid);color:#fff;font-size:0}
 .ribbon-step.on .rb-num::after{content:'✓';font-size:14px;font-weight:700}
@@ -138,15 +139,14 @@ main{max-width:1560px;margin:0 auto;padding:12px 20px 26px;display:flex;flex-dir
 #rb-ch3{color:var(--status-success-ink);font-weight:600}
 .rb-connector{height:2px;background:var(--border-strong);border-radius:2px;align-self:center}
 .rb-connector.done{background:var(--status-success-solid)}
-#rb-3{background:var(--bg-muted);border:1px solid var(--border-subtle);border-radius:10px;padding:8px 12px}
-#rb-3[data-state="captured"]{background:var(--status-success-bg);border-color:var(--status-success-border)}
-#rb-3[data-state="voided"],#rb-3[data-state="blocked"]{background:var(--status-danger-bg);border-color:var(--status-danger-border)}
+#rb-3{background:transparent;border:0;border-radius:0;padding:2px 0}
+#rb-3[data-state="captured"],#rb-3[data-state="voided"],#rb-3[data-state="blocked"]{background:transparent;border-color:transparent}
 /* Tier C — two-column checkout workspace */
 .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
-.card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:16px 20px;min-width:0;box-shadow:var(--shadow-card)}
+.card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:16px 18px;min-width:0;box-shadow:none}
 .stack{display:flex;flex-direction:column;gap:12px;min-width:0}
 .scn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}
-.scn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:9px 12px;border:1px solid var(--border-strong);border-radius:10px;background:#fff;cursor:pointer;min-width:0;font-family:inherit;color:var(--text-primary)}
+.scn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;min-height:72px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;cursor:pointer;min-width:0;font-family:inherit;color:var(--text-primary)}
 .scn:hover{border-color:#98a2b3}
 .scn b{font-size:13px;font-weight:700}
 .scn span{font-size:11.5px;color:var(--text-muted)}
@@ -179,15 +179,15 @@ details.tech-drawer .badges{margin-top:0}
 .mandate-strip>div:last-child{padding-right:0}
 .mandate-strip>div+div{border-left:1px solid var(--border-subtle)}
 .mandate-strip b{display:block;color:var(--text-primary);font-variant-numeric:tabular-nums}
-.mandate-strip .big{font-size:22px;font-weight:800}
+.mandate-strip .big{font-size:26px;font-weight:650;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .mandate-strip .mid{font-size:15px;font-weight:700}
 .mandate-strip span{font-size:11.5px;color:var(--text-muted)}
-.suff-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin:10px 0 0;padding-top:10px;border-top:1px dashed var(--border-subtle)}
+.suff-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;margin:12px 0 0;padding-top:12px;border-top:1px solid var(--border-subtle)}
 .suff{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0;font-size:11.5px;color:var(--text-secondary)}
 .suff b{font-weight:600;white-space:nowrap}
 .suff .pill{font-size:11px;padding:1px 8px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* SELF → WIT → SIGN step strip */
-.rung-flow{display:grid;grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr) 20px minmax(0,1fr);align-items:center;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 14px;box-shadow:var(--shadow-card)}
+.rung-flow{display:grid;grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr) 20px minmax(0,1fr);align-items:center;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 14px;box-shadow:none}
 .rung-step{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap;min-width:0}
 .rung-step .dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--status-success-solid);color:var(--status-success-solid);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:#fff}
 .rung-step.on{color:var(--text-primary)}
@@ -195,16 +195,16 @@ details.tech-drawer .badges{margin-top:0}
 #rung-sign .dot{background:var(--accent-charcoal);border-color:var(--accent-charcoal);color:#fff}
 .rung-arrow{height:2px;background:var(--border-subtle);border-radius:2px}
 /* Channel3 oracle bar */
-.oracle-bar{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:var(--shadow-card)}
+.oracle-bar{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:none}
 .oracle-bar .left{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);min-width:0;flex-shrink:0}
 .oracle-bar .left b{color:var(--text-primary);white-space:nowrap}
 .oracle-bar .sep{color:var(--border-strong)}
 /* Controls row: checkboxes + actions */
 .controls-row{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:12px;align-items:stretch}
-.checks-card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;gap:5px;justify-content:center;box-shadow:var(--shadow-card)}
+.checks-card{background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:6px;justify-content:center;box-shadow:none}
 .checks-card label{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--text-primary);cursor:pointer}
 .checks-card input{width:15px;height:15px;accent-color:var(--accent-charcoal);flex-shrink:0}
-.actions-card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow-card)}
+.actions-card{background:transparent;border:0;border-radius:0;padding:0;display:flex;align-items:stretch;gap:8px;box-shadow:none}
 .actions-card .btn{flex:1;min-height:38px;padding:6px 12px;font-size:12.5px;font-weight:700}
 .status-line{font-size:12.5px;color:var(--text-secondary);margin:6px 0}
 .status-line[aria-live]{min-height:18px}
@@ -217,8 +217,8 @@ details.tech-drawer .badges{margin-top:0}
 .tier-d{display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.1fr) minmax(0,1.1fr);gap:16px;align-items:stretch}
 .outcome-banner{border-radius:var(--radius-card);padding:16px 18px;display:flex;align-items:center;gap:14px;border:1px solid;min-width:0;box-shadow:var(--shadow-card)}
 .outcome-banner[data-state="idle"]{background:var(--bg-surface);border-color:var(--border-subtle)}
-.outcome-banner[data-state="captured"]{background:linear-gradient(135deg,#ecfdf3 0%,#ffffff 85%);border-color:var(--status-success-border)}
-.outcome-banner[data-state="voided"],.outcome-banner[data-state="blocked"]{background:linear-gradient(135deg,#fef3f2 0%,#ffffff 85%);border-color:var(--status-danger-border)}
+.outcome-banner[data-state="captured"]{background:var(--status-success-bg);border-color:var(--status-success-border)}
+.outcome-banner[data-state="voided"],.outcome-banner[data-state="blocked"]{background:var(--status-danger-bg);border-color:var(--status-danger-border)}
 .outcome-banner h3{margin:0;font-size:18px;font-weight:800;color:var(--text-primary)}
 .outcome-banner p{margin:2px 0 0;font-size:12.5px;color:var(--text-secondary)}
 .outcome-icon{width:42px;height:42px;flex-shrink:0;display:block}
@@ -290,8 +290,8 @@ canvas.chart{width:100%;height:220px;border:1px solid var(--border-subtle);borde
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--accent-charcoal);color:#fff;font-size:13px;padding:9px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .2s ease-out;z-index:60}
 #toast.show{opacity:1}
 /* Autopilot tour: spotlight ring + teleprompter */
-@keyframes tour-pulse{0%,100%{outline-color:#175cd3}50%{outline-color:#8ab4f8}}
-.tour-highlight{outline:3px solid #175cd3!important;outline-offset:3px;animation:tour-pulse 1.1s ease-in-out infinite}
+@keyframes tour-pulse{0%,100%{outline-color:#1d4e89}50%{outline-color:#8ab4f8}}
+.tour-highlight{outline:3px solid #1d4e89!important;outline-offset:3px;animation:tour-pulse 1.1s ease-in-out infinite}
 #demo-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent-charcoal);color:#fff;border-radius:12px;padding:10px 16px;display:flex;align-items:center;gap:12px;z-index:70;box-shadow:0 8px 24px rgba(16,24,40,.25);max-width:min(680px,92vw)}
 #demo-toast[hidden]{display:none}
 #demo-step{font-family:var(--font-mono);font-size:11px;font-weight:700;background:var(--accent-blue);border-radius:6px;padding:2px 8px;white-space:nowrap;flex-shrink:0}
@@ -353,7 +353,7 @@ ${WALLET_CSS}
 <body>
 <a class="skip" href="#main">Skip to workspace</a>
 <header class="topbar">
-<div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M3 8l7.5 10" stroke="#182230" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.5 18L23 5" stroke="#175cd3" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><h1>VeriPact</h1><span class="divider" aria-hidden="true"></span><span class="tagline">Proving What the Merchant Promised</span></div>
+<div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><rect x="1" y="1" width="24" height="24" rx="6" fill="#1a2332"/><path d="M7 13.2l3.2 3.2L19 8.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><h1>VeriPact</h1><span class="divider" aria-hidden="true"></span><span class="tagline">Proving What the Merchant Promised</span></div>
 <div class="view-switch" role="group" aria-label="View switcher">
 <button type="button" id="tab-checkout" aria-pressed="true">Buyer Checkout</button>
 <button type="button" id="tab-desk" aria-pressed="false">Dispute Desk</button>
@@ -393,7 +393,7 @@ Channel3 Catalog:
 </select>
 </div>
 <div class="browser">
-<div class="browser-chrome"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="urlbar"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#15803d" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg><span id="store-url">https://store.example.com/product/APEX-27-4K-IPS</span></span></div>
+<div class="browser-chrome"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="urlbar"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#0f6e56" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg><span id="store-url">https://store.example.com/product/APEX-27-4K-IPS</span></span></div>
 <iframe id="store-frame" class="store-frame" title="Synthetic merchant storefront" src="/store/normal" scrolling="no"></iframe>
 </div>
 <details class="drawer tech-drawer"><summary>Inspect extracted DOM quote blocks &amp; live HTML scanner</summary><div class="drawer-body">
@@ -414,7 +414,7 @@ Channel3 Catalog:
 </div>
 <div class="stack">
 <div class="card">
-<div class="card-head"><h2><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#175cd3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5 1.8v3.6c0 3.2-2.1 5.4-5 6.8-2.9-1.4-5-3.6-5-6.8V3.6l5-1.8z"/><path d="M5.8 8l1.6 1.6 2.8-3.2"/></svg>Buyer Mandate &amp; Sufficiency</h2><span style="display:flex;gap:8px;align-items:center"><span id="gate-badge" class="pill pill-info">Awaiting witness…</span><button type="button" class="btn" id="btn-mandate-edit" style="min-height:32px;padding:5px 12px;font-size:12px">Edit Mandate</button></span></div>
+<div class="card-head"><h2><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5 1.8v3.6c0 3.2-2.1 5.4-5 6.8-2.9-1.4-5-3.6-5-6.8V3.6l5-1.8z"/><path d="M5.8 8l1.6 1.6 2.8-3.2"/></svg>Buyer Mandate &amp; Sufficiency</h2><span style="display:flex;gap:8px;align-items:center"><span id="gate-badge" class="pill pill-info">Awaiting witness…</span><button type="button" class="btn" id="btn-mandate-edit" style="min-height:32px;padding:5px 12px;font-size:12px">Edit Mandate</button></span></div>
 <div class="mandate-strip">
 <div><b class="big" id="m-cap">$320.00</b><span>Cap (all-in)</span></div>
 <div><b class="mid" id="m-cond">NEW</b><span>Condition</span></div>
@@ -436,7 +436,7 @@ Channel3 Catalog:
 </div>
 </div>
 <div class="rung-flow" aria-label="Evidence rung progress"><span class="rung-step on" id="rung-self"><span class="dot" aria-hidden="true">✓</span><span>SELF<small>Set mandate</small></span></span><span class="rung-arrow" aria-hidden="true"></span><span class="rung-step" id="rung-wit"><span class="dot" aria-hidden="true">✓</span><span>WIT<small>Capture &amp; attest</small></span></span><span class="rung-arrow" aria-hidden="true"></span><span class="rung-step" id="rung-sign"><span class="dot" aria-hidden="true">◎</span><span>SIGN<small>Authorize via PayPal</small></span></span></div>
-<div class="oracle-bar"><span class="left"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#175cd3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 8h2.6l1.4-3.5 2.4 7 1.6-4.5 1 1H14.5"/></svg><b>Channel3 Oracle</b><span class="sep" aria-hidden="true">|</span><span>Market policy + merchant reputation</span></span><span id="oracle-line" class="pill pill-info">Channel3 oracle: not queried yet.</span></div>
+<div class="oracle-bar"><span class="left"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 8h2.6l1.4-3.5 2.4 7 1.6-4.5 1 1H14.5"/></svg><b>Channel3 Oracle</b><span class="sep" aria-hidden="true">|</span><span>Market policy + merchant reputation</span></span><span id="oracle-line" class="pill pill-info">Channel3 oracle: not queried yet.</span></div>
 <div class="controls-row">
 <div class="checks-card">
 <label><input type="checkbox" id="reviewed-toggle" checked><span>I've reviewed the merchant terms</span></label>
@@ -454,7 +454,7 @@ Channel3 Catalog:
 <div class="tier-d">
 <div class="outcome-banner" id="checkout-outcome-banner" data-state="idle"><svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" stroke="#d0d5dd" stroke-width="2.5"/><path d="M15 23.5l5.5 5.5L31 18" stroke="#98a2b3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><h3>Awaiting checkout</h3><p>Run a witness pass, then authorize with PayPal.</p></div></div>
 <div class="card" id="checkout-result">
-<div class="card-head"><h2><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#175cd3" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.5 4.2L8 14.2 2.5 6 8 1.8z"/><path d="M2.5 6h11M8 1.8L5.5 6 8 14.2 10.5 6 8 1.8z" stroke-width="1.2"/></svg>Transaction Record</h2></div>
+<div class="card-head"><h2><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.5 4.2L8 14.2 2.5 6 8 1.8z"/><path d="M2.5 6h11M8 1.8L5.5 6 8 14.2 10.5 6 8 1.8z" stroke-width="1.2"/></svg>Transaction Record</h2></div>
 <dl class="record-kv">
 <dt>Order ID</dt><dd class="mono">— (awaiting checkout)</dd>
 <dt>Authorization</dt><dd class="mono">—</dd>
@@ -465,7 +465,7 @@ Channel3 Catalog:
 <div class="post-purchase"><button type="button" class="btn" disabled>Verify it yourself ↓</button><button type="button" class="btn" disabled>Simulate Merchant Drift → File Dispute</button><button type="button" class="btn" disabled>Simulate Buyer Forgery → File Dispute</button></div>
 </div>
 <div class="card auditor-card">
-<div class="card-head"><h2><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#175cd3" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7.5a4 4 0 0 1 8 0v4"/><path d="M2.5 7.5a5.5 5.5 0 0 1 11 0v5"/><path d="M8 5.5v6"/><path d="M6 9.5v3M10 9.5v3"/></svg>Verify-It-Yourself (Auditor)</h2></div>
+<div class="card-head"><h2><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7.5a4 4 0 0 1 8 0v4"/><path d="M2.5 7.5a5.5 5.5 0 0 1 11 0v5"/><path d="M8 5.5v6"/><path d="M6 9.5v3M10 9.5v3"/></svg>Verify-It-Yourself (Auditor)</h2></div>
 <p class="status-line" style="margin-top:0">Your browser recomputes the receipt hash and compares it with the PayPal order record. Nothing here trusts the server.</p>
 <details class="drawer" id="auditor"><summary>Open the client-side auditor</summary><div class="drawer-body" id="auditor-body">
 <p class="status-line">Run a checkout first — the auditor needs a witnessed receipt and a PayPal order.</p>
@@ -541,10 +541,10 @@ function pillFor(status){if(status==='DETERMINATE'||status==='PROCEED'||status==
 function api(path,opts){return fetch(path,Object.assign({headers:{'content-type':'application/json'}},opts||{})).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;});});}
 /* Outcome banner icons (46px, geometric, no emoji) */
 var ICON_IDLE='<svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" stroke="#d0d5dd" stroke-width="2.5"/><path d="M15 23.5l5.5 5.5L31 18" stroke="#98a2b3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-var ICON_OK='<svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" fill="#16a34a"/><path d="M15 23.5l5.5 5.5L31 18" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var ICON_OK='<svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" fill="#0f6e56"/><path d="M15 23.5l5.5 5.5L31 18" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 var ICON_BAD='<svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" fill="#b42318"/><path d="M17 17l12 12M29 17L17 29" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>';
 var LINK_SVG='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 9.5a3 3 0 0 0 4.2 0l2-2a3 3 0 0 0-4.2-4.2l-1 1"/><path d="M9.5 6.5a3 3 0 0 0-4.2 0l-2 2a3 3 0 0 0 4.2 4.2l1-1"/></svg>';
-var DIAMOND_SVG='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#175cd3" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.5 4.2L8 14.2 2.5 6 8 1.8z"/><path d="M2.5 6h11M8 1.8L5.5 6 8 14.2 10.5 6 8 1.8z" stroke-width="1.2"/></svg>';
+var DIAMOND_SVG='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.5 4.2L8 14.2 2.5 6 8 1.8z"/><path d="M2.5 6h11M8 1.8L5.5 6 8 14.2 10.5 6 8 1.8z" stroke-width="1.2"/></svg>';
 /* ---------- state ---------- */
 var state={scenario:'normal',sku:'APEX-27-4K-IPS',witness:null,checkout:null,verify:null,disputes:null,selectedCase:'buyer_forgery',dataset:'live',benchmark:null,grids:{},engine:'native'};
 var CASE_META={
@@ -682,7 +682,7 @@ var html='<div class="card-head"><h2>'+DIAMOND_SVG+'Transaction Record</h2></div
 if(r.orderId)html+='<dt>Order ID</dt><dd class="mono">'+esc(r.orderId)+'</dd>';
 else html+='<dt>Order ID</dt><dd class="mono">— (none created)</dd>';
 if(r.authorizationId)html+='<dt>Authorization</dt><dd class="mono">'+esc(r.authorizationId)+'</dd>';
-if(r.captureId)html+='<dt>Capture</dt><dd class="mono">'+esc(r.captureId)+' · <strong style="color:#15803d">'+total+'</strong></dd>';
+if(r.captureId)html+='<dt>Capture</dt><dd class="mono">'+esc(r.captureId)+' · <strong style="color:#0f6e56">'+total+'</strong></dd>';
 if(r.voidReason)html+='<dt>Capture</dt><dd><strong style="color:#b42318">VOIDED · $0.00</strong></dd>';
 if(!r.captureId&&!r.voidReason)html+='<dt>Capture</dt><dd class="mono">—</dd>';
 html+='<dt>Commitment</dt><dd>'+chip(r.snapshot.commitment,true)+'</dd>';
@@ -710,7 +710,7 @@ $('awaiting-card').innerHTML='<h3>Step 1 complete <span class="pill pill-warn">A
 $('awaiting-card').hidden=false;$('checkout-status').textContent='Order '+r.orderId+' created + patched. Waiting for buyer approval…';
 $('btn-popup').addEventListener('click',function(){var w=window.open(r.approveUrl,'veripact-approval','width=620,height=760');if(!w){toast('Popup blocked — allow popups, then press Finalize after approving.');}$('checkout-status').textContent='Approval popup opened for '+r.orderId+'. Waiting…';});
 $('btn-finalize').addEventListener('click',function(){finalizeApproved(r.orderId);});}
-window.addEventListener('message',function(e){var d=e.data||{};var loc=window.location||{};var sameOrigin=!loc.origin||loc.origin==='null'||e.origin===loc.origin;if(sameOrigin&&d.type==='VERIPACT_ORDER_APPROVED'&&d.orderId&&state.awaiting&&d.orderId===state.awaiting.orderId){toast('Buyer approved '+d.orderId);finalizeApproved(d.orderId);return;}if(!(sameOrigin&&d.type==='VERIPACT_SNIPER_COMPLETED'&&d.report))return;var rep=d.report;if(rep.partitionAfter)paintPartition(rep.partitionAfter);var win=rep.winningCandidate||null;var box=$('checkout-result');if(box&&win){var html='<div class="card-head"><h2>'+DIAMOND_SVG+'Transaction Record</h2></div><dl class="record-kv">';html+='<dt>Order ID</dt><dd class="mono">'+esc(win.orderId||'—')+'</dd>';html+='<dt>Authorization</dt><dd class="mono">'+esc(win.authorizationId||'—')+'</dd>';html+='<dt>Capture</dt><dd class="mono">'+esc(win.captureId||'—')+(win.allInTotalUsd!=null?' · <strong style="color:#15803d">$'+Number(win.allInTotalUsd).toFixed(2)+'</strong>':'')+'</dd>';html+='<dt>Commitment</dt><dd>'+(win.commitment?chip(win.commitment,true):'<span class="mono">—</span>')+'</dd>';html+='<dt>PayPal Mode</dt><dd class="mono">Sandbox (Deterministic)</dd></dl>';box.innerHTML=html;box.hidden=false;}var st=$('checkout-status');if(st)st.textContent='Sniper: '+(rep.outcome||'done');toast('Sniper '+(rep.outcome||'done'));});
+window.addEventListener('message',function(e){var d=e.data||{};var loc=window.location||{};var sameOrigin=!loc.origin||loc.origin==='null'||e.origin===loc.origin;if(sameOrigin&&d.type==='VERIPACT_ORDER_APPROVED'&&d.orderId&&state.awaiting&&d.orderId===state.awaiting.orderId){toast('Buyer approved '+d.orderId);finalizeApproved(d.orderId);return;}if(!(sameOrigin&&d.type==='VERIPACT_SNIPER_COMPLETED'&&d.report))return;var rep=d.report;if(rep.partitionAfter)paintPartition(rep.partitionAfter);var win=rep.winningCandidate||null;var box=$('checkout-result');if(box&&win&&win.captureId){var html='<div class="card-head"><h2>'+DIAMOND_SVG+'Transaction Record</h2></div><dl class="record-kv">';html+='<dt>Order ID</dt><dd class="mono">'+esc(win.orderId||'—')+'</dd>';html+='<dt>Authorization</dt><dd class="mono">'+esc(win.authorizationId||'—')+'</dd>';html+='<dt>Capture</dt><dd class="mono">'+esc(win.captureId||'—')+(win.allInTotalUsd!=null?' · <strong style="color:#0f6e56">$'+Number(win.allInTotalUsd).toFixed(2)+'</strong>':'')+'</dd>';html+='<dt>Commitment</dt><dd>'+(win.commitment?chip(win.commitment,true):'<span class="mono">—</span>')+'</dd>';html+='<dt>PayPal Mode</dt><dd class="mono">Sandbox (Deterministic)</dd></dl>';box.innerHTML=html;box.hidden=false;}var st=$('checkout-status');if(st)st.textContent='Sniper: '+(rep.outcome||'done');toast('Sniper '+(rep.outcome||'done'));});
 function runCheckoutFlow(forceReplay){var b=$('btn-checkout');b.disabled=true;$('awaiting-card').hidden=true;
 var force=forceReplay===true||tourRunning===true;
 var twoStep=force?false:$('twostep-toggle').checked;
@@ -847,17 +847,17 @@ if(lo!==undefined&&hi!==undefined){var y1=175-150*hi;var y2=175-150*lo;var cx=bx
 x.fillStyle='#101828';x.textAlign='center';x.fillText((100*value).toFixed(1)+'%',bx+bw*0.32,190);}
 function drawOutcome(){if(!state.disputes)return;var x=setupCanvas();var ds=state.disputes.disputes;
 x.fillStyle='#101828';x.font='bold 13px system-ui';x.textAlign='left';x.fillText('Disputes by verification outcome',8,16);
-ds.forEach(function(d,i){var good=d.forensics.verdict==='BUYER_FORGERY_DETECTED'||d.forensics.verdict==='MERCHANT_DRIFT_CONFIRMED';bar(x,i,ds.length,shortCase(d.case),good?1:0,good?'#16a34a':'#b42318');});
+ds.forEach(function(d,i){var good=d.forensics.verdict==='BUYER_FORGERY_DETECTED'||d.forensics.verdict==='MERCHANT_DRIFT_CONFIRMED';bar(x,i,ds.length,shortCase(d.case),good?1:0,good?'#0f6e56':'#b42318');});
 $('chart-table').innerHTML='<table class="matrix"><tbody>'+ds.map(function(d){return '<tr><th>'+esc(d.case)+'</th><td>'+esc(d.forensics.verdict)+'</td><td>'+esc(d.record.lifeCycleStage)+' / '+esc(d.record.disputeState)+'</td></tr>';}).join('')+'</tbody></table>';}
 function drawCompare(){if(!state.disputes)return;var x=setupCanvas();var ds=state.disputes.disputes;
 x.fillStyle='#101828';x.font='bold 13px system-ui';x.textAlign='left';x.fillText('Hash match bits: buyer · witness · seller',8,16);
 var bits=['buyerHashMatch','witnessHashMatch','sellerHashMatch'];var names=['Buyer','Witness','Seller'];
-ds.forEach(function(d,di){var tag=' '+shortCase(d.case);bits.forEach(function(b,bi){var v=d.forensics[b]?1:0;var label=(di===0?names[bi]:'')+(bi===1?tag:'');bar(x,di*3+bi,ds.length*3,label,v,v?'#16a34a':'#b42318');});});
+ds.forEach(function(d,di){var tag=' '+shortCase(d.case);bits.forEach(function(b,bi){var v=d.forensics[b]?1:0;var label=(di===0?names[bi]:'')+(bi===1?tag:'');bar(x,di*3+bi,ds.length*3,label,v,v?'#0f6e56':'#b42318');});});
 $('chart-table').innerHTML='<table class="matrix"><thead><tr><th>Case</th><th>Buyer</th><th>Witness</th><th>Seller</th></tr></thead><tbody>'+ds.map(function(d){return '<tr><th>'+esc(d.case)+'</th><td>'+(d.forensics.buyerHashMatch?'MATCH':'DIFF')+'</td><td>'+(d.forensics.witnessHashMatch?'MATCH':'DIFF')+'</td><td>'+(d.forensics.sellerHashMatch?'MATCH':'DIFF')+'</td></tr>';}).join('')+'</tbody></table>';}
 function drawAccuracy(){if(!state.benchmark)return;var x=setupCanvas();var b=state.benchmark;
 x.fillStyle='#101828';x.font='bold 13px system-ui';x.textAlign='left';x.fillText('Regression accuracy + 95% Wilson CI (72 runs)',8,16);
 var rows=[['Gate',b.gateAccuracy],['Post-auth',b.postAuthAccuracy],['Referee',b.refereeAccuracy],['Overall',b.overallPassRate]];
-rows.forEach(function(r,i){bar(x,i,4,r[0],r[1].rate,'#175cd3',r[1].ci95Lower,r[1].ci95Upper);});
+rows.forEach(function(r,i){bar(x,i,4,r[0],r[1].rate,'#1d4e89',r[1].ci95Lower,r[1].ci95Upper);});
 $('chart-table').innerHTML='<table class="matrix"><thead><tr><th>Metric</th><th>Rate</th><th>95% CI</th></tr></thead><tbody>'+rows.map(function(r){return '<tr><th>'+esc(r[0])+'</th><td class="num">'+r[1].successes+'/'+r[1].total+'</td><td class="num">['+r[1].ci95Lower.toFixed(3)+', '+r[1].ci95Upper.toFixed(3)+']</td></tr>';}).join('')+'</tbody></table>';}
 /* ---------- evidence sheet ---------- */
 function openSheet(d){var meta=caseMeta(d);var f=d.forensics;var r=d.record;var p=disputeProvenance(d);var ordId=disputeOrder(d);var cusId=disputeCustomId(d);

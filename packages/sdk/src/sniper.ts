@@ -577,7 +577,7 @@ export async function runAutonomousDealSniper(
     retailBaselineUsd: round2((product.priceUsd ?? 0) + VERIFIED_DISCOUNT_USD),
     targetMaxAllInUsd,
     candidatesEvaluated: evaluations.length,
-    trapsRejectedCount: evaluations.filter((e) => e.verdict !== 'VERIFIED_VOUCHER_CAPTURED').length,
+    trapsRejectedCount: evaluations.filter((e) => e.verdict.startsWith('REJECTED_')).length,
     outcome,
     winningCandidate,
     evaluations,

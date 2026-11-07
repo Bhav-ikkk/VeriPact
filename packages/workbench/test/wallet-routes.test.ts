@@ -564,6 +564,9 @@ describe('POST /api/wallet/sniper', () => {
     const walled = json<{ outcome: string; partitionAfter: { availableUsd: number } }>(second);
     expect(walled.outcome).toBe('BLOCKED_BY_PARTITION_WALL');
     expect(walled.partitionAfter.availableUsd).toBe(53);
+    expect(
+      (walled as { trapsRejectedCount?: number }).trapsRejectedCount,
+    ).toBe(5);
   });
 
   it('rejects invalid targets, skus, and voucher codes, and rejects GET', async () => {
@@ -598,6 +601,8 @@ describe('GET /embed/veripact-anywhere.js', () => {
       .replace(/"(?:\\.|[^"\\])*"/g, '""');
     expect(stripped).not.toMatch(/(?:^|[^\w$])event(?:[^\w$]|$)/);
     expect(res.body).toContain('host.id="veripact-anywhere-host"');
+    expect(res.body).toContain('targetMaxAllInUsd must be between 1 and 10000');
+    expect(res.body).toContain('return null;');
     expect(res.body).toContain('function(e)');
     expect(res.body).not.toMatch(/\beval\s*\(/);
     const store = await get('/store/normal');
