@@ -450,6 +450,7 @@ export async function runAutonomousDealSniper(
   const voucherCode = input.customVoucherCode ?? VERIFIED_VOUCHER;
   const voucherDiscountUsd = voucherCode === VERIFIED_VOUCHER ? VERIFIED_DISCOUNT_USD : 0;
   const wallet = host.wallet(input.stateFilePath);
+  return wallet.runExclusive(async () => {
   ensureAgenticPartition(wallet);
   const fixtures = buildCandidates(product, voucherCode, voucherDiscountUsd);
   const evaluations: SniperCandidateEvaluation[] = [];
@@ -495,7 +496,8 @@ export async function runAutonomousDealSniper(
     }
 
     const allIn = preAllIn ?? round2(fixture.netBasePriceUsd + SHIP_USD + TAX_USD);
-    if (allIn > targetMaxAllInUsd) {
+    const toCents = (n: number): number => Math.round((n + Number.EPSILON) * 100);
+    if (toCents(allIn) > toCents(targetMaxAllInUsd)) {
       evaluations.push({
         ...partial,
         shippingUsd: determinateNumber(observed.shippingUsd) ?? SHIP_USD,
@@ -533,7 +535,8 @@ export async function runAutonomousDealSniper(
     }
     if (
       payment.outcome === 'AUTO_VOIDED_BY_PARTITION_WALL' ||
-      payment.outcome === 'BLOCKED_BY_PARTITION_WALL'
+      payment.outcome === 'BLOCKED_BY_PARTITION_WALL' ||
+      payment.outcome === 'BLOCKED_PARTITION_FROZEN'
     ) {
       evaluations.push({
         ...partial,
@@ -582,6 +585,7 @@ export async function runAutonomousDealSniper(
     partitionAfter,
     completedAtUtc: new Date().toISOString(),
   };
+  });
 }
 
 interface FreightProbeResult {

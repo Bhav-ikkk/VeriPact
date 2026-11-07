@@ -238,10 +238,39 @@ function pairingCodeFor(seq: number): string {
   return String(100000 + ((seq * 7919) % 900000));
 }
 
+/** Restore ACTIVE when funds return. A buyer freeze stays frozen. */
+function syncPartitionStatus(found: PartitionSpec): void {
+  if (found.status === 'FROZEN') {
+    return;
+  }
+  found.status = found.availableUsd <= 0 ? 'EXHAUSTED' : 'ACTIVE';
+}
+
 function assertPositiveUsd(label: string, value: number): void {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     throw new Error(`wallet: ${label} must be a finite USD amount > 0`);
   }
+}
+
+/**
+ * In-process queue keyed by wallet state file. Concurrent callers on the
+ * same file run one at a time, so a second $297 capture cannot start until
+ * the first has saved the partition. The registration is synchronous, so
+ * two calls in the same turn cannot both observe an empty queue.
+ */
+const walletFileLocks = new Map<string, Promise<void>>();
+
+export function withWalletFileLock<T>(stateFile: string, task: () => Promise<T>): Promise<T> {
+  const previous = walletFileLocks.get(stateFile) ?? Promise.resolve();
+  const run = previous.then(task, task);
+  walletFileLocks.set(
+    stateFile,
+    run.then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+  return run;
 }
 
 export class VeriPactWallet {
@@ -249,6 +278,8 @@ export class VeriPactWallet {
   readonly keys: VeriPactKeys;
   private readonly stateFile: string;
   private state: WalletStateDoc;
+  /** Re-entrancy depth for `runExclusive` on this instance. */
+  private exclusiveDepth = 0;
 
   constructor(options: VeriPactWalletOptions) {
     this.paypal = options.paypal;
@@ -263,6 +294,26 @@ export class VeriPactWallet {
     } catch {
       // Best-effort: the in-memory state remains the primary store.
     }
+  }
+
+  /**
+   * Serialize partition mutations for this state file and reload disk state
+   * before the critical section. Nested calls on the same instance (a sniper
+   * hunt that then captures) reuse the lock instead of deadlocking.
+   */
+  runExclusive<T>(task: () => Promise<T>): Promise<T> {
+    if (this.exclusiveDepth > 0) {
+      return task();
+    }
+    return withWalletFileLock(this.stateFile, async () => {
+      this.exclusiveDepth += 1;
+      try {
+        this.state = loadStateDoc(this.stateFile);
+        return await task();
+      } finally {
+        this.exclusiveDepth -= 1;
+      }
+    });
   }
 
   /* ---------------- pairing ---------------- */
@@ -292,6 +343,10 @@ export class VeriPactWallet {
    * sessions fail loudly; approvals are single-shot.
    */
   async approvePairingCeremony(input: ApprovePairingInput): Promise<ApprovePairingResult> {
+    return this.runExclusive(() => this.approvePairingCeremonyBody(input));
+  }
+
+  private async approvePairingCeremonyBody(input: ApprovePairingInput): Promise<ApprovePairingResult> {
     const session = this.state.pairingSessions.find((s) => s.sessionId === input.sessionId);
     if (session === undefined) {
       throw new Error(`wallet: unknown pairing session: ${input.sessionId}`);
@@ -411,9 +466,7 @@ export class VeriPactWallet {
       throw new Error('wallet: no partition exists — pair a wallet first');
     }
     found.availableUsd = computePartitionAvailableUsd(found);
-    if (found.status === 'ACTIVE' && found.availableUsd <= 0) {
-      found.status = 'EXHAUSTED';
-    }
+    syncPartitionStatus(found);
     this.save();
     return { ...found };
   }
@@ -422,9 +475,7 @@ export class VeriPactWallet {
   listPartitions(): PartitionSpec[] {
     for (const found of this.state.partitions) {
       found.availableUsd = computePartitionAvailableUsd(found);
-      if (found.status === 'ACTIVE' && found.availableUsd <= 0) {
-        found.status = 'EXHAUSTED';
-      }
+      syncPartitionStatus(found);
     }
     this.save();
     return this.state.partitions.map((p) => ({ ...p }));
@@ -437,9 +488,7 @@ export class VeriPactWallet {
     }
     mutate(found);
     found.availableUsd = computePartitionAvailableUsd(found);
-    if (found.status === 'ACTIVE' && found.availableUsd <= 0) {
-      found.status = 'EXHAUSTED';
-    }
+    syncPartitionStatus(found);
     this.save();
     return { ...found };
   }
@@ -495,6 +544,12 @@ export class VeriPactWallet {
    * never auto-approves (AWAITING) and pre-empts wall blocks pre-create.
    */
   async executePartitionedAgentPayment(
+    input: PartitionedPaymentInput,
+  ): Promise<PartitionedPaymentResult> {
+    return this.runExclusive(() => this.capturePartitionedPayment(input));
+  }
+
+  private async capturePartitionedPayment(
     input: PartitionedPaymentInput,
   ): Promise<PartitionedPaymentResult> {
     const partition = this.resolveAgentPartition(input.agentToken);
@@ -720,6 +775,12 @@ export class VeriPactWallet {
    * `refundedUsd`, restoring availability by the refunded amount.
    */
   async refundPartitionPayment(input: { captureId: string }): Promise<RefundPartitionPaymentResult> {
+    return this.runExclusive(() => this.refundPartitionPaymentBody(input));
+  }
+
+  private async refundPartitionPaymentBody(input: {
+    captureId: string;
+  }): Promise<RefundPartitionPaymentResult> {
     const order = this.state.orders.find((o) => o.captureId === input.captureId);
     if (order === undefined) {
       throw new Error(`wallet: unknown wallet capture: ${input.captureId}`);

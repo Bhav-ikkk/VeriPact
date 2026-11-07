@@ -115,9 +115,11 @@ function asNonNegativeUsd(value: unknown, field: string): number {
   return value;
 }
 
+const PARTITION_LABEL_RE = /^[A-Za-z0-9][A-Za-z0-9 .,'()-]{0,119}$/;
+
 function asLabel(value: unknown): string {
-  if (typeof value !== 'string' || value.length === 0 || value.length > 120) {
-    throw new HttpError(400, 'label must be a non-empty string (1..120 chars)');
+  if (typeof value !== 'string' || !PARTITION_LABEL_RE.test(value)) {
+    throw new HttpError(400, 'label must be 1..120 letters, digits, or simple punctuation');
   }
   return value;
 }
@@ -167,9 +169,9 @@ function handlePairPage(sessionId: string, res: WorkbenchResponse): void {
   sendHtml(res, 200, renderPairPage(session), 'SAMEORIGIN');
 }
 
-function handlePairStart(res: WorkbenchResponse): void {
+async function handlePairStart(res: WorkbenchResponse): Promise<void> {
   const wallet = walletFor('auto');
-  const session = wallet.startPairingCeremony();
+  const session = await wallet.runExclusive(async () => wallet.startPairingCeremony());
   appendLedger({ kind: 'wallet-pair-start', summary: `pairing ceremony started (${session.sessionId})` });
   sendJson(res, 200, {
     session,
@@ -225,15 +227,15 @@ function handlePartitionsGet(res: WorkbenchResponse): void {
   sendJson(res, 200, { partition: partitionOrNull(wallet), orders: wallet.listOrders() });
 }
 
-function handlePartitionsPost(body: Record<string, unknown>, res: WorkbenchResponse): void {
+async function handlePartitionsPost(body: Record<string, unknown>, res: WorkbenchResponse): Promise<void> {
   const wallet = walletFor('auto');
   try {
-    const partition = wallet.createOrUpdatePartition({
+    const partition = await wallet.runExclusive(async () => wallet.createOrUpdatePartition({
       label: asLabel(body['label']),
       totalAllocatedUsd: asPositiveUsd(body['totalAllocatedUsd'], 'totalAllocatedUsd'),
       maxPerOrderUsd: asPositiveUsd(body['maxPerOrderUsd'], 'maxPerOrderUsd'),
       askHumanAboveUsd: asPositiveUsd(body['askHumanAboveUsd'], 'askHumanAboveUsd'),
-    });
+    }));
     appendLedger({
       kind: 'wallet-partition-upsert',
       summary:
@@ -428,6 +430,7 @@ function catalogHasSku(sku: string): boolean {
 
 const SNIPER_SKU_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const SNIPER_VOUCHER_RE = /^[A-Za-z0-9_-]{1,32}$/;
+const RESERVED_VOUCHER_CODES = new Set(['__proto__', 'constructor', 'prototype']);
 
 /**
  * POST /api/wallet/sniper — run the six-candidate deal hunt and return
@@ -459,7 +462,11 @@ async function handleSniper(body: Record<string, unknown>, res: WorkbenchRespons
   const rawVoucher = body['customVoucherCode'];
   let customVoucherCode: string | undefined;
   if (rawVoucher !== undefined) {
-    if (typeof rawVoucher !== 'string' || !SNIPER_VOUCHER_RE.test(rawVoucher)) {
+    if (
+      typeof rawVoucher !== 'string' ||
+      RESERVED_VOUCHER_CODES.has(rawVoucher) ||
+      !SNIPER_VOUCHER_RE.test(rawVoucher)
+    ) {
       throw new HttpError(400, 'Invalid voucher code format');
     }
     customVoucherCode = rawVoucher;
@@ -539,7 +546,7 @@ export async function handleWalletRequest(
         return true;
       }
       await readBody(req);
-      handlePairStart(res);
+      await handlePairStart(res);
       return true;
     }
     case '/api/wallet/pair/status': {
@@ -564,7 +571,7 @@ export async function handleWalletRequest(
         return true;
       }
       if (method === 'POST') {
-        handlePartitionsPost(parseJsonBody(await readBody(req)), res);
+        await handlePartitionsPost(parseJsonBody(await readBody(req)), res);
         return true;
       }
       sendJson(res, 405, { error: 'method not allowed' });

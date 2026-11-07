@@ -76,8 +76,10 @@ const ADVERSARIAL_PATTERNS: readonly string[] = [
 ];
 
 /** First adversarial pattern contained in text (case-insensitive), if any. */
+const INVISIBLE_CODEPOINTS = /[\u200B\u200C\u200D\u2060\uFEFF]/g;
+
 export function findAdversarialPattern(text: string): string | undefined {
-  const lower = text.toLowerCase();
+  const lower = text.replace(INVISIBLE_CODEPOINTS, '').toLowerCase();
   return ADVERSARIAL_PATTERNS.find((pattern) => lower.includes(pattern));
 }
 
@@ -422,6 +424,14 @@ function ownHiddenReason(el: ParsedElement): HiddenReason | undefined {
     }
   }
   if (style['clip'] !== undefined && /rect\s*\(\s*0/.test(style['clip'])) {
+    return 'offscreen-position';
+  }
+  const clipPath = (style['clip-path'] ?? '').replace(/\s+/g, '').toLowerCase();
+  if (
+    clipPath.startsWith('inset(100%') ||
+    clipPath.startsWith('circle(0') ||
+    clipPath === 'polygon(0px0px,0px0px,0px0px)'
+  ) {
     return 'offscreen-position';
   }
   const fg = style['color'] ? normalizeColor(style['color']) : undefined;

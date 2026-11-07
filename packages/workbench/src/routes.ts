@@ -236,6 +236,37 @@ export async function readBody(req: WorkbenchRequest): Promise<string> {
   });
 }
 
+const JSON_FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const JSON_MAX_DEPTH = 32;
+
+function sanitizeJsonObject(value: unknown, depth: number): Record<string, unknown> {
+  if (depth > JSON_MAX_DEPTH) {
+    throw new HttpError(400, 'JSON object is nested too deeply');
+  }
+  const source = value as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(source)) {
+    if (JSON_FORBIDDEN_KEYS.has(key)) {
+      continue;
+    }
+    out[key] = sanitizeJsonValue(source[key], depth + 1);
+  }
+  return out;
+}
+
+function sanitizeJsonValue(value: unknown, depth: number): unknown {
+  if (depth > JSON_MAX_DEPTH) {
+    throw new HttpError(400, 'JSON object is nested too deeply');
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeJsonValue(item, depth + 1));
+  }
+  if (value !== null && typeof value === 'object') {
+    return sanitizeJsonObject(value, depth);
+  }
+  return value;
+}
+
 /** @internal Exported for the v5 wallet route module (same object-only rule). */
 export function parseJsonBody(text: string): Record<string, unknown> {
   if (text.trim().length === 0) {
@@ -246,7 +277,7 @@ export function parseJsonBody(text: string): Record<string, unknown> {
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
       throw new HttpError(400, 'request body must be a JSON object');
     }
-    return parsed as Record<string, unknown>;
+    return sanitizeJsonObject(parsed, 0);
   } catch (e) {
     if (e instanceof HttpError) {
       throw e;

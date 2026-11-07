@@ -206,3 +206,55 @@ findings (demo-model unless noted):
 - **No new PayPal or key-boundary risk.** Wallet routes reuse the
   Step-1 vault/refund/reporting modules and the Rule-2 route
   boundaries; no foreign keys cross buyer/witness/merchant code.
+
+## 9. VeriPact v6 Deal Sniper, Concurrency Mutex & @veripact Anywhere Audit
+
+Run 25 (2026-11-07). Full gate: 263/263 unit tests (17 files), 24/24
+Playwright E2E, `lint` + `typecheck` + `build` exit 0. Six vectors were
+executed through `handleWorkbenchRequest` with dummy keys and an isolated
+wallet file. Findings below are the ones that changed source.
+
+- **Concurrent double-spend (fixed).** Five overlapping
+  `POST /api/wallet/sniper` calls each constructed a wallet from the same
+  state file and could all observe `$350` available before any capture
+  was saved. `withWalletFileLock` plus `VeriPactWallet.runExclusive`
+  queues mutations on that file and reloads disk state at the start of
+  each turn. The sniper hunt and `executePartitionedAgentPayment` share
+  the lock (re-entrant on one instance). After the change, one
+  `$297.00` capture succeeds and the other four return
+  `BLOCKED_BY_PARTITION_WALL`. `availableUsd` is `53` and `capturedUsd`
+  is `297`.
+- **Wall void left the partition EXHAUSTED (fixed).** A blocked spend
+  adds `authorizedUsd` and then `voidedUsd`. The intermediate balance
+  hits zero, and the old status rule never returned a partition to
+  `ACTIVE` after the void restored funds. The next caller then saw
+  `BLOCKED_PARTITION_FROZEN` and the route 500'd.
+  `syncPartitionStatus` keeps a buyer `FROZEN` partition frozen and
+  otherwise sets `EXHAUSTED` only while available funds are zero.
+- **Voucher and prototype keys.** `customVoucherCode` must match
+  `/^[A-Za-z0-9_-]{1,32}$/`. `__proto__`, `constructor`, and `prototype`
+  are rejected even though they match that alphabet. Quote-break and
+  instruction-override strings return 400 and are not copied into the
+  response. `parseJsonBody` drops those three keys and rejects objects
+  nested past 32 levels with 400.
+- **Hidden-DOM injections.** `clip-path: inset(100%)` is classified as
+  `offscreen-position` (one of the existing 13 reasons). Zero-width
+  joiners are stripped before adversarial phrase matching, so a hidden
+  "ignore previous" split by U+200D still matches. Custom HTML with
+  `font-size:0`, `opacity:0.001`, `clip-path`, `text-indent:-9999px`,
+  `aria-hidden`, and off-screen `left` gates `BLOCK` with no PayPal
+  capture. Visible editorial text that merely contains "system prompt"
+  stays clean.
+- **Cent boundary.** `targetMaxAllInUsd: 296.99` returns
+  `NO_COMPLIANT_DEAL_UNDER_TARGET` and spends `$0`. `297` captures.
+  `NaN`, `Infinity`, `1e308`, numeric strings, `null`, arrays, and
+  objects return 400 from the sniper, partition, and mandate routes.
+- **XSS.** Script payloads in `/pair/:sessionId`, sniper SKU and voucher
+  fields, partition labels, and connector platforms are rejected by
+  allowlists. An unknown store `sku` falls back to the catalog id, so
+  the raw `<script>` string is not written into `/store/normal`.
+- **Secrets.** Health, status, ledger, partitions, sync, a rejected
+  sniper body, OpenAPI, and `/embed/veripact-anywhere.js` do not contain
+  private-key canaries, `PAYPAL_CLIENT_SECRET`, or a bearer minted
+  earlier in the same test. Connector bearers are `vp_` plus 48 hex
+  characters, returned once.
