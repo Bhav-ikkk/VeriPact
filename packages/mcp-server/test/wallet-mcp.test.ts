@@ -64,6 +64,7 @@ describe('v5 wallet MCP tools', () => {
       'veripact_pair_wallet',
       'veripact_sync_payments',
       'veripact_partition_spend',
+      'veripact_run_deal_sniper',
     ]);
   });
 
@@ -109,5 +110,16 @@ describe('v5 wallet MCP tools', () => {
     await expect(callTool('veripact_partition_spend', { scenario: 'nope' })).rejects.toThrow(
       'scenario must be one of',
     );
+  });
+
+  it('runs veripact_run_deal_sniper for KANSO-Q35 under a $200 target', async () => {
+    const report = (await callTool('veripact_run_deal_sniper', {
+      sku: 'KANSO-Q35',
+      targetMaxAllInUsd: 200,
+    })) as { outcome: string; totalSavedUsd: number; winningCandidate: { allInTotalUsd: number; commitment: string } };
+    expect(report.outcome).toBe('DEAL_CAPTURED');
+    expect(report.totalSavedUsd).toBe(50);
+    expect(report.winningCandidate.allInTotalUsd).toBe(167);
+    expect(report.winningCandidate.commitment).toMatch(/^VP1:[0-9a-f]{64}$/);
   });
 });

@@ -1,6 +1,7 @@
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { verifyOrderCommitmentReproducible } from '@veripact/core';
 import { createSandboxReplayEngine } from '@veripact/paypal-client';
 import { VeriPactClient, type SniperCandidateVerdict } from '../src/index';
 
@@ -181,6 +182,29 @@ describe('@veripact/sdk deal sniper', () => {
       capturedUsd: 0,
     });
     expect(replay.stats()).toMatchObject({ orders: 0, authorizations: 0, captures: 0 });
+  });
+
+  it('binds the post-voucher snapshot into custom_id for Apex and Kanso', async () => {
+    for (const spec of [
+      { sku: 'APEX-27-4K-IPS', targetMaxAllInUsd: 300, allIn: 297 },
+      { sku: 'KANSO-Q35', targetMaxAllInUsd: 200, allIn: 167 },
+    ]) {
+      const { client, stateFilePath } = testClient();
+      const report = await client.runDealSniper({
+        sku: spec.sku,
+        targetMaxAllInUsd: spec.targetMaxAllInUsd,
+        stateFilePath,
+      });
+      expect(report.outcome).toBe('DEAL_CAPTURED');
+      expect(report.winningCandidate?.allInTotalUsd).toBe(spec.allIn);
+      const order = client.wallet(stateFilePath).listOrders().at(-1);
+      expect(order).toBeDefined();
+      expect(order?.commitment).toBe(report.winningCandidate?.commitment);
+      expect(verifyOrderCommitmentReproducible(order!)).toBe(true);
+      const paypalOrder = await client.paypal.getOrder(order!.orderId);
+      expect(paypalOrder.customId).toBe(report.winningCandidate?.commitment);
+      expect(paypalOrder.customId).toBe(order?.commitment);
+    }
   });
 
   it('throws a validation error for NaN, non-positive, and infinite targets', async () => {

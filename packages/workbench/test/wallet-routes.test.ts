@@ -538,3 +538,49 @@ describe('@veripact/workbench v5 byte-cleanliness guards', () => {
     }
   });
 });
+
+describe('POST /api/wallet/sniper', () => {
+  it('captures the Apex voucher deal, then blocks the second sweep on the partition wall', async () => {
+    const first = await post('/api/wallet/sniper', {
+      sku: 'APEX-27-4K-IPS',
+      targetMaxAllInUsd: 300,
+    });
+    expect(first.status).toBe(200);
+    const captured = json<{
+      outcome: string;
+      trapsRejectedCount: number;
+      totalSavedUsd: number;
+      partitionAfter: { availableUsd: number };
+    }>(first);
+    expect(captured.outcome).toBe('DEAL_CAPTURED');
+    expect(captured.trapsRejectedCount).toBe(5);
+    expect(captured.totalSavedUsd).toBe(50);
+    expect(captured.partitionAfter.availableUsd).toBe(53);
+    const second = await post('/api/wallet/sniper', {
+      sku: 'APEX-27-4K-IPS',
+      targetMaxAllInUsd: 300,
+    });
+    expect(second.status).toBe(200);
+    const walled = json<{ outcome: string; partitionAfter: { availableUsd: number } }>(second);
+    expect(walled.outcome).toBe('BLOCKED_BY_PARTITION_WALL');
+    expect(walled.partitionAfter.availableUsd).toBe(53);
+  });
+
+  it('rejects invalid targets, skus, and voucher codes, and rejects GET', async () => {
+    for (const target of [0, -10, 99999, 'bad']) {
+      const res = await post('/api/wallet/sniper', { targetMaxAllInUsd: target });
+      expect(res.status).toBe(400);
+      expect(json<{ error: string }>(res).error).toContain('targetMaxAllInUsd');
+    }
+    for (const sku of ['<script>', 'UNKNOWN-SKU-999']) {
+      const res = await post('/api/wallet/sniper', { sku });
+      expect(res.status).toBe(400);
+      expect(json<{ error: string }>(res).error).toBe('Invalid or unknown Channel3 SKU');
+    }
+    const voucher = await post('/api/wallet/sniper', { customVoucherCode: 'BAD CODE!' });
+    expect(voucher.status).toBe(400);
+    expect(json<{ error: string }>(voucher).error).toBe('Invalid voucher code format');
+    const getRes = await get('/api/wallet/sniper');
+    expect(getRes.status).toBe(405);
+  });
+});

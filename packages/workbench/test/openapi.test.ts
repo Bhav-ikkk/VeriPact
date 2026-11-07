@@ -85,6 +85,18 @@ describe('@veripact/workbench v5 OpenAPI spec', () => {
     expect(JSON.parse(res.body)).toEqual(buildOpenApiSpec());
   });
 
+  it('lists /api/wallet/sniper and /api/catalog in GET /openapi.json', async () => {
+    const res = await call('GET', '/openapi.json');
+    const spec = JSON.parse(res.body) as {
+      paths: Record<string, { post?: { operationId?: string }; get?: { operationId?: string } }>;
+      components: { schemas: Record<string, unknown> };
+    };
+    expect(spec.paths['/api/wallet/sniper']?.post?.operationId).toBe('runDealSniper');
+    expect(spec.paths['/api/catalog']?.get?.operationId).toBe('getChannel3Catalog');
+    expect(spec.components.schemas['DealSniperReport']).toBeDefined();
+    expect(spec.components.schemas['SniperCandidateEvaluation']).toBeDefined();
+  });
+
   it('lists /openapi.json in ROUTES and rejects POST with 405', async () => {
     expect(ROUTES).toContain('/openapi.json');
     const res = await call('POST', '/openapi.json');

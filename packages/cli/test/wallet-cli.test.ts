@@ -124,4 +124,26 @@ describe('@veripact/cli v5 wallet commands', () => {
     expect(bad.exitCode).toBe(1);
     expect(bad.stderr).toContain('--total');
   });
+
+  it('runs wallet-sniper --sku KANSO-Q35 --target 200 --json', async () => {
+    const result = await runText([
+      'wallet-sniper',
+      '--sku',
+      'KANSO-Q35',
+      '--target',
+      '200',
+      '--json',
+    ]);
+    expect(result.exitCode).toBe(0);
+    const wrapped = JSON.parse(result.stdout) as {
+      ok: boolean;
+      command: string;
+      result: { outcome: string; winningCandidate: { allInTotalUsd: number; commitment: string } };
+    };
+    expect(wrapped.ok).toBe(true);
+    expect(wrapped.command).toBe('wallet-sniper');
+    expect(wrapped.result.outcome).toBe('DEAL_CAPTURED');
+    expect(wrapped.result.winningCandidate.allInTotalUsd).toBe(167);
+    expect(wrapped.result.winningCandidate.commitment).toMatch(/^VP1:/);
+  });
 });
