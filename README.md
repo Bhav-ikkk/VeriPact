@@ -90,9 +90,9 @@ partition ($320.00 per-order cap); the deterministic spend check
 blocks or auto-voids overruns before capture; payment sync splits
 `LEGACY_UNWITNESSED` history from `VERIPACT_PROTECTED` (`VP1:`)
 transactions; scoped API credentials mint per platform and are
-shown once. Verified end to end: **244/244 unit tests** (16 files)
-plus a **24-step Playwright E2E** (pair, spend, wall, refund, sync,
-mint, multi-SKU across 4 viewports, zero overflow).
+shown once. Verified end to end: **265/265 unit tests** (17 files)
+plus a **25-step Playwright E2E** (pair, spend, wall, refund, deal sniper
+sweep & auto-buy, sync, mint, multi-SKU across 4 viewports, zero overflow).
 
 ## Three-Rung Evidence Ladder
 
