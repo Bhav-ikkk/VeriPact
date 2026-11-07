@@ -51,6 +51,7 @@ import {
   type StorefrontScenario,
 } from './scenarios';
 import { VeriPactWallet } from './wallet';
+import { runAutonomousDealSniper, type DealSniperInput, type DealSniperReport } from './sniper';
 
 export { formatCommitmentPrefix, PayPalClient, SufficiencyGate, WitnessClient };
 export type { PayPalClientOptions, WitnessClientDeps };
@@ -957,5 +958,14 @@ export class VeriPactClient {
       anchor: checkout.snapshot.anchor,
       orderCreateTimeIso: order.createTimeIso,
     });
+  }
+
+  /**
+   * Hunt six voucher/storefront candidates and auto-buy only when the
+   * post-voucher page passes the witness gate and the partition can fund
+   * the all-in total. See `runAutonomousDealSniper`.
+   */
+  runDealSniper(input: DealSniperInput = {}): Promise<DealSniperReport> {
+    return runAutonomousDealSniper(this, input);
   }
 }
