@@ -21,6 +21,7 @@ import {
   type ScenarioName,
   type TransactionBundleResult,
   type WitnessSnapshotOutput,
+  type DealSniperReport,
 } from '@veripact/sdk';
 
 export const CLI_NAME = 'veripact';
@@ -51,6 +52,8 @@ Usage:
   veripact partition-create [--label <t>] [--total <usd>] [--max-order <usd>] [--ask-above <usd>] [--json]
                                        Create a buyer-signed agentic partition
   veripact partition-list [--json]     List partitions with live availability
+  veripact wallet-sniper [--sku <sku>] [--target <usd>] [--voucher <code>] [--json]
+                                       Hunt vouchers and capture only a verified deal
 
 Scenarios: ${SCENARIO_NAMES.join(', ')}
 Dispute cases: ${DISPUTE_CASE_NAMES.join(', ')}
@@ -82,6 +85,9 @@ interface ParsedArgs {
   email?: string;
   approve: boolean;
   sessionId?: string;
+  sku?: string;
+  target?: string;
+  voucher?: string;
   json: boolean;
   error?: string;
 }
@@ -150,6 +156,20 @@ function parseFlags(command: string, rest: string[]): ParsedArgs {
       }
       parsed.caseName = value;
       i += 1;
+    } else if (flag === '--sku' || flag === '--target' || flag === '--voucher') {
+      const got = valuedFlag(command, rest, i, flag);
+      if (got.error !== undefined) {
+        parsed.error = got.error;
+        return parsed;
+      }
+      i = got.next;
+      if (flag === '--sku') {
+        parsed.sku = got.value;
+      } else if (flag === '--target') {
+        parsed.target = got.value;
+      } else {
+        parsed.voucher = got.value;
+      }
     } else {
       parsed.error = `unknown flag for \`veripact ${command}\`: ${flag}`;
       return parsed;
@@ -423,6 +443,50 @@ async function runPartitionList(args: ParsedArgs): Promise<CliResult> {
   return ok(`${lines.join('\n')}\n`);
 }
 
+function formatSniperHuman(report: DealSniperReport): string {
+  const lines = [
+    `veripact wallet-sniper — ${report.sku}: ${report.outcome}`,
+    `target: $${report.targetMaxAllInUsd.toFixed(2)}  retail baseline: $${report.retailBaselineUsd.toFixed(2)}`,
+    ...report.evaluations.map(
+      (row) =>
+        `  - ${row.candidateId} ${row.merchantName}: ${row.verdict} ($${row.allInTotalUsd.toFixed(2)} all-in, paypal calls ${row.paypalApiCalls})`,
+    ),
+    `traps rejected: ${report.trapsRejectedCount}`,
+  ];
+  const winner = report.winningCandidate;
+  if (winner !== null) {
+    lines.push(
+      `winner: order ${winner.orderId ?? 'none'} capture ${winner.captureId ?? 'none'}`,
+      `commitment: ${winner.commitment ?? 'none'}`,
+      `saved: $${report.totalSavedUsd.toFixed(2)}`,
+    );
+  }
+  if (report.partitionAfter !== null) {
+    lines.push(`partition available: $${report.partitionAfter.availableUsd.toFixed(2)}`);
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+async function runWalletSniper(args: ParsedArgs): Promise<CliResult> {
+  let targetMaxAllInUsd: number | undefined;
+  if (args.target !== undefined) {
+    targetMaxAllInUsd = Number(args.target);
+    if (!Number.isFinite(targetMaxAllInUsd) || targetMaxAllInUsd <= 0 || targetMaxAllInUsd > 10000) {
+      return fail('`--target` must be a finite USD amount > 0 and <= 10000');
+    }
+  }
+  const client = new VeriPactClient();
+  const report = await client.runDealSniper({
+    ...(args.sku !== undefined ? { sku: args.sku } : {}),
+    ...(targetMaxAllInUsd !== undefined ? { targetMaxAllInUsd } : {}),
+    ...(args.voucher !== undefined ? { customVoucherCode: args.voucher } : {}),
+  });
+  if (args.json) {
+    return ok(asJson('wallet-sniper', report));
+  }
+  return ok(formatSniperHuman(report));
+}
+
 /**
  * Route argv (without node/script prefix) to a result. Sync for help/version
  * and parse errors; async for flows — `await` the return value uniformly.
@@ -443,7 +507,8 @@ export function run(argv: string[]): CliResult | Promise<CliResult> {
     command === 'wallet-pair' ||
     command === 'wallet-sync' ||
     command === 'partition-create' ||
-    command === 'partition-list'
+    command === 'partition-list' ||
+    command === 'wallet-sniper'
   ) {
     const args = parseFlags(command, rest);
     if (args.error !== undefined) {
@@ -464,7 +529,9 @@ export function run(argv: string[]): CliResult | Promise<CliResult> {
                   ? runWalletSync(args)
                   : command === 'partition-create'
                     ? runPartitionCreate(args)
-                    : runPartitionList(args);
+                    : command === 'partition-list'
+                      ? runPartitionList(args)
+                      : runWalletSniper(args);
     return task.then(
       (result) => result,
       (e: unknown) => fail(e instanceof Error ? e.message : String(e)),

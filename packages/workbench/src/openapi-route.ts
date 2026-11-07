@@ -143,6 +143,71 @@ export function buildOpenApiSpec(): Record<string, unknown> {
           },
         },
       },
+      '/api/wallet/sniper': {
+        post: {
+          operationId: 'runDealSniper',
+          summary: 'Hunt six voucher candidates and capture only a witness-clean deal under the target',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: false,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    sku: { type: 'string', description: 'Channel3 product id. Default APEX-27-4K-IPS' },
+                    targetMaxAllInUsd: { type: 'number', minimum: 1, maximum: 10000 },
+                    customVoucherCode: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'DealSniperReport. A timestamp proves the page hash existed at time T, not that the voucher is true.',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/DealSniperReport' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/catalog': {
+        get: {
+          operationId: 'getChannel3Catalog',
+          summary: 'Channel3 replay catalog (benchmark cache, labeled REPLAY — not live evidence)',
+          responses: {
+            '200': {
+              description: 'Catalog products used by the witness oracle',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      source: { type: 'string' },
+                      products: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            productId: { type: 'string' },
+                            title: { type: 'string' },
+                            condition: { type: 'string' },
+                            priceUsd: { type: 'number' },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       '/api/wallet/sync': {
         get: {
           operationId: 'syncWalletPayments',
@@ -491,6 +556,106 @@ export function buildOpenApiSpec(): Record<string, unknown> {
             openapiUrl: { type: 'string' },
             mcpCommand: { type: 'string' },
             createdAtUtc: { type: 'string' },
+          },
+        },
+        SniperCandidateEvaluation: {
+          type: 'object',
+          required: [
+            'candidateId',
+            'merchantName',
+            'merchantUrl',
+            'sku',
+            'retailPriceUsd',
+            'voucherDiscountUsd',
+            'netBasePriceUsd',
+            'shippingUsd',
+            'taxUsd',
+            'allInTotalUsd',
+            'observedCondition',
+            'observedReturnDays',
+            'observedRestockingFeePct',
+            'pageIntegrity',
+            'verdict',
+            'reason',
+            'paypalApiCalls',
+          ],
+          properties: {
+            candidateId: { type: 'string' },
+            merchantName: { type: 'string' },
+            merchantUrl: { type: 'string' },
+            sku: { type: 'string' },
+            retailPriceUsd: { type: 'number' },
+            voucherCode: { type: 'string' },
+            voucherDiscountUsd: { type: 'number' },
+            netBasePriceUsd: { type: 'number' },
+            shippingUsd: { type: 'number' },
+            taxUsd: { type: 'number' },
+            allInTotalUsd: { type: 'number' },
+            observedCondition: { type: 'string', enum: ['NEW', 'REFURBISHED', 'UNKNOWN'] },
+            observedReturnDays: { type: 'number' },
+            observedRestockingFeePct: { type: 'number' },
+            pageIntegrity: { type: 'string', enum: ['CLEAN', 'ADVERSARIAL_DOM'] },
+            verdict: {
+              type: 'string',
+              enum: [
+                'REJECTED_ADVERSARIAL_DOM',
+                'REJECTED_CONDITION_CONFLICT',
+                'REJECTED_VOUCHER_VOIDS_RETURNS',
+                'REJECTED_OVER_TARGET_CAP',
+                'REJECTED_CALLBACK_SURCHARGE_VOIDED',
+                'AUTO_VOIDED_BY_PARTITION_WALL',
+                'VERIFIED_VOUCHER_CAPTURED',
+              ],
+            },
+            reason: { type: 'string' },
+            paypalApiCalls: { type: 'integer' },
+            commitment: { type: 'string' },
+            orderId: { type: 'string' },
+            authorizationId: { type: 'string' },
+            captureId: { type: 'string' },
+          },
+        },
+        DealSniperReport: {
+          type: 'object',
+          required: [
+            'sniperRunId',
+            'sku',
+            'productTitle',
+            'retailBaselineUsd',
+            'targetMaxAllInUsd',
+            'candidatesEvaluated',
+            'trapsRejectedCount',
+            'outcome',
+            'winningCandidate',
+            'evaluations',
+            'totalSavedUsd',
+            'partitionAfter',
+            'completedAtUtc',
+          ],
+          properties: {
+            sniperRunId: { type: 'string' },
+            sku: { type: 'string' },
+            productTitle: { type: 'string' },
+            retailBaselineUsd: { type: 'number' },
+            targetMaxAllInUsd: { type: 'number' },
+            candidatesEvaluated: { type: 'integer' },
+            trapsRejectedCount: { type: 'integer' },
+            outcome: {
+              type: 'string',
+              enum: ['DEAL_CAPTURED', 'BLOCKED_BY_PARTITION_WALL', 'NO_COMPLIANT_DEAL_UNDER_TARGET'],
+            },
+            winningCandidate: {
+              anyOf: [{ $ref: '#/components/schemas/SniperCandidateEvaluation' }, { type: 'null' }],
+            },
+            evaluations: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/SniperCandidateEvaluation' },
+            },
+            totalSavedUsd: { type: 'number' },
+            partitionAfter: {
+              anyOf: [{ $ref: '#/components/schemas/PartitionSpec' }, { type: 'null' }],
+            },
+            completedAtUtc: { type: 'string' },
           },
         },
       },

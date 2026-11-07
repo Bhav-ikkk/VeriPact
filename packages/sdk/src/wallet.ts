@@ -179,11 +179,23 @@ export type PartitionedPaymentOutcome =
   | 'AWAITING_BUYER_APPROVAL';
 
 export interface PartitionedPaymentInput {
-  scenarioId: string;
+  /**
+   * Callback scenario (`normal` shipping/tax). Optional when
+   * `preWitnessedSnapshot` is set; defaults to `normal`.
+   */
+  scenarioId?: ScenarioName;
   /** Override the scenario's deterministic callback total (stress tests). */
   requestedOverrideUsd?: number;
   /** Connector bearer token (verified by hash when provided). */
   agentToken?: string;
+  /**
+   * Witness snapshot to bind into the PayPal `custom_id` and the stored
+   * `receiptCore`. When set, the wallet does not re-witness
+   * `getScenario(scenarioId)` HTML. The object is the witness output
+   * (`commitment`, `receiptCore`, `gateResult`, `termReceipt`) — not the
+   * HTTP fetch `SnapshotResult`.
+   */
+  preWitnessedSnapshot?: WitnessSnapshotOutput;
 }
 
 export interface PartitionedPaymentResult {
@@ -486,8 +498,10 @@ export class VeriPactWallet {
     input: PartitionedPaymentInput,
   ): Promise<PartitionedPaymentResult> {
     const partition = this.resolveAgentPartition(input.agentToken);
-    const page = getScenario(input.scenarioId);
-    const snapshot = await this.snapshotScenario(page.listingUrl, page.html, page.mandate);
+    const page = getScenario(input.scenarioId ?? 'normal');
+    const snapshot =
+      input.preWitnessedSnapshot ??
+      (await this.snapshotScenario(page.listingUrl, page.html, page.mandate));
     const base = {
       scenarioId: page.name,
       partitionId: partition.partitionId,

@@ -94,10 +94,10 @@ export const TOOLS: ToolDef[] = [
 ];
 
 /**
- * v5 wallet tool catalog (7 tools total with TOOLS). Kept as a separate
- * export — `tools/list` still serves the pinned 4-tool base catalog
- * (locked by existing tests), while `tools/call` dispatches the union.
- * External agents discover wallet tools via SKILL.md + the Step-2 UI.
+ * v5 wallet tool catalog. Kept as a separate export — `tools/list`
+ * still serves the pinned 4-tool base catalog (locked by existing tests),
+ * while `tools/call` dispatches the union. External agents discover wallet
+ * tools via SKILL.md.
  */
 export const WALLET_TOOLS: ToolDef[] = [
   {
@@ -132,6 +132,19 @@ export const WALLET_TOOLS: ToolDef[] = [
         agentToken: { type: 'string' },
       },
       required: ['scenario'],
+    },
+  },
+  {
+    name: 'veripact_run_deal_sniper',
+    description:
+      'Hunt competing stores and vouchers. Auto-buy only when the post-voucher page passes the witness gate and the partition can fund the all-in total. The captured order custom_id is the candidate page VP1 commitment.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sku: { type: 'string' },
+        targetMaxAllInUsd: { type: 'number' },
+        customVoucherCode: { type: 'string' },
+      },
     },
   },
 ];
@@ -299,6 +312,30 @@ async function callTool(
               scenarioId: args['scenario'],
               requestedOverrideUsd: amountUsd,
               agentToken,
+            }),
+          ),
+        );
+      }
+      case 'veripact_run_deal_sniper': {
+        const sku = args['sku'];
+        const target = args['targetMaxAllInUsd'];
+        const voucher = args['customVoucherCode'];
+        if (sku !== undefined && typeof sku !== 'string') {
+          return err(id, -32602, 'sku must be a string when provided');
+        }
+        if (target !== undefined && (typeof target !== 'number' || !Number.isFinite(target))) {
+          return err(id, -32602, 'targetMaxAllInUsd must be a finite number when provided');
+        }
+        if (voucher !== undefined && typeof voucher !== 'string') {
+          return err(id, -32602, 'customVoucherCode must be a string when provided');
+        }
+        return ok(
+          id,
+          toolResult(
+            await client.runDealSniper({
+              ...(typeof sku === 'string' ? { sku } : {}),
+              ...(typeof target === 'number' ? { targetMaxAllInUsd: target } : {}),
+              ...(typeof voucher === 'string' ? { customVoucherCode: voucher } : {}),
             }),
           ),
         );

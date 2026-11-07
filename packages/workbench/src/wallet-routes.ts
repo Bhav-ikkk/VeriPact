@@ -21,10 +21,18 @@ import {
   type PartitionSpec,
 } from '@veripact/core';
 import { REPORTING_INDEXING_DELAY_DISCLOSURE } from '@veripact/paypal-client';
-import { SCENARIO_NAMES, type ScenarioName, type VeriPactWallet } from '@veripact/sdk';
+import {
+  runAutonomousDealSniper,
+  SCENARIO_NAMES,
+  type ScenarioName,
+  type VeriPactWallet,
+} from '@veripact/sdk';
+import { loadChannel3CacheFromDisk } from '@veripact/witness-client';
 import {
   appendLedger,
   demoClientFor,
+  effectiveMandate,
+  getCatalogCachePath,
   HttpError,
   parseExecutionMode,
   parseJsonBody,
@@ -51,6 +59,7 @@ export const WALLET_ROUTES = [
   '/api/wallet/refund',
   '/api/wallet/sync',
   '/api/wallet/connectors',
+  '/api/wallet/sniper',
 ];
 
 /** Safe pairing-token shape (`400` on anything else — never a lookup). */
@@ -408,6 +417,73 @@ function handleSync(res: WorkbenchResponse): void {
   });
 }
 
+function catalogHasSku(sku: string): boolean {
+  try {
+    const cache = loadChannel3CacheFromDisk(getCatalogCachePath());
+    return cache.products.some((product) => product.productId === sku);
+  } catch {
+    return false;
+  }
+}
+
+const SNIPER_SKU_RE = /^[A-Za-z0-9_-]{1,64}$/;
+const SNIPER_VOUCHER_RE = /^[A-Za-z0-9_-]{1,32}$/;
+
+/**
+ * POST /api/wallet/sniper — run the six-candidate deal hunt and return
+ * the DealSniperReport. The sixth candidate's witness snapshot is what
+ * the wallet binds into PayPal custom_id.
+ */
+async function handleSniper(body: Record<string, unknown>, res: WorkbenchResponse): Promise<void> {
+  const rawSku = body['sku'];
+  let sku: string | undefined;
+  if (rawSku !== undefined) {
+    if (typeof rawSku !== 'string' || !SNIPER_SKU_RE.test(rawSku) || !catalogHasSku(rawSku)) {
+      throw new HttpError(400, 'Invalid or unknown Channel3 SKU');
+    }
+    sku = rawSku;
+  }
+  const rawTarget = body['targetMaxAllInUsd'];
+  let targetMaxAllInUsd: number | undefined;
+  if (rawTarget !== undefined) {
+    if (
+      typeof rawTarget !== 'number' ||
+      !Number.isFinite(rawTarget) ||
+      rawTarget < 1 ||
+      rawTarget > 10000
+    ) {
+      throw new HttpError(400, 'targetMaxAllInUsd must be between 1 and 10000');
+    }
+    targetMaxAllInUsd = rawTarget;
+  }
+  const rawVoucher = body['customVoucherCode'];
+  let customVoucherCode: string | undefined;
+  if (rawVoucher !== undefined) {
+    if (typeof rawVoucher !== 'string' || !SNIPER_VOUCHER_RE.test(rawVoucher)) {
+      throw new HttpError(400, 'Invalid voucher code format');
+    }
+    customVoucherCode = rawVoucher;
+  }
+  const client = demoClientFor('auto');
+  const report = await runAutonomousDealSniper(client, {
+    ...(sku !== undefined ? { sku } : {}),
+    ...(targetMaxAllInUsd !== undefined ? { targetMaxAllInUsd } : {}),
+    mandate: effectiveMandate('normal'),
+    ...(customVoucherCode !== undefined ? { customVoucherCode } : {}),
+  });
+  const winner = report.winningCandidate;
+  appendLedger({
+    kind: 'wallet_sniper_sweep',
+    summary:
+      `sniper ${report.sniperRunId} sku=${report.sku} target=${report.targetMaxAllInUsd.toFixed(2)} ` +
+      `outcome=${report.outcome} traps=${report.trapsRejectedCount} ` +
+      `capture=${winner?.captureId ?? 'none'}`,
+    ...(winner?.orderId !== undefined ? { orderId: winner.orderId } : {}),
+    ...(winner?.commitment !== undefined ? { commitment: winner.commitment } : {}),
+  });
+  sendJson(res, 200, report);
+}
+
 function handleConnectors(body: Record<string, unknown>, res: WorkbenchResponse): void {
   const wallet = walletFor('auto');
   const platform = asConnectorPlatform(body['platform']);
@@ -524,6 +600,14 @@ export async function handleWalletRequest(
         return true;
       }
       handleConnectors(parseJsonBody(await readBody(req)), res);
+      return true;
+    }
+    case '/api/wallet/sniper': {
+      if (method !== 'POST') {
+        sendJson(res, 405, { error: 'method not allowed' });
+        return true;
+      }
+      await handleSniper(parseJsonBody(await readBody(req)), res);
       return true;
     }
     default: {

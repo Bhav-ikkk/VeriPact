@@ -511,6 +511,7 @@ export async function runAutonomousDealSniper(
     const payment = await wallet.executePartitionedAgentPayment({
       scenarioId: 'normal',
       requestedOverrideUsd: allIn,
+      preWitnessedSnapshot: snapshot,
     });
     const paypalApiCalls = payment.orderId === undefined ? 0 : 4;
     if (payment.outcome === 'CAPTURED') {

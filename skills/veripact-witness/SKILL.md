@@ -33,6 +33,7 @@ veripact wallet-pair [--email <addr>] [--approve --session-id <id>] [--json]
 veripact wallet-sync [--json]
 veripact partition-create [--label <t>] [--total <usd>] [--max-order <usd>] [--ask-above <usd>] [--json]
 veripact partition-list [--json]
+veripact wallet-sniper [--sku <sku>] [--target <usd>] [--voucher <code>] [--json]
 ```
 
 - `witness` snapshots a scenario storefront (hidden-DOM scan, verified
@@ -50,6 +51,10 @@ veripact partition-list [--json]
   `LEGACY_UNWITNESSED` with counts.
 - `partition-create` / `partition-list` manage buyer-signed agentic
   partitions with live availability.
+- `wallet-sniper` hunts six storefronts and vouchers. It captures only when
+  the post-voucher page passes the witness gate and the partition can fund
+  the all-in total. `--json` prints the `DealSniperReport`. The captured
+  order `custom_id` is that candidate page's `VP1:` commitment.
 
 Keys come from environment variables only (`BUYER_*`, `WITNESS_*`,
 `MERCHANT_*`, `PAYPAL_*` — see `.env.example`). Never pass key material
@@ -70,6 +75,7 @@ Server: `@veripact/mcp-server`. Methods: `initialize`, `tools/list`,
 | `veripact_pair_wallet` | `{ action: 'start' }` or `{ action: 'approve', sessionId, payerEmail }` | Pair a wallet over QR (approval vaults + mints $350 partition) |
 | `veripact_sync_payments` | `{}` | Sync protected vs legacy payments |
 | `veripact_partition_spend` | `{ scenario, amountUsd?, agentToken? }` | Partitioned agent payment (capture / wall-void / ask-human) |
+| `veripact_run_deal_sniper` | `{ sku?, targetMaxAllInUsd?, customVoucherCode? }` | Deal/voucher hunt; capture binds the post-voucher `VP1:` into `custom_id` |
 
 `scenario` ∈ `normal | surcharge_void | adversarial_hidden_dom`;
 `case` ∈ `buyer_forgery | merchant_drift`. Results arrive as
