@@ -554,15 +554,24 @@ export const WALLET_CSS = [
   '.part-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}',
   '.part-actions .btn{font-size:12px;min-height:34px;padding:6px 14px;font-weight:600}',
   '#part-cap-input{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--border-strong);border-radius:8px;width:110px;font-variant-numeric:tabular-nums}',
-  '#connectors-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:12px}',
+  '#connectors-row{margin-top:14px;padding:14px 18px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);box-shadow:var(--shadow-card)}',
+  '.conn-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}',
+  '.conn-title-wrap{display:flex;align-items:center;gap:8px}',
+  '.conn-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10.5px;font-weight:700;letter-spacing:.06em;background:var(--bg-subtle);color:var(--text-secondary);border:1px solid var(--border-strong)}',
+  '.conn-header h3{margin:0;font-size:13.5px;font-weight:650;color:var(--text-primary)}',
+  '.conn-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}',
   '.conn-card{border:1px solid var(--border-subtle);border-radius:10px;padding:12px 14px;min-width:0;background:var(--bg-muted)}',
   '.conn-card h3{margin:0 0 4px;font-size:13.5px}',
   '.conn-card p{margin:0 0 8px;font-size:12.5px;color:var(--text-secondary)}',
   '.conn-card .btn{font-size:12px;min-height:32px;padding:5px 12px}',
   '.conn-out{margin:8px 0 0}',
-  '.sync-scroll{overflow-x:auto;max-width:100%;border:1px solid var(--border-subtle);border-radius:12px;background:#fff}',
+  '.sync-scroll{overflow-x:auto;max-width:100%;border:1px solid var(--border-subtle);border-radius:10px;background:#fff}',
+  '.sync-scroll table.matrix{width:100%;border-collapse:collapse;margin:0}',
+  '.sync-scroll table.matrix th{padding:8px 10px;text-align:left;font-size:12px;background:var(--bg-muted);border-bottom:1px solid var(--border-subtle);white-space:nowrap}',
+  '.sync-scroll table.matrix td{padding:8px 10px;text-align:left;font-size:12px;border-bottom:1px solid var(--border-subtle);height:38px;line-height:1.3;vertical-align:middle}',
+  '.sync-scroll table.matrix tr:last-child td{border-bottom:0}',
   '.sync-note{border:1px solid var(--status-warn-border);background:var(--status-warn-bg);color:var(--status-warn-ink);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:600;margin:0 0 12px}',
-  '@media (max-width:960px){.wallet-grid{grid-template-columns:minmax(0,1fr)}#connectors-row{grid-template-columns:minmax(0,1fr)}.part-metrics{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}',
+  '@media (max-width:960px){.wallet-grid{grid-template-columns:minmax(0,1fr)}.conn-grid{grid-template-columns:minmax(0,1fr)}.part-metrics{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}',
   '#rb-partition{display:inline-block;margin-top:6px;max-width:100%;white-space:normal;overflow-wrap:anywhere}',
   '#sniper-box{margin-top:16px;padding-top:16px;border-top:1px solid var(--border-subtle);min-width:0}',
   '.sniper-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap}',
@@ -646,9 +655,15 @@ export function walletCardHtml(): string {
 /** View 2 connectors strip: ChatGPT card + Claude/Cursor card. */
 export function connectorsRowHtml(): string {
   return [
-    '<div id="connectors-row">',
+    '<div id="connectors-row" class="card">',
+    '<div class="conn-header">',
+    '<div class="conn-title-wrap"><span class="conn-badge">INTEGRATION</span><h3>External AI Agent Connectors (Connect ChatGPT, Claude, or Cursor to Your Partitioned Wallet)</h3></div>',
+    '<span class="pill pill-info">Scoped Bearer Tokens</span>',
+    '</div>',
+    '<div class="conn-grid">',
     '<div class="conn-card" id="card-conn-chatgpt"><h3>ChatGPT / OpenAI GPT Actions</h3><p>OpenAPI 3.1 Spec: <span class="mono">GET /openapi.json</span> · scoped Bearer&#32;token</p><button type="button" class="btn btn-primary" id="btn-mint-chatgpt">Mint ChatGPT Bearer&#32;token</button><pre class="mono-scroll conn-out" id="chatgpt-token-out" hidden></pre></div>',
     '<div class="conn-card" id="card-conn-mcp"><h3>Claude &amp; Cursor MCP</h3><p>Stdio MCP: <span class="mono">npx @veripact/mcp-server</span> (7 tools)</p><button type="button" class="btn btn-primary" id="btn-mint-mcp">Mint Claude/Cursor Token</button><pre class="mono-scroll conn-out" id="mcp-token-out" hidden></pre></div>',
+    '</div>',
     '</div>',
   ].join('');
 }
@@ -658,7 +673,7 @@ export function syncShellHtml(): string {
   return [
     '<div class="ag-shell" id="sync-shell" hidden>',
     '<div style="padding:14px 16px"><p class="sync-note">PayPal Transaction Search has up to a 3-hour indexing delay; real-time partition balance is enforced by the VeriPact Clearing Ledger.</p>',
-    '<div id="ag-sync-payments-grid" class="ag-theme-quartz" style="height: 360px; width: 100%; margin-bottom: 12px;"></div>',
+    '<div id="ag-sync-payments-grid" class="ag-theme-quartz" style="height: 280px; width: 100%; margin-bottom: 12px;"></div>',
     '<div id="sync-table-wrap"><div id="sync-body"><p class="status-line">Loading synced payments…</p></div></div></div>',
     '</div>',
   ].join('');

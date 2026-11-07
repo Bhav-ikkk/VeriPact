@@ -280,11 +280,14 @@ details.drawer .drawer-body{padding:0 14px 14px;animation:vp-fade .25s ease-out}
 .evidence-form textarea{width:100%;min-height:70px;font:inherit;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-control);padding:8px;margin:6px 0;background:#fff;color:var(--text-primary)}
 /* Agent sidebar + charts */
 .desk-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:14px;align-items:start}
+#view-desk[data-dataset="sync"] .desk-grid{grid-template-columns:minmax(0,1fr)}
 .prompt-bar{display:flex;gap:8px;margin:10px 0}
 .prompt-bar input{flex:1;min-width:0;font:inherit;font-size:13px;padding:9px 12px;border:1px solid var(--border-strong);border-radius:10px;background:#fff;color:var(--text-primary)}
 .preset-list{display:flex;flex-direction:column;gap:6px;margin:8px 0}
 .preset-list .btn{text-align:left;justify-content:flex-start;font-size:12px;white-space:normal}
 canvas.chart{width:100%;height:220px;border:1px solid var(--border-subtle);border-radius:10px;background:#fff}
+#chart-table{overflow-x:auto;max-width:100%}
+#chart-table .matrix{width:100%;font-size:11px}
 .matrix{border-collapse:collapse;font-size:12px;margin-top:8px}
 .matrix th,.matrix td{border:1px solid var(--border-subtle);padding:6px 10px;text-align:center;font-variant-numeric:tabular-nums}
 .matrix th{background:var(--bg-muted);font-weight:600}
@@ -499,12 +502,11 @@ Channel3 Catalog:
 </div>
 ${walletCardHtml()}
 </section>
-<section id="view-desk" hidden aria-label="Contested dispute verifier desk">
+<section id="view-desk" hidden data-dataset="live" aria-label="Contested dispute verifier desk">
 <div class="desk-grid">
 <div>
 <div class="card">
 <h2>Contested dispute verifier desk</h2>
-${connectorsRowHtml()}
 <div class="desk-tools" role="group" aria-label="Dataset toggle">
 <span class="seg"><button type="button" class="btn" id="ds-live" aria-pressed="true">Live contested disputes (Case B &amp; Case A)</button><button type="button" class="btn" id="ds-regression" aria-pressed="false">24-scenario regression suite (72 runs, Wilson 95% CIs)</button><button type="button" class="btn" id="ds-sync" aria-pressed="false">Payment Sync (Legacy vs Protected)</button></span>
 <span id="grid-engine" class="pill pill-info">Grid engine: detecting…</span>
@@ -521,7 +523,7 @@ ${syncShellHtml()}
 <div class="insp-col" id="insp-seller"><h2>Column 3 — Seller counter-claim &amp; PayPal actions</h2><p class="status-line">Loading dispute data…</p></div>
 </div>
 </div>
-<div class="card">
+<div class="card" id="studio-card">
 <h2>Deterministic studio agent</h2>
 <p class="status-line">One prompt → one filter → one chart. Same output every run; no generative calls.</p>
 <div class="prompt-bar"><label class="skip" for="prompt-input">Analytical query</label><input id="prompt-input" name="prompt" autocomplete="off" spellcheck="false" placeholder="Ask about disputes or the regression suite…"><button type="button" class="btn btn-primary" id="prompt-run">Run</button></div>
@@ -530,6 +532,7 @@ ${syncShellHtml()}
 <div id="chart-table"></div>
 </div>
 </div>
+${connectorsRowHtml()}
 </section>
 </main>
 <footer class="app">VeriPact Workbench · Every number on this page renders from live API data · Timestamps prove hash existence at time T plus witness observation — never content truth.</footer>
@@ -793,8 +796,8 @@ $('auditor').addEventListener('toggle',function(e){if(e.target.open&&state.check
 var deskLoaded=false;
 function ensureDesk(){if(deskLoaded)return Promise.resolve();deskLoaded=true;return refreshDesk();}
 function refreshDesk(){
-var p1=api('/api/merchant/disputes').then(function(d){state.disputes=d;mountLive();renderInspector();renderPresets();},function(e){toast(e.message);throw e;});
-var p2=api('/api/benchmark').then(function(b){state.benchmark=b;if(state.dataset==='regression')mountRegression();}).catch(function(){});
+var p1=api('/api/merchant/disputes').then(function(d){state.disputes=d;mountLive();renderInspector();renderPresets();if(state.dataset==='live')drawOutcome();},function(e){toast(e.message);throw e;});
+var p2=api('/api/benchmark').then(function(b){state.benchmark=b;if(state.dataset==='regression'){mountRegression();drawAccuracy();}}).catch(function(){});
 return Promise.all([p1,p2]);}
 /* AG mount / remount: datasets switch by destroying and rebuilding the grid
    instance — data is never mutated in place (ag-dev guidance). */
@@ -825,9 +828,12 @@ var h='<h3>Gate confusion matrix (expected × actual, 72 runs)</h3><table class=
 ds.forEach(function(e){h+='<tr><th>'+esc(e)+'</th>';ds.forEach(function(a){var v=m[e][a];h+='<td class="'+(e===a?(v>0?'cell-good':''):(v>0?'cell-bad':''))+'">'+v+'</td>';});h+='</tr>';});
 $('matrix-wrap').innerHTML=h+'</tbody></table>';}
 function setDataset(ds){state.dataset=ds;var live=ds==='live';var reg=ds==='regression';var sync=ds==='sync';
+$('view-desk').setAttribute('data-dataset',ds);
 $('ds-live').setAttribute('aria-pressed',live?'true':'false');$('ds-regression').setAttribute('aria-pressed',reg?'true':'false');$('ds-sync').setAttribute('aria-pressed',sync?'true':'false');
 $('ag-live-disputes-grid').parentElement.hidden=!live;$('regression-shell').hidden=!reg;$('matrix-wrap').style.display=reg?'':'none';$('sync-shell').hidden=!sync;
-if(live){destroyGrid('ag-regression-benchmark-grid');destroyGrid('ag-sync-payments-grid');mountLive();}else if(reg){destroyGrid('ag-live-disputes-grid');destroyGrid('ag-sync-payments-grid');mountRegression();}else{destroyGrid('ag-live-disputes-grid');destroyGrid('ag-regression-benchmark-grid');loadSync();}}
+var sc=$('studio-card');if(sc)sc.hidden=sync;
+var ins=$('inspector');if(ins)ins.hidden=!live;
+if(live){destroyGrid('ag-regression-benchmark-grid');destroyGrid('ag-sync-payments-grid');mountLive();drawOutcome();}else if(reg){destroyGrid('ag-live-disputes-grid');destroyGrid('ag-sync-payments-grid');if(!state.benchmark){api('/api/benchmark').then(function(b){state.benchmark=b;mountRegression();drawAccuracy();}).catch(function(e){toast(e.message);});}else{mountRegression();drawAccuracy();}}else{destroyGrid('ag-live-disputes-grid');destroyGrid('ag-regression-benchmark-grid');loadSync();}}
 $('ds-live').addEventListener('click',function(){setDataset('live');});
 $('ds-regression').addEventListener('click',function(){setDataset('regression');});
 $('ds-sync').addEventListener('click',function(){setDataset('sync');});
@@ -1079,13 +1085,13 @@ $('btn-part-config').addEventListener('click',function(){partConfig();});
 function sniperPillFor(row,rep){
   var v=row?row.verdict:'';
   if(v==='REJECTED_ADVERSARIAL_DOM'){
-    return '<span class="sniper-pill crimson">BLOCKED \u00B7 ADVERSARIAL DOM INJECTION (0 PayPal calls)</span>';
+    return '<span class="sniper-pill crimson">BLOCKED \u00B7 ADVERSARIAL DOM INJECTION (REJECTED_ADVERSARIAL_DOM)</span>';
   }
   if(v==='REJECTED_CONDITION_CONFLICT'){
-    return '<span class="sniper-pill crimson">BLOCKED \u00B7 REFURBISHED BAIT (Channel3 requires NEW)</span>';
+    return '<span class="sniper-pill crimson">BLOCKED \u00B7 REFURBISHED BAIT (REJECTED_CONDITION_CONFLICT)</span>';
   }
   if(v==='REJECTED_VOUCHER_VOIDS_RETURNS'){
-    return '<span class="sniper-pill crimson">BLOCKED \u00B7 VOUCHER VOIDS 30D RETURNS (0-day Final Sale trap)</span>';
+    return '<span class="sniper-pill crimson">BLOCKED \u00B7 VOUCHER VOIDS 30D RETURNS (REJECTED_VOUCHER_VOIDS_RETURNS)</span>';
   }
   if(v==='REJECTED_OVER_TARGET_CAP'){
     var capStr=rep?'$'+Number(rep.targetMaxAllInUsd).toFixed(2):'$300.00';
@@ -1114,7 +1120,7 @@ function renderSniperResults(rep){
   }else if(rep.outcome==='BLOCKED_BY_PARTITION_WALL'){
     var pAvail=rep.partitionAfter?'$'+Number(rep.partitionAfter.availableUsd).toFixed(2):'$53.00';
     var spendAmt=win?'$'+Number(win.allInTotalUsd).toFixed(2):'$297.00';
-    html+='<div class="sniper-banner blocked"><span class="sniper-banner-icon">\u2715</span><div class="sniper-banner-body"><b>AUTO-VOIDED BY PARTITION WALL</b>Target deal found at '+spendAmt+', but spending exceeds remaining partition balance ('+pAvail+' available) \u00B7 $0 captured.</div></div>';
+    html+='<div class="sniper-banner blocked"><span class="sniper-banner-icon">\u2715</span><div class="sniper-banner-body"><b>AUTO-VOIDED BY PARTITION WALL (BLOCKED_BY_PARTITION_WALL)</b>Target deal found at '+spendAmt+', but spending exceeds remaining partition balance ('+pAvail+' available) \u00B7 $0 captured.</div></div>';
   }else{
     var targetStr='$'+Number(rep.targetMaxAllInUsd||300).toFixed(2);
     html+='<div class="sniper-banner warn"><span class="sniper-banner-icon">!</span><div class="sniper-banner-body"><b>NO COMPLIANT DEAL UNDER TARGET</b>Evaluated '+(rep.candidatesEvaluated||6)+' merchants \u00B7 All compliant listings exceeded the '+targetStr+' target ceiling \u00B7 $0 spent.</div></div>';

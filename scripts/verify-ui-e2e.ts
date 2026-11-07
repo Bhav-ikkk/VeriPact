@@ -664,6 +664,42 @@ async function fullFlow(browser: Browser): Promise<void> {
     () => (document.getElementById('channel3-sku-select') as HTMLSelectElement | null)?.value === 'APEX-27-4K-IPS',
   );
 
+  step('v6 autonomous deal & voucher sniper end-to-end');
+  await page.click('#btn-reset');
+  await page.waitForFunction(() => document.getElementById('part-available')?.textContent === '$350.00');
+
+  // Run sniper for ApexTech monitor with $300 target ceiling
+  await page.click('#btn-sniper-run');
+  await page.waitForFunction(
+    () => {
+      const txt = document.getElementById('sniper-results')?.textContent ?? '';
+      return txt.includes('PAYPAL50') && txt.includes('REJECTED_VOUCHER_VOIDS_RETURNS');
+    },
+  );
+  const sniperText = (await page.textContent('#sniper-results')) ?? '';
+  assert(sniperText.includes('CAPTURED $297.00'), 'sniper-captured', sniperText.slice(0, 100));
+  assert(sniperText.includes('BLOCKED · VOUCHER VOIDS 30D RETURNS'), 'sniper-blocked-terms', sniperText.slice(0, 100));
+  const partAvailAfterSnipe = await page.textContent('#part-available');
+  assert(partAvailAfterSnipe === '$53.00', 'sniper-avail-53', `expected $53.00, got ${partAvailAfterSnipe}`);
+
+  // Second run: $297 capture exceeds remaining $53 available -> blocked by partition wall
+  await page.click('#btn-sniper-run');
+  await page.waitForFunction(
+    () => document.getElementById('sniper-results')?.textContent?.includes('BLOCKED_BY_PARTITION_WALL') === true,
+  );
+  const partAvailAfterBlocked = await page.textContent('#part-available');
+  assert(partAvailAfterBlocked === '$53.00', 'sniper-blocked-53', `expected $53.00, got ${partAvailAfterBlocked}`);
+
+  // Refund capture restores $350.00
+  await page.click('#btn-part-refund');
+  await page.waitForFunction(() => document.getElementById('part-available')?.textContent === '$350.00');
+  const partAvailRestored = await page.textContent('#part-available');
+  assert(partAvailRestored === '$350.00', 'sniper-avail-restored', `expected $350.00, got ${partAvailRestored}`);
+
+  // Reset demo state clean for subsequent viewport sweeps
+  await page.click('#btn-reset');
+  await page.waitForFunction(() => document.getElementById('part-available')?.textContent === '$350.00');
+
   await context.close();
 }
 

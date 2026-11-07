@@ -209,6 +209,19 @@ async function main(): Promise<void> {
     await hold(page, 1200);
     await shot(page, 'live-05-partition-refund.png');
 
+    console.log('demo: beat 2b — autonomous deal sniper 6-candidate sweep');
+    await page.click('#btn-sniper-run');
+    await page.waitForFunction(
+      () =>
+        document.getElementById('sniper-results')?.textContent?.includes('PAYPAL50') === true &&
+        document.getElementById('sniper-results')?.textContent?.includes('REJECTED_VOUCHER_VOIDS_RETURNS') === true,
+    );
+    await hold(page, 1500);
+    await shot(page, 'live-05b-deal-sniper.png');
+    await page.click('#btn-part-refund');
+    await page.waitForFunction(() => document.getElementById('part-available')?.textContent === '$350.00');
+    await hold(page, 800);
+
     console.log('demo: beat 3 — sync grid + connectors');
     await page.click('#tab-desk');
     await page.click('#ds-sync');
@@ -355,7 +368,7 @@ async function main(): Promise<void> {
     }
     process.exitCode = 1;
   } else {
-    console.log('demo: DONE — 14 PNGs + .webm, zero page problems');
+    console.log('demo: DONE — 15 PNGs + .webm, zero page problems');
   }
 }
 
