@@ -583,7 +583,7 @@ export function walletCardHtml(): string {
     '</div>',
     '<div id="partition-bar-box">',
     '<h3>Partitioned Sub-Balance Enforcer</h3>',
-    '<div class="part-metrics"><div><b id="part-allocated">$350.00</b><span>Allocated Cap</span></div><div><b id="part-captured">$0.00</b><span>Captured / Used</span></div><div><b id="part-available" data-state="healthy">$350.00</b><span>Available for Agents</span></div></div>',
+    '<div class="part-metrics"><div><b id="part-allocated">$350.00</b><span>Allocated Cap</span></div><div><b id="part-captured">$0.00</b><span>Net Used (Active)</span></div><div><b id="part-available" data-state="healthy">$350.00</b><span>Available for Agents</span></div></div>',
     '<div class="part-track" role="progressbar" aria-label="Partition used vs remaining"><i id="part-progress-fill"></i></div>',
     '<div class="part-actions"><button type="button" class="btn btn-primary" id="btn-part-spend">Agent Spend ($297 via Partition)</button><button type="button" class="btn" id="btn-part-refund">Undo / Refund Last Capture (+$297)</button><label class="skip" for="part-cap-input">Partition cap USD</label><input id="part-cap-input" type="number" min="1" step="0.01" value="350"><button type="button" class="btn" id="btn-part-config">Set $350 Partition</button></div>',
     '<p class="status-line" id="part-status" aria-live="polite"></p>',

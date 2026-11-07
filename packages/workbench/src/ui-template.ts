@@ -56,14 +56,15 @@ h2{font-size:15px;font-weight:650;letter-spacing:-.01em;margin:0 0 10px}
 h3{font-size:13px;margin:14px 0 8px;color:var(--text-secondary);font-weight:650}
 .num,.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
 /* Tier A — top header bar */
-.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;height:60px;background:var(--bg-surface);border-bottom:1px solid var(--border-subtle);padding:0 24px}
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;height:60px;background:var(--bg-surface);border-bottom:1px solid var(--border-subtle);padding:0 20px}
 .brand{display:flex;align-items:center;gap:10px;min-width:0;flex-shrink:0}
 .brand .divider{width:1px;height:18px;background:var(--border-strong);flex-shrink:0}
-.brand .tagline{font-size:13px;font-weight:500;color:var(--text-muted);white-space:nowrap}
+.brand .tagline,.brand-tag{font-size:13px;font-weight:500;color:var(--text-muted);white-space:nowrap}
 .view-switch{margin:0 auto;display:inline-flex;gap:4px;background:var(--bg-subtle);padding:3px;border-radius:8px;flex-shrink:0}
 .view-switch button{border:0;background:transparent;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text-secondary);border-radius:6px;font-family:inherit;white-space:nowrap}
 .view-switch button[aria-pressed="true"]{background:var(--accent-charcoal);color:#fff}
-.top-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.top-actions,.hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+#btn-tour,#btn-reset{flex-shrink:0;white-space:nowrap}
 .mode-pill{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:999px;white-space:nowrap;border:1px solid}
 .mode-pill::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
 .mode-live{background:var(--status-success-bg);border-color:var(--status-success-border);color:var(--status-success-ink)}
@@ -97,7 +98,8 @@ button.mode-pill:hover{filter:brightness(.97)}
 .ledger-list .seq{font-family:var(--font-mono);color:var(--text-muted);flex-shrink:0;min-width:34px}
 .ledger-list .kind{font-family:var(--font-mono);font-weight:700;flex-shrink:0;min-width:130px}
 .ledger-list .sum{min-width:0;overflow-wrap:anywhere}
-#tour-status{font-size:12.5px;color:var(--text-muted);font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;min-width:0}
+#tour-status{font-size:11.5px;color:var(--text-muted);font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;min-width:0;flex-shrink:1}
+#tour-status:empty{display:none}
 .btn{font-family:inherit;font-size:13px;font-weight:600;padding:8px 16px;border-radius:var(--radius-control);border:1px solid var(--border-strong);background:#fff;color:var(--text-primary);cursor:pointer;min-height:36px;display:inline-flex;align-items:center;gap:8px;justify-content:center}
 .btn:hover{border-color:#98a2b3;background:var(--bg-muted)}
 .btn-primary{background:var(--accent-charcoal);border-color:var(--accent-charcoal);color:#fff}
@@ -186,19 +188,24 @@ details.tech-drawer .badges{margin-top:0}
 .suff{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0;font-size:11.5px;color:var(--text-secondary)}
 .suff b{font-weight:600;white-space:nowrap}
 .suff .pill{font-size:11px;padding:1px 8px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* SELF → WIT → SIGN step strip */
-.rung-flow{display:grid;grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr) 20px minmax(0,1fr);align-items:center;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 14px;box-shadow:none}
-.rung-step{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap;min-width:0}
-.rung-step .dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--status-success-solid);color:var(--status-success-solid);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:#fff}
+/* Mandate status bar: integrated compact SELF → WIT → SIGN + Oracle */
+.mandate-status-bar{margin-top:10px;padding:6px 12px;background:var(--bg-muted);border:1px solid var(--border-subtle);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;min-width:0;flex-wrap:wrap}
+.rung-flow{display:inline-flex;align-items:center;gap:6px;background:transparent;border:0;padding:0;box-shadow:none;min-width:0}
+.rung-step{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--text-muted);white-space:nowrap}
+.rung-step .dot{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--status-success-solid);color:var(--status-success-solid);display:inline-flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;background:#fff}
 .rung-step.on{color:var(--text-primary)}
-.rung-step small{display:block;font-weight:500;color:var(--text-muted);font-size:11px}
 #rung-sign .dot{background:var(--accent-charcoal);border-color:var(--accent-charcoal);color:#fff}
-.rung-arrow{height:2px;background:var(--border-subtle);border-radius:2px}
-/* Channel3 oracle bar */
-.oracle-bar{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:none}
-.oracle-bar .left{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);min-width:0;flex-shrink:0}
-.oracle-bar .left b{color:var(--text-primary);white-space:nowrap}
-.oracle-bar .sep{color:var(--border-strong)}
+.rung-arrow{width:10px;height:2px;background:var(--border-subtle);border-radius:2px;flex-shrink:0}
+.mandate-oracle{display:inline-flex;align-items:center;gap:6px;min-width:0;flex-shrink:1}
+.mandate-oracle b{font-size:11.5px;color:var(--text-secondary);white-space:nowrap}
+.mandate-oracle #oracle-line{font-size:11px;padding:1px 8px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oracle-bar{display:none}
+/* Workflow Guide Bar */
+.workflow-bar{display:flex;align-items:center;gap:12px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:8px 14px;box-shadow:none;min-width:0}
+.wf-lead{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--text-secondary);white-space:nowrap;flex-shrink:0}
+.wf-pills{display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap}
+.wf-btn{font-family:inherit;font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:999px;border:1px solid var(--border-strong);background:var(--bg-subtle);color:var(--text-secondary);cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap;transition:all .15s ease}
+.wf-btn:hover{border-color:var(--accent-blue);color:var(--accent-blue);background:#fff}
 /* Controls row: checkboxes + actions */
 .controls-row{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:12px;align-items:stretch}
 .checks-card{background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:6px;justify-content:center;box-shadow:none}
@@ -304,9 +311,14 @@ footer.app{max-width:1560px;margin:0 auto;padding:0 20px 26px;color:var(--text-m
 /* Term diff pills: readable at video distance */
 .diff-pill{display:inline-block;font-family:var(--font-mono);font-size:15px;font-weight:700;background:var(--status-danger-bg);color:var(--status-danger-ink);border:2px solid var(--status-danger-ink);border-radius:10px;padding:6px 14px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
 .wit-pill{display:inline-block;font-family:var(--font-mono);font-size:13px;font-weight:700;background:var(--status-success-bg);color:var(--status-success-ink);border:2px solid var(--status-success-ink);border-radius:10px;padding:5px 12px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
+@media (max-width:1440px){
+.brand .tagline,.brand-tag,.brand .divider{display:none}
+}
 @media (max-width:1100px){
-.brand .tagline,.brand .divider{display:none}
+.brand .tagline,.brand-tag,.brand .divider{display:none}
 #tour-status{display:none}
+.workflow-bar{padding:6px 10px;gap:8px}
+.wf-btn{font-size:11px;padding:3px 9px}
 .ribbon{grid-template-columns:repeat(3,minmax(0,1fr))}
 .rb-title{grid-column:1/-1;border-right:0;border-bottom:1px solid var(--border-subtle);padding:0 0 8px}
 .rb-connector{display:none}
@@ -324,6 +336,8 @@ body{overflow-x:hidden}
 .topbar{height:auto;flex-wrap:wrap;padding:10px 16px;row-gap:8px}
 .view-switch{margin:0}
 #tour-status{max-width:none}
+.wf-pills{gap:6px}
+.wf-btn{white-space:normal;text-align:left}
 main{padding:10px 12px 20px}
 .split,.desk-grid,.inspector,.tier-d{grid-template-columns:minmax(0,1fr)}
 .ribbon{grid-template-columns:minmax(0,1fr)}
@@ -353,12 +367,12 @@ ${WALLET_CSS}
 <body>
 <a class="skip" href="#main">Skip to workspace</a>
 <header class="topbar">
-<div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><rect x="1" y="1" width="24" height="24" rx="6" fill="#1a2332"/><path d="M7 13.2l3.2 3.2L19 8.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><h1>VeriPact</h1><span class="divider" aria-hidden="true"></span><span class="tagline">Proving What the Merchant Promised</span></div>
+<div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><rect x="1" y="1" width="24" height="24" rx="6" fill="#1a2332"/><path d="M7 13.2l3.2 3.2L19 8.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><h1>VeriPact</h1><span class="divider" aria-hidden="true"></span><span class="brand-tag tagline">Proving What the Merchant Promised</span></div>
 <div class="view-switch" role="group" aria-label="View switcher">
 <button type="button" id="tab-checkout" aria-pressed="true">Buyer Checkout</button>
 <button type="button" id="tab-desk" aria-pressed="false">Dispute Desk</button>
 </div>
-<div class="top-actions">
+<div class="top-actions hdr-right">
 <button type="button" id="mode-pill" class="mode-pill mode-replay" title="PayPal Sandbox connection &amp; audit ledger">Detecting mode…</button>
 <p id="tour-status" role="status" aria-live="polite"></p>
 <button type="button" class="btn btn-ghost" id="btn-reset" title="Re-seed replay disputes and orders"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 1.8v2.6h-2.6"/></svg>Reset Demo</button>
@@ -366,6 +380,15 @@ ${WALLET_CSS}
 </div>
 </header>
 <main id="main">
+<nav id="workflow-guide-bar" class="workflow-bar" aria-label="Workbench workflow quick guide">
+<div class="wf-lead"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#1d4e89" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3.5l2.5 1.5"/></svg><span>4-Step Flow:</span></div>
+<div class="wf-pills">
+<button type="button" class="wf-btn" id="wf-step-1"><span><b>Step 1:</b> Pair Wallet &amp; Set $350 Partition</span></button>
+<button type="button" class="wf-btn" id="wf-step-2"><span><b>Step 2:</b> Shop Storefront or Run @veripact Deal Sniper</span></button>
+<button type="button" class="wf-btn" id="wf-step-3"><span><b>Step 3:</b> Verify Receipt Hash in Browser</span></button>
+<button type="button" class="wf-btn" id="wf-step-4"><span><b>Step 4:</b> Resolve Disputes &amp; Sync History</span></button>
+</div>
+</nav>
 <nav id="pipeline-ribbon" class="ribbon" aria-label="Cryptographic evidence pipeline">
 <div class="rb-title"><b>Evidence Pipeline</b><span>Verifiable · Tamper-proof · PayPal-anchored</span><span class="pill pill-info" id="rb-partition">Wallet Partition: $350.00 cap &middot; $350.00 avail</span></div>
 <div class="ribbon-step" id="rb-1"><span class="rb-num" aria-hidden="true">1</span><div style="min-width:0"><b>1. SELF — Buyer mandate locked</b><div class="rb-badges"><span class="badge" id="rb-buyer-fp" title="Ed25519 buyer key fingerprint">buyer key fp …</span><span class="badge" id="rb-ceiling">ceiling: $320.00</span></div></div></div>
@@ -434,9 +457,11 @@ Channel3 Catalog:
 <div class="suff"><b>Shipping &amp; Tax</b><span class="pill pill-info">Awaiting witness…</span></div>
 <div class="suff"><b>Return Policy</b><span class="pill pill-info">Awaiting witness…</span></div>
 </div>
+<div class="mandate-status-bar">
+<div class="rung-flow" aria-label="Evidence rung progress"><span class="rung-step on" id="rung-self"><span class="dot" aria-hidden="true">✓</span><span>SELF</span></span><span class="rung-arrow" aria-hidden="true"></span><span class="rung-step" id="rung-wit"><span class="dot" aria-hidden="true">✓</span><span>WIT</span></span><span class="rung-arrow" aria-hidden="true"></span><span class="rung-step" id="rung-sign"><span class="dot" aria-hidden="true">◎</span><span>SIGN</span></span></div>
+<div class="mandate-oracle"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 8h2.6l1.4-3.5 2.4 7 1.6-4.5 1 1H14.5"/></svg><b>Oracle:</b><span id="oracle-line" class="pill pill-info">Channel3 oracle: not queried yet.</span></div>
 </div>
-<div class="rung-flow" aria-label="Evidence rung progress"><span class="rung-step on" id="rung-self"><span class="dot" aria-hidden="true">✓</span><span>SELF<small>Set mandate</small></span></span><span class="rung-arrow" aria-hidden="true"></span><span class="rung-step" id="rung-wit"><span class="dot" aria-hidden="true">✓</span><span>WIT<small>Capture &amp; attest</small></span></span><span class="rung-arrow" aria-hidden="true"></span><span class="rung-step" id="rung-sign"><span class="dot" aria-hidden="true">◎</span><span>SIGN<small>Authorize via PayPal</small></span></span></div>
-<div class="oracle-bar"><span class="left"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 8h2.6l1.4-3.5 2.4 7 1.6-4.5 1 1H14.5"/></svg><b>Channel3 Oracle</b><span class="sep" aria-hidden="true">|</span><span>Market policy + merchant reputation</span></span><span id="oracle-line" class="pill pill-info">Channel3 oracle: not queried yet.</span></div>
+</div>
 <div class="controls-row">
 <div class="checks-card">
 <label><input type="checkbox" id="reviewed-toggle" checked><span>I've reviewed the merchant terms</span></label>
@@ -585,6 +610,14 @@ function resetDemo(){return api('/api/demo/reset',{method:'POST',body:'{}'}).the
 $('tab-checkout').addEventListener('click',function(){showView('checkout');});
 $('tab-desk').addEventListener('click',function(){showView('desk');});
 $('btn-reset').addEventListener('click',function(){resetDemo().catch(function(){});});
+function wireWorkflowGuide(){
+var s1=$('wf-step-1'),s2=$('wf-step-2'),s3=$('wf-step-3'),s4=$('wf-step-4');
+if(s1)s1.addEventListener('click',function(){showView('checkout');var c=$('wallet-card');if(c){tourScroll(c);tourRing(c);setTimeout(tourUnring,1800);}});
+if(s2)s2.addEventListener('click',function(){showView('checkout');var f=$('channel3-sku-select')||$('store-frame');var c=f?f.closest('.card')||f:null;if(c){tourScroll(c);tourRing(c);setTimeout(tourUnring,1800);}});
+if(s3)s3.addEventListener('click',function(){showView('checkout');var a=$('auditor');if(a){a.open=true;tourScroll(a);tourRing(a);setTimeout(tourUnring,1800);}});
+if(s4)s4.addEventListener('click',function(){showView('desk');var d=$('view-desk');if(d){tourScroll(d);tourRing(d);setTimeout(tourUnring,1800);}});
+}
+wireWorkflowGuide();
 /* ---------- view 1 ---------- */
 var scnBtns=Array.prototype.slice.call(document.querySelectorAll('[data-scn]'));
 function resetOutcomeBanner(){var b=$('checkout-outcome-banner');if(!b)return;b.dataset.state='idle';b.innerHTML=ICON_IDLE+'<div><h3>Awaiting checkout</h3><p>Run a witness pass, then authorize with PayPal.</p></div>';}
@@ -1096,13 +1129,15 @@ $('sync-body').innerHTML=h+'</tbody></table></div><p class="status-line">'+r.sum
 /* v5 wallet painters (ASCII-only: single spaces plus u-escapes) */
 function paintPartition(p){
 wallet.partition=p;
-var cap=p?p.totalAllocatedUsd:350,used=p?p.capturedUsd:0,avail=p?p.availableUsd:350;
+var cap=p?(p.totalAllocatedUsd||0):350;
+var netUsed=p?Math.max(0,Number(((p.capturedUsd||0)-(p.refundedUsd||0)+(p.authorizedUsd||0)).toFixed(2))):0;
+var avail=p?(p.availableUsd||0):350;
 $('part-allocated').textContent=wpMoney(cap);
-$('part-captured').textContent=wpMoney(used);
+$('part-captured').textContent=wpMoney(netUsed);
 var av=$('part-available');av.textContent=wpMoney(avail);
 var st=avail<=0?'wall':(avail<150?'low':'healthy');
 av.setAttribute('data-state',st);
-var fill=$('part-progress-fill');fill.style.width=(cap>0?Math.min(100,Math.max(0,used/cap*100)):0)+'%';fill.setAttribute('data-state',st);
+var fill=$('part-progress-fill');fill.style.width=(cap>0?Math.min(100,Math.max(0,netUsed/cap*100)):0)+'%';fill.setAttribute('data-state',st);
 var rb=$('rb-partition');if(rb)rb.textContent='Wallet Partition: '+wpMoney(cap)+' cap \u00B7 '+wpMoney(avail)+' avail';}
 function paintPair(){
 var s=wallet.session;
