@@ -533,9 +533,33 @@ describe('@veripact/workbench v5 byte-cleanliness guards', () => {
       'btn-part-config',
       'btn-mint-chatgpt',
       'btn-mint-mcp',
+      'sniper-box',
+      'sniper-target-input',
+      'btn-sniper-run',
+      'btn-open-anywhere',
+      'sniper-results',
     ]) {
       expect(res.body).toContain(`id="${id}"`);
     }
+    expect(res.body).toContain('Autonomous Deal &amp; Voucher Sniper (@veripact)');
+    expect(res.body).toContain('Hunt Vouchers &amp; Auto-Buy Under $300');
+  });
+
+  it('compiles inline client script without standalone event token and exposes runSniperFlow', async () => {
+    const res = await get('/');
+    const scriptMatch = /<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/.exec(res.body);
+    expect(scriptMatch).not.toBeNull();
+    const script = scriptMatch?.[1] ?? '';
+    expect(script).toContain('function runSniperFlow(');
+    expect(script).toContain('function renderSniperResults(');
+    expect(script).toContain('function sniperPillFor(');
+    expect(script).toContain('function resetSniperUi(');
+    const stripped = script
+      .replace(/'(?:[^'\\]|\\.)*'/g, "''")
+      .replace(/"(?:[^"\\]|\\.)*"/g, '""')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:/])\/\/.*$/gm, '$1');
+    expect(stripped).not.toMatch(/(?<![A-Za-z0-9_$])event(?![A-Za-z0-9_$])/);
   });
 });
 

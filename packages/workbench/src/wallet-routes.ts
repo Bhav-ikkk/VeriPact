@@ -471,7 +471,9 @@ async function handleSniper(body: Record<string, unknown>, res: WorkbenchRespons
     }
     customVoucherCode = rawVoucher;
   }
-  const client = demoClientFor('auto');
+  const rawMode = body['executionMode'];
+  const mode = rawMode === 'live' ? 'live' : 'replay';
+  const client = demoClientFor(mode);
   const report = await runAutonomousDealSniper(client, {
     ...(sku !== undefined ? { sku } : {}),
     ...(targetMaxAllInUsd !== undefined ? { targetMaxAllInUsd } : {}),

@@ -192,6 +192,12 @@ if(!alt&&!chord){return;}
 if(e.preventDefault){e.preventDefault();}
 toggleBar();
 });
+window.addEventListener("message",function(e){
+if(!e||!e.data){return;}
+if(e.data.type==="VERIPACT_TOGGLE_ANYWHERE"){
+toggleBar();
+}
+});
 })();
 `;
 }
