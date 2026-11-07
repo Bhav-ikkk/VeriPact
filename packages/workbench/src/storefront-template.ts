@@ -249,5 +249,7 @@ ${annotation}
 </div>
 ${copy.hiddenInjection}
 <p class="fixture">VeriPact demo storefront — a synthetic fixture. No real merchant, no real trademarks.</p>
-</main></body></html>`;
+</main>
+<script src="/embed/veripact-anywhere.js" defer></script>
+</body></html>`;
 }

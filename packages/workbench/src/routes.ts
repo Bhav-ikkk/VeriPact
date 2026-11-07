@@ -78,6 +78,7 @@ import { renderApprovalPage } from './approval-template';
 import { buildOpenApiSpec } from './openapi-route';
 import { handleWalletRequest, WALLET_ROUTES } from './wallet-routes';
 import { renderIndexPage } from './ui-template';
+import { renderAnywhereScript } from './anywhere-script';
 import { findCatalogProduct, renderStorefront } from './storefront-template';
 
 export const WORKBENCH_VERSION = '0.1.0';
@@ -112,6 +113,7 @@ export const ROUTES = [
   '/api/system/status',
   '/api/demo/reset',
   '/openapi.json',
+  '/embed/veripact-anywhere.js',
   ...WALLET_ROUTES,
 ];
 
@@ -996,6 +998,15 @@ const FAVICON_SVG =
   '<path d="M3 8l7.5 10" stroke="#182230" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>' +
   '<path d="M10.5 18L23 5" stroke="#175cd3" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>' +
   '</svg>';
+
+/** GET /embed/veripact-anywhere.js — shadow-DOM intent catcher for any page. */
+function handleAnywhereScript(res: WorkbenchResponse): void {
+  res.writeHead(200, {
+    ...securityHeaders('application/javascript; charset=utf-8'),
+    'cache-control': 'public, max-age=3600',
+  });
+  res.end(renderAnywhereScript());
+}
 
 /** GET /favicon.ico + /favicon.svg — SVG emblem (kills the 404 console error). */
 function handleFavicon(res: WorkbenchResponse): void {
@@ -2348,6 +2359,10 @@ export async function handleWorkbenchRequest(
       handleCatalog(res);
       return;
     }
+    if (method === 'GET' && pathname === '/embed/veripact-anywhere.js') {
+      handleAnywhereScript(res);
+      return;
+    }
     if (method === 'GET' && pathname.startsWith('/store/')) {
       const sku = url.searchParams.get('sku') ?? undefined;
       await handleStore(pathname.slice('/store/'.length), sku, res);
@@ -2489,6 +2504,7 @@ export async function handleWorkbenchRequest(
       '/api/catalog',
       '/api/verify',
       '/openapi.json',
+      '/embed/veripact-anywhere.js',
     ];
     if (
       knownPaths.includes(pathname) ||

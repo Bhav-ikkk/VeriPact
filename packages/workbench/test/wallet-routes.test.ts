@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { runInNewContext } from 'node:vm';
+import { Script, runInNewContext } from 'node:vm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type {
   ConnectorScope,
@@ -582,5 +582,26 @@ describe('POST /api/wallet/sniper', () => {
     expect(json<{ error: string }>(voucher).error).toBe('Invalid voucher code format');
     const getRes = await get('/api/wallet/sniper');
     expect(getRes.status).toBe(405);
+  });
+});
+
+describe('GET /embed/veripact-anywhere.js', () => {
+  it('serves a syntax-clean overlay and embeds it on the storefront', async () => {
+    const res = await get('/embed/veripact-anywhere.js');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/javascript');
+    expect(res.headers['cache-control']).toBe('public, max-age=3600');
+    expect(() => new Script(res.body)).not.toThrow();
+    const stripped = res.body
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/'(?:\\.|[^'\\])*'/g, "''")
+      .replace(/"(?:\\.|[^"\\])*"/g, '""');
+    expect(stripped).not.toMatch(/(?:^|[^\w$])event(?:[^\w$]|$)/);
+    expect(res.body).toContain('host.id="veripact-anywhere-host"');
+    expect(res.body).toContain('function(e)');
+    expect(res.body).not.toMatch(/\beval\s*\(/);
+    const store = await get('/store/normal');
+    expect(store.status).toBe(200);
+    expect(store.body).toContain('<script src="/embed/veripact-anywhere.js" defer></script>');
   });
 });
