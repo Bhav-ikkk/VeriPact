@@ -906,6 +906,43 @@ footer.app { max-width: 1360px; margin: 0 auto; padding: 12px 24px 24px; color: 
   .top-app-bar, footer.app, #toast, .no-print { display: none !important; }
 }
 
+/* Dispute action stack buttons */
+.action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.action-stack button[disabled] {
+  display: none !important;
+}
+.action-stack .btn {
+  border-radius: 6px !important;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 12px;
+  text-align: left;
+}
+#btn-resolve {
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+  border: 1px solid #4338ca !important;
+}
+#btn-resolve:hover {
+  background: #3730a3 !important;
+  color: #ffffff !important;
+  border-color: #312e81 !important;
+}
+#btn-sheet {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+#btn-sheet:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
 ${WALLET_CSS}
 `;
 }

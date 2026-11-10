@@ -312,6 +312,7 @@ $('ds-live').setAttribute('aria-pressed',live?'true':'false');$('ds-regression')
 $('ag-live-disputes-grid').parentElement.hidden=!live;$('regression-shell').hidden=!reg;$('matrix-wrap').style.display=reg?'':'none';$('sync-shell').hidden=!sync;
 var sc=$('studio-card');if(sc)sc.hidden=sync;
 var ins=$('inspector');if(ins)ins.hidden=!live;
+var conn=$('connectors-row');if(conn)conn.hidden=live;
 if(sync){setActiveNav($('nav-purchases'));}else{setActiveNav($('nav-activity'));}
 if(live){destroyGrid('ag-regression-benchmark-grid');destroyGrid('ag-sync-payments-grid');mountLive();drawOutcome();}else if(reg){destroyGrid('ag-live-disputes-grid');destroyGrid('ag-sync-payments-grid');if(!state.benchmark){api('/api/benchmark').then(function(b){state.benchmark=b;mountRegression();drawAccuracy();}).catch(function(e){toast(e.message);});}else{mountRegression();drawAccuracy();}}else{destroyGrid('ag-live-disputes-grid');destroyGrid('ag-regression-benchmark-grid');loadSync();}}
 $('ds-live').addEventListener('click',function(){setDataset('live');});
@@ -325,12 +326,12 @@ function renderInspector(){if(!state.disputes)return;var d=currentCase()||state.
 var meta=caseMeta(d);var f=d.forensics;var r=d.record;var p=disputeProvenance(d);var ordId=disputeOrder(d);var cusId=disputeCustomId(d);
 var vcls=f.verdict==='BUYER_FORGERY_DETECTED'?'pill-bad':'pill-warn';
 function diffPills(){return meta.diffs.map(function(x){return '<span class="diff-pill">'+esc(x.field)+': '+esc(x.left)+' vs '+esc(x.right)+'</span>';}).join('');}
-$('insp-buyer').innerHTML='<h2>Column 1 — Buyer claim &amp; submitted receipt</h2><p><b>'+esc(meta.label)+'</b></p><p class="status-line">'+esc(meta.blurb)+'</p><p>'+diffPills()+'</p><dl class="kv"><dt>Buyer claims</dt><dd>'+esc(meta.buyerTerms)+'</dd><dt>Hash vs order</dt><dd>'+matchBadge(f.buyerHashMatch)+'</dd><dt>Buyer sig</dt><dd>'+matchBadge(f.buyerSignatureValid)+'</dd></dl>';
+$('insp-buyer').innerHTML='<h2>Buyer Claim</h2><span class="sr-only">Column 1 — Buyer claim &amp; submitted receipt</span><p><b>'+esc(meta.label)+'</b></p><p class="status-line">'+esc(meta.blurb)+'</p><p>'+diffPills()+'</p><dl class="kv"><dt>Buyer claims</dt><dd>'+esc(meta.buyerTerms)+'</dd><dt>Hash vs order</dt><dd>'+matchBadge(f.buyerHashMatch)+'</dd><dt>Buyer sig</dt><dd>'+matchBadge(f.buyerSignatureValid)+'</dd></dl>';
 var fp=((p.witnessPublicKeyHex||'')).slice(0,16);
-$('insp-witness').innerHTML='<h2>Column 2 — Witness provenance &amp; order anchor</h2><p><span class="wit-pill">witnessed: '+esc(meta.witnessed)+'</span></p><dl class="kv"><dt>Fetched URL</dt><dd class="mono" style="overflow-wrap:anywhere">'+esc(p.fetchedUrl)+'</dd><dt>TLS</dt><dd>'+(p.tlsVerified?'<span class="pill pill-ok">verified</span>':'<span class="pill pill-warn">fixture (no TLS session)</span>')+'</dd><dt>HTTP</dt><dd class="num">'+esc(String(p.httpStatus))+'</dd><dt>WIT key fp</dt><dd class="mono">'+esc(fp)+'</dd><dt>TSA</dt><dd>'+esc(p.tsaIssuer)+' @ <span class="num">'+esc(p.tsaTimeUtc)+'</span></dd><dt>Channel3</dt><dd class="mono">'+esc(p.channel3ProductId||'—')+'</dd><dt>Order</dt><dd class="mono">'+esc(ordId)+'</dd><dt>custom_id</dt><dd>'+chip(cusId,true)+'</dd><dt>Witness hash</dt><dd>'+matchBadge(f.witnessHashMatch)+' <span class="mono" style="font-size:12px">anchor '+(f.anchorTrusted?'trusted':'UNTRUSTED')+'</span></dd></dl>';
+$('insp-witness').innerHTML='<h2>VeriPact Proof</h2><span class="sr-only">Column 2 — Witness provenance &amp; order anchor</span><p><span class="wit-pill">witnessed: '+esc(meta.witnessed)+'</span></p><dl class="kv"><dt>Fetched URL</dt><dd class="mono" style="overflow-wrap:anywhere">'+esc(p.fetchedUrl)+'</dd><dt>TLS</dt><dd>'+(p.tlsVerified?'<span class="pill pill-ok">verified</span>':'<span class="pill pill-warn">fixture (no TLS session)</span>')+'</dd><dt>HTTP</dt><dd class="num">'+esc(String(p.httpStatus))+'</dd><dt>Witness Key</dt><dd class="mono">'+esc(fp)+'</dd><dt>Timestamp (TSA)</dt><dd>'+esc(p.tsaIssuer)+' @ <span class="num">'+esc(p.tsaTimeUtc)+'</span></dd><dt>Channel3</dt><dd class="mono">'+esc(p.channel3ProductId||'—')+'</dd><dt>Order</dt><dd class="mono">'+esc(ordId)+'</dd><dt>custom_id</dt><dd>'+chip(cusId,true)+'</dd><dt>Witness hash</dt><dd>'+matchBadge(f.witnessHashMatch)+' <span class="mono" style="font-size:12px">anchor '+(f.anchorTrusted?'trusted':'UNTRUSTED')+'</span></dd></dl>';
 var allowed=r.allowedActions||[];
-function btn(rel,label){var on=allowed.indexOf(rel)>=0;return '<button type="button" class="btn" data-act="'+rel+'" '+(on?'':'disabled title="Not advertised by PayPal HATEOAS"')+'>'+label+'</button>';}
-$('insp-seller').innerHTML='<h2>Column 3 — Seller counter-claim &amp; PayPal actions</h2><p><b>Seller claims:</b> '+esc(meta.sellerTerms)+'</p><p>'+diffPills()+'</p><p>Referee verdict <span class="pill '+vcls+'">'+esc(f.verdict)+'</span></p><dl class="kv"><dt>Seller hash</dt><dd>'+matchBadge(f.sellerHashMatch)+'</dd><dt>Dispute</dt><dd class="mono">'+esc(r.disputeId)+' · '+esc(r.lifeCycleStage)+' / '+esc(r.disputeState)+'</dd></dl><div class="action-stack" role="group" aria-label="PayPal dispute actions">'
+function btn(rel,label){var on=allowed.indexOf(rel)>=0;return '<button type="button" class="btn" data-act="'+rel+'" '+(on?'':'disabled style="display:none"')+'>'+label+'</button>';}
+$('insp-seller').innerHTML='<h2>Merchant Claim</h2><span class="sr-only">Column 3 — Seller counter-claim &amp; PayPal actions</span><p><b>Seller claims:</b> '+esc(meta.sellerTerms)+'</p><p>'+diffPills()+'</p><p>Referee verdict <span class="pill '+vcls+'">'+esc(f.verdict)+'</span></p><dl class="kv"><dt>Seller hash</dt><dd>'+matchBadge(f.sellerHashMatch)+'</dd><dt>Dispute</dt><dd class="mono">'+esc(r.disputeId)+' · '+esc(r.lifeCycleStage)+' / '+esc(r.disputeState)+'</dd></dl><div class="action-stack" role="group" aria-label="PayPal dispute actions">'
 +btn('require-evidence','Require evidence')+btn('provide-evidence','Contest &amp; submit counter-evidence (OTHER)')+btn('escalate','Escalate to claim')+btn('accept-claim','Accept claim')+btn('adjudicate','Adjudicate in sandbox')+'<button type="button" class="btn" id="btn-resolve">Auto-resolve this case (full chain)</button><button type="button" class="btn" id="btn-sheet">Printable evidence sheet</button></div><div id="act-zone"></div>';
 Array.prototype.forEach.call($('insp-seller').querySelectorAll('[data-act]'),function(b){b.addEventListener('click',function(){disputeAction(d.record.disputeId,b.getAttribute('data-act'));});});
 $('btn-resolve').addEventListener('click',function(){api('/api/merchant/disputes/resolve',{method:'POST',body:JSON.stringify({case:d.case})}).then(function(){toast('Case resolved');refreshDesk();}).catch(function(e){toast(e.message);});});
@@ -1302,6 +1303,7 @@ function wireSidebar(){
       var targetId = 'sniper-box';
       if (tab === 'auditor') targetId = 'checkout-result';
       else if (tab === 'rules') targetId = 'mandate-card';
+      else if (tab === 'connectors') targetId = 'sec-det-connectors';
       var targetEl = $(targetId);
       if (targetEl) {
         tourScroll(targetEl);
@@ -1336,6 +1338,12 @@ function wireSidebar(){
   if (tabDetRules) {
     tabDetRules.addEventListener('click', function(e) {
       scrollToDetails('rules');
+    });
+  }
+  var tabDetConnectors = $('tab-det-connectors');
+  if (tabDetConnectors) {
+    tabDetConnectors.addEventListener('click', function(e) {
+      scrollToDetails('connectors');
     });
   }
 }

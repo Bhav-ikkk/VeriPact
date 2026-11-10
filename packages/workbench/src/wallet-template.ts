@@ -653,9 +653,9 @@ export function connectorsRowHtml(): string {
 export function syncShellHtml(): string {
   return [
     '<div class="ag-shell" id="sync-shell" hidden>',
-    '<div style="padding:14px 16px"><p class="sync-note">PayPal Transaction Search has up to a 3-hour indexing delay; real-time partition balance is enforced by the VeriPact Clearing Ledger.</p>',
-    '<div id="ag-sync-payments-grid" class="ag-theme-quartz" style="display:none;height:0;width:100%;"></div>',
-    '<div id="sync-table-wrap"><div id="sync-body"><p class="status-line">Loading synced payments…</p></div></div></div>',
+    '<div style="padding:14px 16px"><p class="sync-note" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);margin:0 0 12px;background:none;border:none;padding:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>PayPal Transaction Search has up to a 3-hour indexing delay; real-time partition balance is enforced by the VeriPact Clearing Ledger.</span></p>',
+    '<div id="ag-sync-payments-grid" class="ag-theme-quartz" style="height:560px;width:100%;overflow-x:auto;"></div>',
+    '<div id="sync-table-wrap" style="height:1px;overflow:hidden;opacity:0.001;pointer-events:none;"><div id="sync-body"><p class="status-line">Loading synced payments…</p></div></div></div>',
     '</div>',
   ].join('');
 }

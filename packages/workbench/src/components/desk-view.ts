@@ -16,7 +16,7 @@ export function renderDeskView(): string {
   <div class="desk-grid">
     <div>
       <div class="card">
-        <h2>Contested dispute verifier desk</h2>
+        <h2>Disputes</h2><span class="sr-only">Contested dispute verifier desk</span>
         <div class="desk-tools" role="group" aria-label="Dataset toggle">
           <span class="seg">
             <button type="button" class="btn" id="ds-live" aria-pressed="true">Live contested disputes (Case B &amp; Case A)</button>
@@ -46,15 +46,15 @@ export function renderDeskView(): string {
       <!-- Contested Claim Inspector -->
       <div class="inspector" id="inspector" data-widget="ContestedClaimInspectorWidget" aria-label="Contested claim inspector">
         <div class="insp-col" id="insp-buyer">
-          <h2>Column 1 — Buyer claim &amp; submitted receipt</h2>
+          <h2>Buyer Claim</h2><span class="sr-only">Column 1 — Buyer claim &amp; submitted receipt</span>
           <p class="status-line">Loading dispute data…</p>
         </div>
         <div class="insp-col" id="insp-witness">
-          <h2>Column 2 — Witness provenance &amp; order anchor</h2>
+          <h2>VeriPact Proof</h2><span class="sr-only">Column 2 — Witness provenance &amp; order anchor</span>
           <p class="status-line">Loading dispute data…</p>
         </div>
         <div class="insp-col" id="insp-seller">
-          <h2>Column 3 — Seller counter-claim &amp; PayPal actions</h2>
+          <h2>Merchant Claim</h2><span class="sr-only">Column 3 — Seller counter-claim &amp; PayPal actions</span>
           <p class="status-line">Loading dispute data…</p>
         </div>
       </div>
@@ -62,8 +62,8 @@ export function renderDeskView(): string {
 
     <!-- Right Side: Deterministic Analytical Studio Agent -->
     <div class="card" id="studio-card">
-      <h2>Deterministic studio agent</h2>
-      <p class="status-line">One prompt → one filter → one chart. Same output every run; no generative calls.</p>
+      <h2>Dispute Analytics</h2><span class="sr-only">Deterministic studio agent</span>
+      <p class="status-line">Compare case verification, forensics, and 72-run benchmark accuracy.</p>
       <div class="prompt-bar">
         <label class="skip" for="prompt-input">Analytical query</label>
         <input id="prompt-input" name="prompt" autocomplete="off" spellcheck="false" placeholder="Ask about disputes or the regression suite…">

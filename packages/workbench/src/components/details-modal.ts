@@ -19,6 +19,7 @@ export function renderDetailsModal(): string {
       <button type="button" class="btn btn-sm btn-ghost active" id="tab-det-sniper" style="font-size:11.5px;">6 Stores Compared</button>
       <button type="button" class="btn btn-sm btn-ghost" id="tab-det-auditor" style="font-size:11.5px;">Receipt &amp; Auditor</button>
       <button type="button" class="btn btn-sm btn-ghost" id="tab-det-rules" style="font-size:11.5px;">Protection Rules &amp; Scanner</button>
+      <button type="button" class="btn btn-sm btn-ghost" id="tab-det-connectors" style="font-size:11.5px;">AI Connectors</button>
     </div>
   </div>
 
@@ -179,6 +180,29 @@ export function renderDetailsModal(): string {
         </nav>
       </div>
     </details>
+  </div>
+
+  <!-- Section 4: External AI Agent Connectors -->
+  <div id="sec-det-connectors" class="det-section" style="margin-top:14px;border-top:1px solid var(--border-subtle);padding-top:14px;">
+    <div class="card" style="padding:14px;background:#f8fafc;border-radius:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;font-size:13px;font-weight:700;">External AI Agent Connectors</h3>
+        <span class="pill pill-info">ChatGPT &amp; Claude MCP</span>
+      </div>
+      <p style="font-size:12px;color:var(--text-secondary);margin:0 0 10px;">Connect ChatGPT Actions, Claude Desktop, or Cursor to your partitioned PayPal wallet with scoped bearer tokens.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div style="background:#fff;border:1px solid var(--border-subtle);border-radius:6px;padding:12px;">
+          <b style="font-size:12px;">ChatGPT / OpenAI Actions</b>
+          <p style="font-size:11px;color:var(--text-muted);margin:4px 0 8px;">OpenAPI 3.1 Spec: <span class="mono">GET /openapi.json</span></p>
+          <button type="button" class="btn btn-sm btn-primary" onclick="var b=document.getElementById('btn-mint-chatgpt');if(b)b.click();">Mint ChatGPT Token</button>
+        </div>
+        <div style="background:#fff;border:1px solid var(--border-subtle);border-radius:6px;padding:12px;">
+          <b style="font-size:12px;">Claude / Cursor MCP</b>
+          <p style="font-size:11px;color:var(--text-muted);margin:4px 0 8px;">Stdio JSON-RPC 2.0: <span class="mono">@veripact/mcp-server</span></p>
+          <button type="button" class="btn btn-sm btn-primary" onclick="var b=document.getElementById('btn-mint-mcp');if(b)b.click();">Mint MCP Command</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 `;
