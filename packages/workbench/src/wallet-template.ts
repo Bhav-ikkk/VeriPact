@@ -606,7 +606,7 @@ export const WALLET_CSS = [
   '.sniper-pill.emerald{background:#e7f6f1;color:#0f6e56;border:1px solid #b7e0d2}',
 ].join('\n');
 
-/** View 1 Agentic Wallet card: QR pairing (left) + partition bar (right) + Deal Sniper (bottom). */
+/** View 1 Agentic Wallet card: QR pairing (left) + partition bar (right). */
 export function walletCardHtml(): string {
   return [
     '<div class="card" id="wallet-card">',
@@ -627,25 +627,6 @@ export function walletCardHtml(): string {
     '<div class="part-track" role="progressbar" aria-label="Partition used vs remaining"><i id="part-progress-fill"></i></div>',
     '<div class="part-actions"><button type="button" class="btn btn-primary" id="btn-part-spend">Agent Spend ($297 via Partition)</button><button type="button" class="btn" id="btn-part-refund">Undo / Refund Last Capture (+$297)</button><label class="skip" for="part-cap-input">Partition cap USD</label><input id="part-cap-input" type="number" min="1" step="0.01" value="350"><button type="button" class="btn" id="btn-part-config">Set $350 Partition</button></div>',
     '<p class="status-line" id="part-status" aria-live="polite"></p>',
-    '</div>',
-    '</div>',
-    '<div id="sniper-box">',
-    '<div class="sniper-head">',
-    '<div><h3>Autonomous Deal &amp; Voucher Sniper (@veripact)</h3>',
-    '<p class="sniper-sub">Set your target all-in ceiling. Your agent hunts across stores &amp; promo vouchers, blocks policy/refurbished/surcharge traps via 3-Rung WIT witnessing, and auto-buys via your PayPal Partition only when a verified deal hits.</p></div>',
-    '</div>',
-    '<div class="sniper-controls">',
-    '<div class="sniper-input-wrap">',
-    '<label for="sniper-target-input">Target All-In Ceiling:</label>',
-    '<div class="sniper-input-inner"><span class="currency-prefix">$</span><input id="sniper-target-input" type="number" min="1" max="10000" step="1" value="300" aria-label="Target max all-in price in USD"></div>',
-    '</div>',
-    '<div class="sniper-actions">',
-    '<button type="button" class="btn btn-primary" id="btn-sniper-run">&#127919; Hunt Vouchers &amp; Auto-Buy Under $300</button>',
-    '<button type="button" class="btn" id="btn-open-anywhere">&#8984; Toggle @veripact Overlay in Store (Alt+V)</button>',
-    '</div>',
-    '</div>',
-    '<div id="sniper-results" class="sniper-results" aria-live="polite">',
-    '<div class="sniper-empty"><p>Click <b>&#127919; Hunt Vouchers &amp; Auto-Buy Under $300</b> to evaluate 6 competing merchant listings and coupons against your $350.00 PayPal Partition.</p></div>',
     '</div>',
     '</div>',
     '</div>',

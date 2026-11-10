@@ -1,558 +1,863 @@
-/**
- * @veripact/workbench editorial-fintech light UI template (run 09).
- *
- * One self-contained HTML page: Tier A header, Tier B 3-stage evidence
- * pipeline, Tier C 2-column checkout workspace, Tier D outcome/record/
- * auditor strip, plus View 2 (dispute desk + deterministic studio agent).
- * Flat desk tokens (#E7EBF0 canvas, #FFFFFF cards, #1A2332 ink);
- * tabular numerals everywhere a number renders. All element IDs, API
- * call shapes, security guards (finalizing lock, origin-checked
- * postMessage, overflow rules) and the byte-identical inline `jcs`
- * canonicalizer are preserved from the pre-redesign contract.
- *
- * v5 Step 2 adds the Agentic Wallet card (QR pairing + partition bar),
- * the Tier B partition pill, the View 2 connectors strip, and the sync
- * dataset — strictly additive partials from `wallet-template.ts`.
- */
 import {
   connectorsRowHtml,
-  QR_CLIENT_JS,
   syncShellHtml,
   WALLET_CSS,
   walletCardHtml,
+  QR_CLIENT_JS,
 } from './wallet-template';
 
 export function renderIndexPage(): string {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VeriPact Workbench — Proving What the Merchant Promised</title>
+<title>VeriPact Workbench — Autonomous Shopping Agent Studio</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.ico">
-<!-- Enterprise Data Grid: real ag-grid-community served same-origin from /vendor (zero CDN fetches, zero console errors). mountAg() lights up sorting, filtering, pinning, selection, and CSV export; the native fallback table engages only if the package is absent. Container IDs and 560px rules are unchanged. -->
 <link rel="stylesheet" href="/vendor/ag-grid.min.css">
 <link rel="stylesheet" href="/vendor/ag-theme-quartz.min.css">
 <style>
 :root{
---bg-canvas:#e7ebf0;--bg-surface:#ffffff;--bg-subtle:#f3f5f8;--bg-muted:#f7f8fa;
---text-primary:#1a2332;--text-secondary:#3d4a5c;--text-muted:#5c6b7e;
---border-subtle:#d5dbe3;--border-strong:#c3ccd6;
---accent-charcoal:#1a2332;--accent-charcoal-hover:#2a384c;--accent-blue:#1d4e89;
---status-success-bg:#e7f6f1;--status-success-border:#b7e0d2;--status-success-ink:#0f6e56;--status-success-solid:#0f6e56;
---status-warn-bg:#fbf6ea;--status-warn-border:#ead7a6;--status-warn-ink:#8a5a12;
---status-danger-bg:#fdf2f1;--status-danger-border:#f0c9c6;--status-danger-ink:#9f2d2d;
---radius-card:10px;--radius-control:6px;
---shadow-card:none;
+--bg-canvas:linear-gradient(135deg, #f3f1ff 0%, #edeafd 50%, #f7f6ff 100%);
+--bg-surface:rgba(255, 255, 255, 0.94);
+--bg-subtle:#f5f3ff;--bg-muted:#faf9ff;
+--text-primary:#1e1b4b;--text-secondary:#475569;--text-muted:#64748b;
+--border-subtle:rgba(124, 92, 255, 0.14);--border-strong:rgba(108, 71, 255, 0.28);
+--accent-purple:#6c47ff;--accent-indigo:#8b5cf6;--accent-charcoal:#1e1b4b;--accent-charcoal-hover:#2e2a72;--accent-blue:#6c47ff;
+--status-success-bg:#dcfce7;--status-success-border:#bbf7d0;--status-success-ink:#15803d;--status-success-solid:#15803d;
+--status-warn-bg:#fef9c3;--status-warn-border:#fef08a;--status-warn-ink:#854d0e;
+--status-danger-bg:#fee2e2;--status-danger-border:#fca5a5;--status-danger-ink:#991b1b;
+--radius-card:18px;--radius-control:8px;
+--shadow-card:0 10px 28px rgba(91, 63, 214, 0.07);
 --font-sans:"Segoe UI",system-ui,-apple-system,sans-serif;
---font-display:"Palatino Linotype",Palatino,"Iowan Old Style",Georgia,serif;
+--font-display:"Segoe UI",system-ui,-apple-system,sans-serif;
 --font-mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
 }
 *{box-sizing:border-box}
-body{font-family:var(--font-sans);margin:0;background:var(--bg-canvas);color:var(--text-primary);font-size:14px;line-height:1.45;font-variant-numeric:tabular-nums}
+body{font-family:var(--font-sans);margin:0;background:var(--bg-canvas);color:var(--text-primary);font-size:14px;line-height:1.45;font-variant-numeric:tabular-nums;overflow-x:hidden}
 .skip{position:absolute;left:-999px;top:8px;background:var(--accent-charcoal);color:#fff;padding:8px 14px;border-radius:var(--radius-control);z-index:99;font-size:13px}
 .skip:focus{left:8px;color:#fff}
-:focus-visible{outline:2px solid var(--accent-blue);outline-offset:2px;border-radius:4px}
-h1{font-family:var(--font-display);font-size:22px;font-weight:600;letter-spacing:-.02em;margin:0;white-space:nowrap}
-h2{font-size:15px;font-weight:650;letter-spacing:-.01em;margin:0 0 10px}
-h3{font-size:13px;margin:14px 0 8px;color:var(--text-secondary);font-weight:650}
+:focus-visible{outline:2px solid var(--accent-purple);outline-offset:2px;border-radius:4px}
+h1{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0;color:#1e1b4b}
+h2{font-size:15px;font-weight:750;letter-spacing:-.01em;margin:0 0 8px;color:#1e1b4b}
+h3{font-size:13px;margin:12px 0 6px;color:var(--text-secondary);font-weight:700}
 .num,.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
-/* Tier A — top header bar */
-.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;height:60px;background:var(--bg-surface);border-bottom:1px solid var(--border-subtle);padding:0 20px}
-.brand{display:flex;align-items:center;gap:10px;min-width:0;flex-shrink:0}
-.brand .divider{width:1px;height:18px;background:var(--border-strong);flex-shrink:0}
-.brand .tagline,.brand-tag{font-size:13px;font-weight:500;color:var(--text-muted);white-space:nowrap}
-.view-switch{margin:0 auto;display:inline-flex;gap:4px;background:var(--bg-subtle);padding:3px;border-radius:8px;flex-shrink:0}
-.view-switch button{border:0;background:transparent;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text-secondary);border-radius:6px;font-family:inherit;white-space:nowrap}
-.view-switch button[aria-pressed="true"]{background:var(--accent-charcoal);color:#fff}
-.top-actions,.hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
-#btn-tour,#btn-reset{flex-shrink:0;white-space:nowrap}
-.mode-pill{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:999px;white-space:nowrap;border:1px solid}
+
+/* Shell Layout: Left Sidebar + Main Content */
+.app-layout{display:flex;min-height:100vh;background:var(--bg-canvas)}
+.sidebar{width:220px;flex-shrink:0;background:rgba(255,255,255,0.88);backdrop-filter:blur(12px);border-right:1px solid var(--border-subtle);display:flex;flex-direction:column;justify-content:space-between;padding:18px 14px;position:sticky;top:0;height:100vh;overflow-y:auto;box-shadow:2px 0 16px rgba(91,63,214,0.03);z-index:25}
+.sidebar-top{display:flex;flex-direction:column;gap:12px}
+.sidebar-brand{display:flex;align-items:center;gap:10px;padding:2px 6px 14px;border-bottom:1px solid var(--border-subtle)}
+.sidebar-brand-name{font-size:18px;font-weight:800;color:#1e1b4b;letter-spacing:-.02em}
+.sidebar-nav{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.sidebar-nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;border:0;background:transparent;color:#4b5563;font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit;transition:all .15s ease;width:100%;text-decoration:none}
+.sidebar-nav-item:hover{background:rgba(124,92,255,0.08);color:var(--accent-purple)}
+.sidebar-nav-item.active{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);color:#fff;box-shadow:0 4px 14px rgba(108,71,255,0.35)}
+.sidebar-bottom{margin-top:16px}
+.sidebar-companion-card{background:linear-gradient(180deg, #ede9fe 0%, #ffffff 100%);border:1px solid rgba(124,92,255,0.22);border-radius:16px;padding:12px 10px;text-align:center;box-shadow:0 6px 18px rgba(91,63,214,0.06)}
+#sidebar-robot-canvas{display:block;margin:0 auto;width:90px;height:72px}
+.companion-title{font-size:12px;font-weight:750;color:#1e1b4b;line-height:1.3;margin:4px 0 8px}
+.companion-badges{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.companion-badges span{background:#fff;border:1px solid rgba(124,92,255,0.2);border-radius:999px;padding:2px 6px;font-size:10px;font-weight:700;color:#4338ca;white-space:nowrap}
+
+/* Main Workspace */
+.app-main{flex:1;min-width:0;padding:16px 22px 32px;display:flex;flex-direction:column;gap:14px}
+.topbar{display:flex;flex-direction:column;gap:12px;position:relative}
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px}
+.main-title{font-size:24px;font-weight:800;color:#1e1b4b;margin:0;letter-spacing:-.02em;line-height:1.2}
+.main-subtitle{font-size:12.5px;color:#6b7280;margin:2px 0 0;font-weight:500}
+.top-robot-anchor{display:flex;align-items:flex-end;justify-content:center;margin-bottom:-12px;z-index:15}
+#agent-robot-3d-canvas{display:block;width:120px;height:96px;cursor:pointer}
+.top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.status-pill .dot{width:7px;height:7px;border-radius:50%;background:#22c55e}
+.status-pill-live{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}
+.wallet-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;font-size:11.5px;font-weight:700;background:#fff;border:1px solid rgba(124,92,255,0.22);color:#1e1b4b;white-space:nowrap}
+.mode-pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:4px 11px;border-radius:999px;white-space:nowrap;border:1px solid;cursor:pointer}
 .mode-pill::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
 .mode-live{background:var(--status-success-bg);border-color:var(--status-success-border);color:var(--status-success-ink)}
 .mode-replay{background:var(--status-warn-bg);border-color:var(--status-warn-border);color:var(--status-warn-ink)}
-button.mode-pill{font-family:inherit;cursor:pointer}
-button.mode-pill:hover{filter:brightness(.97)}
-/* AG Grid quartz → editorial fintech theme bridge */
-#ag-live-disputes-grid.ag-theme-quartz,#ag-regression-benchmark-grid.ag-theme-quartz{--ag-font-family:var(--font-sans);--ag-font-size:13px;--ag-row-height:40px;--ag-header-height:42px;--ag-header-background-color:var(--bg-muted);--ag-odd-row-background-color:#fff;--ag-selected-row-background-color:#e0eaff;--ag-border-color:var(--border-subtle);--ag-header-foreground-color:var(--text-muted)}
-/* Buyer mandate editor (inline panel: no overflow at 768px) */
-.mandate-editor{border-top:1px solid var(--border-subtle);margin-top:12px;padding-top:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.mandate-editor label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-secondary);font-weight:600;min-width:0}
-.mandate-editor input,.mandate-editor select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:#fff;color:var(--text-primary);min-width:0;width:100%}
-.mandate-editor .row-end{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-#mandate-editor[hidden]{display:none}
-/* Post-purchase lifecycle buttons under the Transaction Record */
-.post-purchase{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;border-top:1px solid var(--border-subtle);padding-top:12px}
-/* Custom merchant-HTML inspector lab */
-.custom-lab{border-top:1px solid var(--border-subtle);margin-top:14px;padding-top:12px}
-.custom-lab textarea{width:100%;min-height:120px;font-family:var(--font-mono);font-size:12px;border:1px solid var(--border-strong);border-radius:var(--radius-control);padding:10px;margin:8px 0;background:#fff;color:var(--text-primary);resize:vertical}
-.preset-row{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
-.preset-row .btn{font-size:12px;min-height:32px;padding:5px 12px}
-.block-list{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;max-height:132px;overflow:auto}
-/* Credentials modal + signed audit ledger */
-.creds-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin:10px 0}
-.creds-form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-secondary);font-weight:600;min-width:0}
-.creds-form input{font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:#fff;color:var(--text-primary);min-width:0;width:100%}
-.creds-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.ledger-list{list-style:none;margin:10px 0;padding:0;max-height:220px;overflow:auto;border:1px solid var(--border-subtle);border-radius:10px;font-size:12px}
-.ledger-list li{padding:7px 12px;border-bottom:1px solid var(--bg-subtle);display:flex;gap:10px;align-items:baseline;min-width:0}
-.ledger-list li:last-child{border-bottom:0}
-.ledger-list .seq{font-family:var(--font-mono);color:var(--text-muted);flex-shrink:0;min-width:34px}
-.ledger-list .kind{font-family:var(--font-mono);font-weight:700;flex-shrink:0;min-width:130px}
-.ledger-list .sum{min-width:0;overflow-wrap:anywhere}
-#tour-status{font-size:11.5px;color:var(--text-muted);font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;min-width:0;flex-shrink:1}
-#tour-status:empty{display:none}
-.btn{font-family:inherit;font-size:13px;font-weight:600;padding:8px 16px;border-radius:var(--radius-control);border:1px solid var(--border-strong);background:#fff;color:var(--text-primary);cursor:pointer;min-height:36px;display:inline-flex;align-items:center;gap:8px;justify-content:center}
-.btn:hover{border-color:#98a2b3;background:var(--bg-muted)}
-.btn-primary{background:var(--accent-charcoal);border-color:var(--accent-charcoal);color:#fff}
-.btn-primary:hover{background:var(--accent-charcoal-hover);border-color:var(--accent-charcoal-hover)}
-.btn:disabled{opacity:.55;cursor:wait}
-.btn-ghost{border-color:transparent;color:#344054}
-.btn-ghost:hover{background:var(--bg-subtle);border-color:transparent}
-.btn svg{flex-shrink:0}
-/* Workspace tiers */
-main{max-width:1560px;margin:0 auto;padding:12px 20px 26px;display:flex;flex-direction:column;gap:14px}
-/* Status pills: one color, one meaning */
-.pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 11px;border-radius:999px;white-space:nowrap;flex-shrink:0;border:1px solid transparent;font-variant-numeric:tabular-nums}
+.btn-icon{width:32px;height:32px;border-radius:50%;border:1px solid var(--border-subtle);background:#fff;display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:#ede9fe;border:1px solid rgba(124,92,255,0.3);display:flex;align-items:center;justify-content:center;color:#6c47ff}
+.view-switch{display:inline-flex;gap:3px;background:var(--bg-subtle);padding:2px;border-radius:8px}
+.view-switch button{border:0;background:transparent;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text-secondary);border-radius:6px;font-family:inherit;white-space:nowrap}
+.view-switch button[aria-pressed="true"]{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);color:#fff}
+
+/* Prompt Bar */
+.prompt-bar-box{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.98);border:1.5px solid rgba(124,92,255,0.25);border-radius:999px;padding:6px 8px 6px 18px;box-shadow:0 8px 24px rgba(108,71,255,0.08);backdrop-filter:blur(8px);position:relative;z-index:10}
+.prompt-target-icon{display:flex;align-items:center;justify-content:center;color:#8b5cf6;flex-shrink:0}
+.prompt-intent-input{flex:1;min-width:0;border:0;background:transparent;font-size:13.5px;font-weight:500;color:#1e1b4b;outline:none;font-family:inherit}
+.prompt-target-pill{display:inline-flex;align-items:center;gap:4px;background:#f5f3ff;border:1px solid rgba(124,92,255,0.2);border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;color:#6c47ff;flex-shrink:0}
+.prompt-target-pill input{border:0;background:transparent;width:50px;font:inherit;font-size:12px;font-weight:700;color:#1e1b4b;outline:none;text-align:center}
+.btn-filter-toggle{width:36px;height:36px;border-radius:50%;border:1px solid var(--border-subtle);background:#fff;color:#6b7280;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s ease}
+.btn-filter-toggle:hover{background:#f5f3ff;color:var(--accent-purple);border-color:var(--accent-purple)}
+.btn-run-agent{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);color:#fff;border:0;border-radius:999px;padding:10px 22px;font-size:13.5px;font-weight:750;cursor:pointer;box-shadow:0 4px 14px rgba(108,71,255,0.4);display:inline-flex;align-items:center;gap:8px;white-space:nowrap;flex-shrink:0;transition:all .15s ease}
+.btn-run-agent:hover{box-shadow:0 6px 20px rgba(108,71,255,0.5)}
+
+/* Workflow & Ribbon */
+.workflow-bar{display:flex;align-items:center;gap:10px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:7px 14px;box-shadow:var(--shadow-card)}
+.wf-lead{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--accent-purple);white-space:nowrap;flex-shrink:0}
+.wf-pills{display:flex;align-items:center;gap:6px;flex:1;min-width:0;flex-wrap:wrap}
+.wf-btn{font-family:inherit;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;border:1px solid var(--border-strong);background:#fff;color:var(--text-secondary);cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap;transition:all .15s ease}
+.wf-btn:hover{border-color:var(--accent-purple);color:var(--accent-purple);background:#f5f3ff}
+.ribbon{display:grid;grid-template-columns:200px minmax(0,1fr) 16px minmax(0,1.05fr) 16px minmax(0,1.1fr);align-items:center;gap:10px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:10px 16px;box-shadow:var(--shadow-card)}
+.rb-title{border-right:1px solid var(--border-subtle);padding-right:12px;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
+.rb-title b{display:block;font-size:13.5px;font-weight:750;color:var(--text-primary)}
+.rb-title span{font-size:11px;color:var(--text-muted)}
+#rb-partition{font-size:11px;padding:2px 8px;margin-top:3px;align-self:flex-start}
+.ribbon-step{display:flex;gap:8px;align-items:center;min-width:0;background:transparent;border:0;padding:2px 0}
+.ribbon-step.on{color:var(--text-primary)}
+.ribbon-step.bad{color:var(--status-danger-ink)}
+.rb-num{font-family:var(--font-mono);font-weight:700;font-size:12px;background:#fff;color:var(--text-muted);border:1px solid var(--border-strong);border-radius:50%;min-width:24px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ribbon-step.on .rb-num{background:var(--status-success-solid);border-color:var(--status-success-solid);color:#fff;font-size:0}
+.ribbon-step.on .rb-num::after{content:'✓';font-size:13px;font-weight:700}
+.ribbon-step.bad .rb-num{background:var(--status-danger-ink);border-color:var(--status-danger-ink);color:#fff}
+.ribbon-step b{font-size:12px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px}
+.ribbon-step .badge{font-family:var(--font-mono);font-size:10.5px;color:var(--text-secondary);background:#fff;border:1px solid var(--border-subtle);border-radius:4px;padding:1px 5px;white-space:nowrap}
+#rb-ch3{color:var(--status-success-ink);font-weight:600}
+.rb-connector{height:2px;background:var(--border-strong);border-radius:2px;align-self:center}
+.rb-connector.done{background:var(--status-success-solid)}
+
+/* 3-Column Studio Stage */
+.studio-stage-3col{display:grid;grid-template-columns:300px minmax(0, 1fr) 330px;gap:14px;align-items:start}
+.card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:16px 18px;min-width:0;box-shadow:var(--shadow-card)}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.card-head h2{margin:0;font-size:14.5px;font-weight:750;display:flex;align-items:center;gap:8px}
+
+/* Stepper Column 1 */
+.mission-subtitle{font-size:12px;color:var(--text-muted);margin:0 0 12px;font-weight:600}
+.progress-ring-wrap{width:44px;height:44px;flex-shrink:0}
+.progress-ring{transform:rotate(-90deg)}
+.mission-stepper{display:flex;flex-direction:column;gap:0;position:relative;margin:10px 0}
+.step-item{display:flex;gap:10px;align-items:flex-start;position:relative;padding-bottom:14px}
+.step-item:last-child{padding-bottom:4px}
+.step-item::after{content:'';position:absolute;left:11px;top:24px;bottom:0;width:2px;background:#e2e8f0;z-index:1}
+.step-item:last-child::after{display:none}
+.step-item.done::after{background:#86efac}
+.step-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;z-index:2;background:#f1f5f9;color:#64748b;border:1.5px solid #cbd5e1}
+.step-item.done .step-icon{background:#dcfce7;color:#15803d;border-color:#86efac}
+.step-item.active .step-icon{background:#ede9fe;color:#6c47ff;border-color:#8b5cf6}
+.step-content b{display:block;font-size:12px;font-weight:700;color:#1e1b4b;line-height:1.2}
+.step-content span{display:block;font-size:11px;color:#64748b;line-height:1.35;margin-top:2px}
+.mission-metrics-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--border-subtle);padding-top:12px;margin-top:8px}
+.mission-metric{text-align:center;background:#faf8ff;border:1px solid var(--border-subtle);border-radius:10px;padding:6px 2px}
+.mission-metric b{display:block;font-size:17px;font-weight:800;color:#6c47ff}
+.mission-metric span{font-size:10.5px;color:#64748b;white-space:nowrap}
+
+/* Column 2: Browser */
+.browser-controls-bar{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.channel3-catalog-bar{display:flex;align-items:center;gap:6px;background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:5px 8px}
+.channel3-catalog-bar label{font-size:11.5px;font-weight:700;color:var(--text-secondary);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.channel3-catalog-bar select{flex:1;min-width:0;padding:4px 6px;border-radius:6px;border:1px solid var(--border-strong);background:#fff;font-size:11.5px;color:var(--text-primary);cursor:pointer}
+.scn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.scn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:7px 10px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;cursor:pointer;font-family:inherit;color:var(--text-primary);transition:all .15s ease}
+.scn:hover{border-color:var(--accent-purple);background:#faf8ff}
+.scn b{font-size:12px;font-weight:700}
+.scn span{font-size:10.5px;color:var(--text-muted)}
+.scn[aria-pressed="true"]{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);border-color:var(--accent-purple);color:#fff}
+.scn[aria-pressed="true"] span{color:#e0e7ff}
+.browser{border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 4px 14px rgba(108,71,255,0.04)}
+.browser-chrome{background:#f1f5f9;padding:6px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border-subtle)}
+.dots{display:flex;gap:5px;flex-shrink:0}
+.dots i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.dots i.dot-red{background:#ef4444}
+.dots i.dot-yellow{background:#f59e0b}
+.dots i.dot-green{background:#10b981}
+.browser-nav-btn{color:#64748b;font-weight:700;font-size:12px;cursor:pointer;user-select:none}
+.urlbar{background:#fff;border:1px solid var(--border-subtle);border-radius:6px;padding:3px 8px;font-family:var(--font-mono);font-size:11px;color:#334155;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;min-width:0}
+.store-frame{width:100%;height:310px;border:0;background:#fff;display:block;overflow:hidden}
+.agent-thinking-bar{background:linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);color:#fff;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:550;display:flex;align-items:center;gap:8px;margin-top:10px;box-shadow:0 4px 14px rgba(30,27,75,0.2)}
+
+/* Column 3: Deal Analysis & Approval */
+.deal-price-strip{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;background:#faf8ff;border:1px solid var(--border-subtle);border-radius:12px;padding:10px 8px;text-align:center;margin:10px 0}
+.price-col b{display:block;font-size:18px;font-weight:800;color:#1e1b4b}
+.price-col b.discount{color:#6c47ff}
+.price-col span.savings-badge{display:inline-block;background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:800}
+.price-col .price-lbl{font-size:11px;color:#64748b;margin-top:2px;display:block}
+.deal-verification-box{border:1px solid var(--border-subtle);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:#fff}
+.deal-verif-title{font-size:12px;font-weight:750;color:#1e1b4b;margin-bottom:6px}
+.deal-verif-rows{display:flex;flex-direction:column;gap:5px}
+.deal-verif-row{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px;color:#334155}
+.deal-verif-name{display:inline-flex;align-items:center;gap:5px;font-weight:600}
+.check-dot{color:#15803d;font-weight:800}
+.deal-verif-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;padding-top:6px;border-top:1px solid var(--border-subtle)}
+.price-trend-box{border:1px solid var(--border-subtle);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:#fff}
+.trend-head{font-size:11.5px;font-weight:750;color:#1e1b4b;margin-bottom:4px}
+.trend-content{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.trend-sparkline{flex-shrink:0}
+.trend-stats{display:flex;flex-direction:column;gap:2px;text-align:right;font-size:10.5px;color:#64748b}
+.trend-stats b{font-size:12px;color:#1e1b4b}
+.trend-stats b.stat-cur{color:#6c47ff;font-weight:800}
+.btn-checkout-main{width:100%;background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);color:#fff;border:0;border-radius:12px;padding:12px 16px;font-size:13.5px;font-weight:750;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(108,71,255,0.35);transition:all .15s ease}
+.btn-checkout-main:hover{box-shadow:0 6px 18px rgba(108,71,255,0.48)}
+.checkout-toggles{display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:11.5px;color:#475569}
+.checkout-toggles label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.checkout-toggles input{width:14px;height:14px;accent-color:#6c47ff}
+
+/* Bottom 3-Card Trust Strip */
+.trust-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:8px}
+.trust-card{display:flex;align-items:center;gap:12px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:14px;padding:12px 16px;box-shadow:var(--shadow-card)}
+.trust-icon{width:36px;height:36px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.trust-content b{display:block;font-size:12.5px;font-weight:750;color:#1e1b4b}
+.trust-content span{display:block;font-size:11px;color:#64748b}
+
+/* Common Components */
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap;flex-shrink:0;border:1px solid transparent}
 .pill-ok{background:var(--status-success-bg);color:var(--status-success-ink);border-color:var(--status-success-border)}
 .pill-warn{background:var(--status-warn-bg);color:var(--status-warn-ink);border-color:var(--status-warn-border)}
 .pill-bad{background:var(--status-danger-bg);color:var(--status-danger-ink);border-color:var(--status-danger-border)}
 .pill-info{background:var(--bg-subtle);color:var(--text-secondary);border-color:var(--border-subtle)}
-/* Hash chips: truncate, copy on click, full value via title + focus */
-.hash-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;font-family:var(--font-mono);font-size:12px;background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:var(--radius-control);padding:4px 8px;cursor:pointer;min-width:0;color:var(--text-primary);font-variant-numeric:tabular-nums}
+.hash-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;font-family:var(--font-mono);font-size:11.5px;background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:var(--radius-control);padding:3px 7px;cursor:pointer;min-width:0;color:var(--text-primary)}
 .hash-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .hash-chip.mid span{direction:rtl;text-align:left}
-.mono-scroll{overflow-x:auto;white-space:pre;font-family:var(--font-mono);font-size:12px;background:#101828;color:#e8eef6;border-radius:var(--radius-control);padding:10px 12px;max-width:100%}
-/* Tier B — connected 3-stage evidence pipeline */
-.ribbon{display:grid;grid-template-columns:200px minmax(0,1fr) 16px minmax(0,1.05fr) 16px minmax(0,1.1fr);align-items:center;gap:10px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:12px 16px;box-shadow:none}
-.rb-title{border-right:1px solid var(--border-subtle);padding-right:14px;display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0}
-.rb-title b{display:block;font-size:14.5px;font-weight:700;color:var(--text-primary)}
-.rb-title span{font-size:11.5px;color:var(--text-muted)}
-#rb-partition{font-size:11px;padding:2px 8px;margin-top:4px;align-self:flex-start}
-.ribbon-step{display:flex;gap:10px;align-items:center;min-width:0;background:transparent;border:0;border-radius:0;padding:2px 0;transition:color .2s ease}
-.ribbon-step.on{color:var(--text-primary)}
-.ribbon-step.bad{color:var(--status-danger-ink)}
-.rb-num{font-family:var(--font-mono);font-weight:700;font-size:13px;background:#fff;color:var(--text-muted);border:1px solid var(--border-strong);border-radius:50%;min-width:26px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ribbon-step.on .rb-num{background:var(--status-success-solid);border-color:var(--status-success-solid);color:#fff;font-size:0}
-.ribbon-step.on .rb-num::after{content:'✓';font-size:14px;font-weight:700}
-.ribbon-step.bad .rb-num{background:var(--status-danger-ink);border-color:var(--status-danger-ink);color:#fff}
-.ribbon-step b{font-size:12.5px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rb-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
-.ribbon-step .rb-badges{flex-direction:row;gap:5px}
-.ribbon-step .badge{font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);background:#fff;border:1px solid var(--border-subtle);border-radius:4px;padding:1px 6px;white-space:nowrap;font-variant-numeric:tabular-nums}
-#rb-ch3{color:var(--status-success-ink);font-weight:600}
-.rb-connector{height:2px;background:var(--border-strong);border-radius:2px;align-self:center}
-.rb-connector.done{background:var(--status-success-solid)}
-#rb-3{background:transparent;border:0;border-radius:0;padding:2px 0}
-#rb-3[data-state="captured"],#rb-3[data-state="voided"],#rb-3[data-state="blocked"]{background:transparent;border-color:transparent}
-/* Tier C — two-column checkout workspace */
-.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
-.card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:16px 18px;min-width:0;box-shadow:none}
-.stack{display:flex;flex-direction:column;gap:12px;min-width:0}
-.scn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}
-.scn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;min-height:72px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;cursor:pointer;min-width:0;font-family:inherit;color:var(--text-primary)}
-.scn:hover{border-color:#98a2b3}
-.scn b{font-size:13px;font-weight:700}
-.scn span{font-size:11.5px;color:var(--text-muted)}
-.scn svg{margin-bottom:4px}
-.scn[aria-pressed="true"]{background:var(--accent-charcoal);border-color:var(--accent-charcoal);color:#fff}
-.scn[aria-pressed="true"] span{color:#d0d5dd}
-.channel3-catalog-bar{display:flex;align-items:center;gap:8px;background:var(--bg-muted);border:1px solid var(--border-subtle);border-radius:8px;padding:6px 10px;margin-bottom:10px}
-.channel3-catalog-bar label{font-size:11.5px;font-weight:700;color:var(--text-secondary);display:flex;align-items:center;gap:5px;white-space:nowrap}
-.channel3-catalog-bar select{flex:1;min-width:0;padding:5px 8px;border-radius:6px;border:1px solid var(--border-strong);background:#fff;font-size:12px;font-family:var(--font-sans);color:var(--text-primary);cursor:pointer}
-.browser{border:1px solid var(--border-subtle);border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04)}
-.browser-chrome{background:var(--bg-subtle);padding:6px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border-subtle)}
-.dots{display:flex;gap:5px;flex-shrink:0}
-.dots i{width:8px;height:8px;border-radius:50%;background:var(--border-strong)}
-.urlbar{background:#fff;border:1px solid var(--border-subtle);border-radius:6px;padding:3px 10px;font-family:var(--font-mono);font-size:11.5px;color:#344054;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;min-width:0}
-.store-frame{width:100%;height:310px;border:0;background:#fff;display:block;overflow:hidden}
-details.tech-drawer{margin-top:10px}
-details.tech-drawer summary{cursor:pointer;padding:8px 12px;font-size:12px;color:var(--text-secondary);background:var(--bg-muted);border:1px solid var(--border-subtle);border-radius:8px}
-details.tech-drawer .badges{margin-top:0}
-.badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.badge{font-family:var(--font-mono);font-size:11px;background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:6px;padding:3px 8px;white-space:nowrap;color:var(--text-secondary);font-variant-numeric:tabular-nums}
-.badge.q{border-left:3px solid var(--accent-blue)}
-.mutate{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:13px}
-.mutate input{width:18px;height:18px;margin-top:1px;flex-shrink:0;accent-color:var(--status-danger-ink)}
-/* Mandate card: metric strip + sufficiency pills */
-.card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
-.card-head h2{margin:0;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
-.mandate-strip{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;border-top:1px solid var(--border-subtle);padding-top:10px;margin-top:4px}
-.mandate-strip>div{padding:0 10px;text-align:center;min-width:0}
+.fallback-table .hash-chip{max-width:260px}
+.mono-scroll{overflow-x:auto;white-space:pre;font-family:var(--font-mono);font-size:11.5px;background:#101828;color:#e8eef6;border-radius:var(--radius-control);padding:8px 10px;max-width:100%}
+.btn{font-family:inherit;font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:var(--radius-control);border:1px solid var(--border-strong);background:#fff;color:var(--text-primary);cursor:pointer;display:inline-flex;align-items:center;gap:6px;justify-content:center;transition:all .15s ease}
+.btn:hover{border-color:var(--accent-purple);background:#faf8ff}
+.btn-primary{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);border-color:var(--accent-purple);color:#fff}
+.btn-primary:hover{box-shadow:0 4px 12px rgba(108,71,255,0.35)}
+.btn-ghost{border-color:transparent;color:#4b5563;background:transparent}
+.btn-ghost:hover{background:var(--bg-subtle);border-color:transparent}
+.btn-sm{padding:4px 9px;font-size:11px}
+.btn:disabled{opacity:.55;cursor:wait}
+.status-line{font-size:12px;color:var(--text-secondary);margin:4px 0}
+.mandate-strip{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;border-top:1px solid var(--border-subtle);padding-top:8px;margin-top:4px}
+.mandate-strip>div{padding:0 8px;text-align:center;min-width:0}
 .mandate-strip>div:first-child{padding-left:0;text-align:left}
 .mandate-strip>div:last-child{padding-right:0}
 .mandate-strip>div+div{border-left:1px solid var(--border-subtle)}
-.mandate-strip b{display:block;color:var(--text-primary);font-variant-numeric:tabular-nums}
-.mandate-strip .big{font-size:26px;font-weight:650;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-.mandate-strip .mid{font-size:15px;font-weight:700}
-.mandate-strip span{font-size:11.5px;color:var(--text-muted)}
-.suff-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;margin:12px 0 0;padding-top:12px;border-top:1px solid var(--border-subtle)}
-.suff{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0;font-size:11.5px;color:var(--text-secondary)}
+.mandate-strip b{display:block;color:var(--text-primary)}
+.mandate-strip .big{font-size:22px;font-weight:750}
+.mandate-strip .mid{font-size:14px;font-weight:700}
+.mandate-strip span{font-size:11px;color:var(--text-muted)}
+.mandate-editor{border-top:1px solid var(--border-subtle);margin-top:10px;padding-top:10px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.mandate-editor label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--text-secondary);font-weight:600}
+.mandate-editor input,.mandate-editor select{font:inherit;font-size:12px;padding:5px 8px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:#fff;color:var(--text-primary)}
+.mandate-editor .row-end{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#mandate-editor[hidden]{display:none}
+.suff-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin:8px 0 0;padding-top:8px;border-top:1px solid var(--border-subtle)}
+.suff{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;color:var(--text-secondary)}
 .suff b{font-weight:600;white-space:nowrap}
-.suff .pill{font-size:11px;padding:1px 8px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* Mandate status bar: integrated compact SELF → WIT → SIGN + Oracle */
-.mandate-status-bar{margin-top:10px;padding:6px 12px;background:var(--bg-muted);border:1px solid var(--border-subtle);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;min-width:0;flex-wrap:wrap}
-.rung-flow{display:inline-flex;align-items:center;gap:6px;background:transparent;border:0;padding:0;box-shadow:none;min-width:0}
-.rung-step{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--text-muted);white-space:nowrap}
-.rung-step .dot{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--status-success-solid);color:var(--status-success-solid);display:inline-flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;background:#fff}
-.rung-step.on{color:var(--text-primary)}
-#rung-sign .dot{background:var(--accent-charcoal);border-color:var(--accent-charcoal);color:#fff}
-.rung-arrow{width:10px;height:2px;background:var(--border-subtle);border-radius:2px;flex-shrink:0}
-.mandate-oracle{display:inline-flex;align-items:center;gap:6px;min-width:0;flex-shrink:1}
-.mandate-oracle b{font-size:11.5px;color:var(--text-secondary);white-space:nowrap}
-.mandate-oracle #oracle-line{font-size:11px;padding:1px 8px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.oracle-bar{display:none}
-/* Workflow Guide Bar */
-.workflow-bar{display:flex;align-items:center;gap:12px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:8px 14px;box-shadow:none;min-width:0}
-.wf-lead{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--text-secondary);white-space:nowrap;flex-shrink:0}
-.wf-pills{display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap}
-.wf-btn{font-family:inherit;font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:999px;border:1px solid var(--border-strong);background:var(--bg-subtle);color:var(--text-secondary);cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap;transition:all .15s ease}
-.wf-btn:hover{border-color:var(--accent-blue);color:var(--accent-blue);background:#fff}
-/* Controls row: checkboxes + actions */
-.controls-row{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:12px;align-items:stretch}
-.checks-card{background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:6px;justify-content:center;box-shadow:none}
-.checks-card label{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--text-primary);cursor:pointer}
-.checks-card input{width:15px;height:15px;accent-color:var(--accent-charcoal);flex-shrink:0}
-.actions-card{background:transparent;border:0;border-radius:0;padding:0;display:flex;align-items:stretch;gap:8px;box-shadow:none}
-.actions-card .btn{flex:1;min-height:38px;padding:6px 12px;font-size:12.5px;font-weight:700}
-.status-line{font-size:12.5px;color:var(--text-secondary);margin:6px 0}
-.status-line[aria-live]{min-height:18px}
-#awaiting-card{background:var(--bg-surface);border:1px solid var(--status-warn-border);border-radius:var(--radius-card);padding:12px 16px;box-shadow:var(--shadow-card)}
-#awaiting-card h3{margin-top:0}
-.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:12.5px;margin:8px 0}
-.kv dt{color:var(--text-secondary)}
-.kv dd{margin:0;min-width:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
-/* Tier D — outcome banner, transaction record, auditor */
-.tier-d{display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.1fr) minmax(0,1.1fr);gap:16px;align-items:stretch}
-.outcome-banner{border-radius:var(--radius-card);padding:16px 18px;display:flex;align-items:center;gap:14px;border:1px solid;min-width:0;box-shadow:var(--shadow-card)}
+.suff .pill{font-size:10.5px;padding:1px 6px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.outcome-banner{border-radius:var(--radius-card);padding:12px 14px;display:flex;align-items:center;gap:12px;border:1px solid;min-width:0;box-shadow:var(--shadow-card);margin-bottom:10px}
 .outcome-banner[data-state="idle"]{background:var(--bg-surface);border-color:var(--border-subtle)}
 .outcome-banner[data-state="captured"]{background:var(--status-success-bg);border-color:var(--status-success-border)}
 .outcome-banner[data-state="voided"],.outcome-banner[data-state="blocked"]{background:var(--status-danger-bg);border-color:var(--status-danger-border)}
-.outcome-banner h3{margin:0;font-size:18px;font-weight:800;color:var(--text-primary)}
-.outcome-banner p{margin:2px 0 0;font-size:12.5px;color:var(--text-secondary)}
-.outcome-icon{width:42px;height:42px;flex-shrink:0;display:block}
-.record-kv{display:grid;grid-template-columns:105px minmax(0,1fr);row-gap:6px;column-gap:10px;font-size:12.5px;margin:0;align-items:baseline}
+.outcome-banner h3{margin:0;font-size:15px;font-weight:800;color:var(--text-primary)}
+.outcome-banner p{margin:2px 0 0;font-size:11.5px;color:var(--text-secondary)}
+.outcome-icon{width:36px;height:36px;flex-shrink:0;display:block}
+.record-kv{display:grid;grid-template-columns:95px minmax(0,1fr);row-gap:5px;column-gap:8px;font-size:12px;margin:0;align-items:baseline}
 .record-kv dt{color:var(--text-secondary)}
-.record-kv dd{margin:0;min-width:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
-.auditor-card{display:flex;flex-direction:column}
-.audit-rows{display:flex;flex-direction:column;gap:6px;margin:8px 0;font-size:12px}
-.audit-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.audit-banner{background:var(--status-success-bg);border:1px solid var(--status-success-border);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px}
-.audit-banner.bad{background:var(--status-danger-bg);border-color:var(--status-danger-border)}
-.audit-banner .left{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#065f46}
-.audit-banner.bad .left{color:var(--status-danger-ink)}
-.audit-banner .right{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--status-success-ink);font-weight:700}
-details.inspect{display:inline-block;font-weight:600}
-details.inspect summary{cursor:pointer;font-size:12px;color:var(--text-secondary);text-decoration:underline;list-style:none}
-details.inspect summary::-webkit-details-marker{display:none}
-/* Auditor drawer (native details: free keyboard + screen-reader support) */
-details.drawer{border:1px solid var(--border-subtle);border-radius:10px;margin-top:12px;background:var(--bg-muted)}
-details.drawer summary{cursor:pointer;padding:12px 14px;font-weight:600;font-size:13px;list-style:none;display:flex;gap:8px;align-items:center}
+.record-kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.post-purchase{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;border-top:1px solid var(--border-subtle);padding-top:10px}
+details.drawer{border:1px solid var(--border-subtle);border-radius:10px;margin-top:10px;background:var(--bg-muted)}
+details.drawer summary{cursor:pointer;padding:10px 12px;font-weight:600;font-size:12px;list-style:none;display:flex;gap:6px;align-items:center}
 details.drawer summary::-webkit-details-marker{display:none}
-details.drawer summary::before{content:"+";font-weight:700;color:var(--accent-blue);flex-shrink:0}
+details.drawer summary::before{content:"+";font-weight:700;color:var(--accent-purple);flex-shrink:0}
 details.drawer[open] summary::before{content:"–"}
-details.drawer .drawer-body{padding:0 14px 14px;animation:vp-fade .25s ease-out}
-@keyframes vp-fade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-.check-row{display:flex;gap:8px;align-items:flex-start;margin:8px 0;font-size:13px;min-width:0}
-.check-row .pill{margin-top:1px}
-/* View 2 desk */
-.desk-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-.seg{display:inline-flex;gap:4px;background:var(--bg-subtle);padding:3px;border-radius:8px}
-.seg .btn{border:0;background:transparent;min-height:0;padding:6px 14px;font-size:13px;font-weight:600;color:var(--text-secondary);border-radius:6px}
-.seg .btn[aria-pressed="true"]{background:var(--accent-charcoal);color:#fff}
-.ag-shell{border:1px solid var(--border-subtle);border-radius:var(--radius-card);background:#fff;overflow:hidden}
+details.drawer .drawer-body{padding:0 12px 12px}
+.audit-rows{display:flex;flex-direction:column;gap:5px;margin:6px 0;font-size:11.5px}
+.audit-row{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.audit-banner{background:var(--status-success-bg);border:1px solid var(--status-success-border);border-radius:8px;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:4px}
+.audit-banner.bad{background:var(--status-danger-bg);border-color:var(--status-danger-border)}
+.audit-banner .left{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#065f46}
+.audit-banner.bad .left{color:var(--status-danger-ink)}
+.audit-banner .right{font-size:11.5px;color:var(--status-success-ink);font-weight:700}
+.check-row{display:flex;gap:6px;align-items:flex-start;margin:6px 0;font-size:12px}
+.diff-pill{display:inline-block;font-family:var(--font-mono);font-size:15px;font-weight:700;background:var(--status-danger-bg);color:var(--status-danger-ink);border:2px solid var(--status-danger-ink);border-radius:10px;padding:6px 14px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
+.wit-pill{display:inline-block;font-family:var(--font-mono);font-size:13px;font-weight:700;background:var(--status-success-bg);color:var(--status-success-ink);border:2px solid var(--status-success-ink);border-radius:10px;padding:5px 12px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
+
+/* AG Grid & View 2 Desk */
+#ag-live-disputes-grid.ag-theme-quartz,#ag-regression-benchmark-grid.ag-theme-quartz{--ag-font-family:var(--font-sans);--ag-font-size:13px;--ag-row-height:40px;--ag-header-height:42px;--ag-header-background-color:var(--bg-muted);--ag-odd-row-background-color:#fff;--ag-selected-row-background-color:#e0eaff;--ag-border-color:var(--border-subtle);--ag-header-foreground-color:var(--text-muted)}
 #ag-live-disputes-grid,#ag-regression-benchmark-grid{height:560px;width:100%}
-.fallback-table{width:100%;border-collapse:collapse;font-size:13px}
-.fallback-table th,.fallback-table td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border-subtle);vertical-align:top;white-space:nowrap}
-.fallback-table .hash-chip{max-width:260px}
 #ag-live-disputes-grid,#ag-regression-benchmark-grid{overflow-x:auto;max-width:100%}
+.fallback-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.fallback-table th,.fallback-table td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border-subtle);vertical-align:top;white-space:nowrap}
 .fallback-table th{font-size:11px;color:var(--text-muted);font-weight:600;background:var(--bg-muted)}
 .fallback-table tbody tr{cursor:pointer}
 .fallback-table tbody tr:hover{background:var(--bg-muted)}
-.fallback-table tbody tr[aria-selected="true"]{background:#e0eaff}
-.fallback-table .num{font-size:12px}
-.inspector{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr);gap:14px;margin-top:14px;align-items:start}
-.insp-col{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:14px 16px;min-width:0;box-shadow:var(--shadow-card)}
-.insp-col h2{font-size:13px}
-.match{display:inline-block;font-family:var(--font-mono);font-size:12px;font-weight:700;padding:2px 10px;border-radius:6px;font-variant-numeric:tabular-nums}
-.match.yes{background:var(--status-success-bg);color:var(--status-success-ink)}
-.match.no{background:var(--status-danger-bg);color:var(--status-danger-ink)}
-.action-stack{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-.action-stack .btn{text-align:left;justify-content:flex-start}
-.evidence-form textarea{width:100%;min-height:70px;font:inherit;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius-control);padding:8px;margin:6px 0;background:#fff;color:var(--text-primary)}
-/* Agent sidebar + charts */
-.desk-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:14px;align-items:start}
+.fallback-table tbody tr[aria-selected="true"]{background:#ede9fe}
+.desk-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.seg{display:inline-flex;gap:3px;background:var(--bg-subtle);padding:2px;border-radius:8px}
+.seg .btn{border:0;background:transparent;padding:5px 12px;font-size:12px;font-weight:600;color:var(--text-secondary);border-radius:6px}
+.seg .btn[aria-pressed="true"]{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);color:#fff}
+.ag-shell{border:1px solid var(--border-subtle);border-radius:var(--radius-card);background:#fff;overflow:hidden}
+.inspector{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr);gap:12px;margin-top:12px;align-items:start}
+.insp-col{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:12px 14px;box-shadow:var(--shadow-card)}
+.desk-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:12px;align-items:start}
 #view-desk[data-dataset="sync"] .desk-grid{grid-template-columns:minmax(0,1fr)}
-.prompt-bar{display:flex;gap:8px;margin:10px 0}
-.prompt-bar input{flex:1;min-width:0;font:inherit;font-size:13px;padding:9px 12px;border:1px solid var(--border-strong);border-radius:10px;background:#fff;color:var(--text-primary)}
-.preset-list{display:flex;flex-direction:column;gap:6px;margin:8px 0}
-.preset-list .btn{text-align:left;justify-content:flex-start;font-size:12px;white-space:normal}
+.prompt-bar{display:flex;gap:6px;margin:8px 0}
+.prompt-bar input{flex:1;min-width:0;font:inherit;font-size:12.5px;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;color:var(--text-primary)}
+.preset-list{display:flex;flex-direction:column;gap:5px;margin:6px 0}
+.preset-list .btn{text-align:left;justify-content:flex-start;font-size:11.5px;white-space:normal}
 canvas.chart{width:100%;height:220px;border:1px solid var(--border-subtle);border-radius:10px;background:#fff}
 #chart-table{overflow-x:auto;max-width:100%}
-#chart-table .matrix{width:100%;font-size:11px}
-.matrix{border-collapse:collapse;font-size:12px;margin-top:8px}
-.matrix th,.matrix td{border:1px solid var(--border-subtle);padding:6px 10px;text-align:center;font-variant-numeric:tabular-nums}
+.matrix{border-collapse:collapse;font-size:11.5px;margin-top:6px;width:100%}
+.matrix th,.matrix td{border:1px solid var(--border-subtle);padding:5px 8px;text-align:center}
 .matrix th{background:var(--bg-muted);font-weight:600}
 .cell-good{background:var(--status-success-bg);font-weight:700}
 .cell-bad{background:var(--status-danger-bg);color:var(--status-danger-ink);font-weight:700}
-/* Modal + toast */
+.match{display:inline-block;font-family:var(--font-mono);font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px}
+.match.yes{background:var(--status-success-bg);color:var(--status-success-ink)}
+.match.no{background:var(--status-danger-bg);color:var(--status-danger-ink)}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;font-size:12px;margin:6px 0}
+.kv dt{color:var(--text-secondary)}
+.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+
+/* Modals & Tour */
 .modal-back{position:fixed;inset:0;background:rgba(10,16,26,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
-.modal{background:#fff;border-radius:var(--radius-card);max-width:640px;width:100%;max-height:85vh;overflow:auto;padding:20px 22px;color:var(--text-primary)}
-.modal h2{font-size:16px}
-#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--accent-charcoal);color:#fff;font-size:13px;padding:9px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .2s ease-out;z-index:60}
+.modal{background:#fff;border-radius:var(--radius-card);max-width:640px;width:100%;max-height:85vh;overflow:auto;padding:20px;color:var(--text-primary)}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--accent-charcoal);color:#fff;font-size:12.5px;padding:8px 16px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .2s ease-out;z-index:60}
 #toast.show{opacity:1}
-/* Autopilot tour: spotlight ring + teleprompter */
-@keyframes tour-pulse{0%,100%{outline-color:#1d4e89}50%{outline-color:#8ab4f8}}
-.tour-highlight{outline:3px solid #1d4e89!important;outline-offset:3px;animation:tour-pulse 1.1s ease-in-out infinite}
-#demo-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent-charcoal);color:#fff;border-radius:12px;padding:10px 16px;display:flex;align-items:center;gap:12px;z-index:70;box-shadow:0 8px 24px rgba(16,24,40,.25);max-width:min(680px,92vw)}
+@keyframes tour-pulse{0%,100%{outline-color:#6c47ff}50%{outline-color:#c4b5fd}}
+.tour-highlight{outline:3px solid #6c47ff!important;outline-offset:3px;animation:tour-pulse 1.1s ease-in-out infinite}
+#demo-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent-charcoal);color:#fff;border-radius:12px;padding:9px 14px;display:flex;align-items:center;gap:10px;z-index:70;box-shadow:0 8px 24px rgba(16,24,40,.25);max-width:min(680px,92vw)}
 #demo-toast[hidden]{display:none}
-#demo-step{font-family:var(--font-mono);font-size:11px;font-weight:700;background:var(--accent-blue);border-radius:6px;padding:2px 8px;white-space:nowrap;flex-shrink:0}
-#demo-text{font-size:13px;font-weight:500;min-width:0}
-#demo-progress{width:90px;height:6px;background:#344054;border-radius:3px;overflow:hidden;flex-shrink:0}
-#demo-bar{display:block;height:100%;width:0;background:#3ddc97}
-#demo-stop{background:transparent;border:1px solid #475467;color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
-#demo-stop:hover{background:#253346}
-footer.app{max-width:1560px;margin:0 auto;padding:0 20px 26px;color:var(--text-muted);font-size:12px}
-/* Term diff pills: readable at video distance */
-.diff-pill{display:inline-block;font-family:var(--font-mono);font-size:15px;font-weight:700;background:var(--status-danger-bg);color:var(--status-danger-ink);border:2px solid var(--status-danger-ink);border-radius:10px;padding:6px 14px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
-.wit-pill{display:inline-block;font-family:var(--font-mono);font-size:13px;font-weight:700;background:var(--status-success-bg);color:var(--status-success-ink);border:2px solid var(--status-success-ink);border-radius:10px;padding:5px 12px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
+#demo-step{font-family:var(--font-mono);font-size:11px;font-weight:700;background:var(--accent-purple);border-radius:6px;padding:2px 7px;white-space:nowrap;flex-shrink:0}
+#demo-text{font-size:12.5px;font-weight:500;min-width:0}
+#demo-progress{width:80px;height:6px;background:#344054;border-radius:3px;overflow:hidden;flex-shrink:0}
+#demo-bar{display:block;height:100%;width:0;background:#22c55e}
+#demo-stop{background:transparent;border:1px solid #475467;color:#fff;border-radius:8px;padding:4px 10px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
+#tour-status{font-size:11px;color:var(--text-muted);font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+#tour-status:empty{display:none}
+footer.app{max-width:1560px;margin:0 auto;padding:12px 20px 24px;color:var(--text-muted);font-size:11.5px;text-align:center}
+
+/* Responsive Breakpoints */
 @media (max-width:1440px){
-.brand .tagline,.brand-tag,.brand .divider{display:none}
+.studio-stage-3col{grid-template-columns:280px minmax(0,1fr) 310px;gap:12px}
+.sidebar{width:200px}
+.app-main{padding:14px 16px 28px}
 }
-@media (max-width:1100px){
-.brand .tagline,.brand-tag,.brand .divider{display:none}
-#tour-status{display:none}
-.workflow-bar{padding:6px 10px;gap:8px}
-.wf-btn{font-size:11px;padding:3px 9px}
-.ribbon{grid-template-columns:repeat(3,minmax(0,1fr))}
-.rb-title{grid-column:1/-1;border-right:0;border-bottom:1px solid var(--border-subtle);padding:0 0 8px}
-.rb-connector{display:none}
-.split{gap:12px}
-.card{padding:12px 14px}
-.oracle-bar .left .sep,.oracle-bar .left span:last-child{display:none}
-.controls-row{grid-template-columns:minmax(0,1fr)}
-.tier-d{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-#checkout-outcome-banner{grid-column:1/-1}
-.mandate-strip .big{font-size:20px}
-.mandate-strip .mid{font-size:14px}
+@media (max-width:1180px){
+.app-layout{flex-direction:column}
+.sidebar{width:100%;height:auto;position:relative;border-right:0;border-bottom:1px solid var(--border-subtle);padding:10px 16px}
+.sidebar-top{flex-direction:row;align-items:center;justify-content:space-between}
+.sidebar-brand{border-bottom:0;padding:0}
+.sidebar-nav{flex-direction:row;margin:0;overflow-x:auto}
+.sidebar-nav-item{white-space:nowrap;padding:7px 10px}
+.sidebar-bottom{display:none}
+.studio-stage-3col{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.approval-card{grid-column:1/-1}
 }
 @media (max-width:960px){
-body{overflow-x:hidden}
-.topbar{height:auto;flex-wrap:wrap;padding:10px 16px;row-gap:8px}
-.view-switch{margin:0}
-#tour-status{max-width:none}
-.wf-pills{gap:6px}
-.wf-btn{white-space:normal;text-align:left}
-main{padding:10px 12px 20px}
-.split,.desk-grid,.inspector,.tier-d{grid-template-columns:minmax(0,1fr)}
-.ribbon{grid-template-columns:minmax(0,1fr)}
-.rb-title{border-right:0;border-bottom:1px solid var(--border-subtle);padding:0 0 10px}
-.rb-connector{display:none}
-#checkout-outcome-banner{grid-column:auto}
-.card{max-width:100%}
-.controls-row{grid-template-columns:minmax(0,1fr)}
-.scn-grid{grid-template-columns:minmax(0,1fr)}
-.mandate-strip{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:10px}
-.mandate-editor{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-.creds-form{grid-template-columns:minmax(0,1fr)}
-.mandate-strip>div+div{border-left:0}
-.mandate-strip>div:nth-child(even){border-left:1px solid var(--border-subtle)}
-.mandate-strip>div:nth-child(3){padding-left:0;text-align:left}
+.studio-stage-3col,.desk-grid,.inspector,.trust-strip,.ribbon{grid-template-columns:minmax(0,1fr)}
+.top-row{flex-wrap:wrap}
+.top-robot-anchor{display:none}
+.prompt-bar-box{flex-wrap:wrap;border-radius:18px;padding:10px}
+.prompt-intent-input{width:100%}
+.mandate-strip{grid-template-columns:1fr 1fr}
+.mandate-editor{grid-template-columns:1fr 1fr}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
-@media print{
-body{background:#fff}
-.topbar,main,footer.app,#toast,.no-print{display:none!important}
-#sheet-modal{display:block!important;position:static}
-.modal-back{position:static;background:none;padding:0;display:block}
-.modal{max-width:none;max-height:none;border:0}
-}
+@media print{body{background:#fff}.sidebar,.topbar,footer.app,#toast,.no-print{display:none!important}}
 ${WALLET_CSS}
 </style></head>
 <body>
 <a class="skip" href="#main">Skip to workspace</a>
-<header class="topbar">
-<div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><rect x="1" y="1" width="24" height="24" rx="6" fill="#1a2332"/><path d="M7 13.2l3.2 3.2L19 8.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><h1>VeriPact</h1><span class="divider" aria-hidden="true"></span><span class="brand-tag tagline">Proving What the Merchant Promised</span></div>
-<div class="view-switch" role="group" aria-label="View switcher">
-<button type="button" id="tab-checkout" aria-pressed="true">Buyer Checkout</button>
-<button type="button" id="tab-desk" aria-pressed="false">Dispute Desk</button>
+<div class="app-layout">
+  <!-- Left Sidebar Navigation -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <div class="sidebar-brand">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <rect width="28" height="28" rx="8" fill="#6c47ff"/>
+          <path d="M14 5l7 3v6c0 4.5-3 8-7 9.5-4-1.5-7-5-7-9.5v-6l7-3z" fill="#fff" fill-opacity="0.18" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M10.5 14l2.5 2.5 5-5.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="sidebar-brand-name">VeriPact</span>
+      </div>
+      <nav class="sidebar-nav" aria-label="Main Navigation">
+        <button type="button" class="sidebar-nav-item" id="nav-home">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Home</span>
+        </button>
+        <button type="button" class="sidebar-nav-item active" id="nav-studio">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg>
+          <span>Agent Studio</span>
+        </button>
+        <button type="button" class="sidebar-nav-item" id="nav-purchases">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          <span>My Purchases</span>
+        </button>
+        <button type="button" class="sidebar-nav-item" id="nav-watchlist">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span>Watchlist</span>
+        </button>
+        <button type="button" class="sidebar-nav-item" id="nav-policies">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span>Rules &amp; Policies</span>
+        </button>
+        <button type="button" class="sidebar-nav-item" id="nav-payments">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          <span>Payments</span>
+        </button>
+        <button type="button" class="sidebar-nav-item" id="nav-activity">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>Activity Logs</span>
+        </button>
+      </nav>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="sidebar-companion-card" id="sidebar-companion-card">
+        <canvas id="sidebar-robot-canvas" width="90" height="72" aria-label="Autonomous Shopping Agent Mascot"></canvas>
+        <div class="companion-title">Your Autonomous<br>Shopping Agent</div>
+        <div class="companion-badges">
+          <span>✓ Track</span>
+          <span>✓ Monitor</span>
+          <span>✓ Verify</span>
+          <span>Buy</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main View Area -->
+  <div class="app-main">
+    <header class="topbar">
+      <div class="top-row">
+        <div>
+          <h1 class="main-title">Autonomous Shopping Agent</h1>
+          <p class="main-subtitle">Track &bull; Verify &bull; Buy at the Best Deal &mdash; Automatically</p>
+        </div>
+        <div class="top-robot-anchor">
+          <canvas id="agent-robot-3d-canvas" width="120" height="96" aria-label="Interactive 3D Robot Mascot" title="VeriPact 3D AI Robot Companion"></canvas>
+        </div>
+        <div class="top-actions">
+          <span class="status-pill status-pill-live"><span class="dot"></span> Agent Live</span>
+          <span class="wallet-pill" id="rb-partition" title="PayPal Wallet Partition"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> <span id="hdr-part-text">$53.00 Available</span></span>
+          <button type="button" id="mode-pill" class="mode-pill mode-replay" title="PayPal Sandbox connection &amp; audit ledger">Detecting mode…</button>
+          <p id="tour-status" role="status" aria-live="polite"></p>
+          <button type="button" class="btn btn-ghost" id="btn-reset" title="Re-seed replay disputes and orders"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 1.8v2.6h-2.6"/></svg>Reset Demo</button>
+          <button type="button" class="btn btn-primary" id="btn-tour">▶ Run 60s Guided Demo Tour</button>
+          <div class="view-switch" role="group" aria-label="View switcher">
+            <button type="button" id="tab-checkout" aria-pressed="true">Buyer Checkout</button>
+            <button type="button" id="tab-desk" aria-pressed="false">Dispute Desk</button>
+          </div>
+          <button type="button" class="btn-icon" aria-label="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <div class="user-avatar" title="Buyer Vault User"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        </div>
+      </div>
+
+      <!-- Full-Width Prompt & Target Bar -->
+      <div class="prompt-bar-wrap">
+        <div class="prompt-bar-box">
+          <div class="prompt-target-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+            </svg>
+          </div>
+          <input type="text" id="sniper-intent-prompt" class="prompt-intent-input" value="Buy a 27&quot; 4K IPS monitor under $300 with at least 15% discount &amp; 30-day free returns" placeholder="Describe what you want to buy, budget, return policy &amp; conditions..." aria-label="Autonomous shopping prompt">
+          <div class="prompt-target-pill">
+            <label for="sniper-target-input">Cap $</label>
+            <input id="sniper-target-input" type="number" min="1" max="10000" step="1" value="300" aria-label="Target max all-in price in USD">
+          </div>
+          <button type="button" class="btn-filter-toggle" id="btn-mandate-filter-toggle" title="Filter rules &amp; Buyer Mandate" aria-label="Open filter settings">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+              <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+              <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+            </svg>
+          </button>
+          <button type="button" class="btn btn-primary btn-run-agent" id="btn-sniper-run">
+            <span>Run Agent &#9655;</span>
+            <span class="skip">Hunt Vouchers &amp; Auto-Buy Under $300</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <nav id="workflow-guide-bar" class="workflow-bar" aria-label="Workbench workflow quick guide">
+        <div class="wf-lead"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#6c47ff" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3.5l2.5 1.5"/></svg><span>4-Step Flow:</span></div>
+        <div class="wf-pills">
+          <button type="button" class="wf-btn" id="wf-step-1"><span><b>Step 1:</b> Pair Wallet &amp; Set $350 Partition</span></button>
+          <button type="button" class="wf-btn" id="wf-step-2"><span><b>Step 2:</b> Shop Storefront or Run @veripact Deal Sniper</span></button>
+          <button type="button" class="wf-btn" id="wf-step-3"><span><b>Step 3:</b> Verify Receipt Hash in Browser</span></button>
+          <button type="button" class="wf-btn" id="wf-step-4"><span><b>Step 4:</b> Resolve Disputes &amp; Sync History</span></button>
+        </div>
+      </nav>
+
+      <nav id="pipeline-ribbon" class="ribbon" aria-label="Cryptographic evidence pipeline">
+        <div class="rb-title"><b>Evidence Pipeline</b><span>Verifiable · Tamper-proof · PayPal-anchored</span></div>
+        <div class="ribbon-step" id="rb-1"><span class="rb-num" aria-hidden="true">1</span><div style="min-width:0"><b>1. SELF — Buyer mandate locked</b><div class="rb-badges"><span class="badge" id="rb-buyer-fp" title="Ed25519 buyer key fingerprint">buyer key fp …</span><span class="badge" id="rb-ceiling">ceiling: $320.00</span></div></div></div>
+        <div class="rb-connector" id="rb-conn-1" aria-hidden="true"></div>
+        <div class="ribbon-step" id="rb-2"><span class="rb-num" aria-hidden="true">2</span><div style="min-width:0"><b>2. WIT — Independent HTTPS witness</b><div class="rb-badges"><span class="badge" id="rb-tsa">RFC 3161 …</span><span class="badge" id="rb-dom">DOM scan …</span><span class="badge" id="rb-ch3">Channel3 …</span></div></div></div>
+        <div class="rb-connector" id="rb-conn-2" aria-hidden="true"></div>
+        <div class="ribbon-step" id="rb-3"><span class="rb-num" aria-hidden="true">3</span><div style="min-width:0"><b>3. SIGN — PayPal custom_id anchor</b><div class="rb-badges"><span class="badge" id="rb-commit">VP1: …</span><span class="badge" id="rb-regate">re-gate …</span></div></div></div>
+      </nav>
+
+      <!-- View 1: 3-Column Studio Stage -->
+      <section id="view-checkout" aria-label="Buyer checkout and live receipt verifier">
+        <div class="studio-stage-3col">
+          <!-- Column 1: Active Mission -->
+          <div class="card mission-card" id="mission-card">
+            <div class="card-head">
+              <div style="display:flex;align-items:center;gap:8px">
+                <h2>Active Mission</h2>
+                <span class="status-pill status-pill-live"><span class="dot"></span> Running</span>
+              </div>
+              <div class="progress-ring-wrap" id="progress-ring-wrap">
+                <svg id="mission-progress-ring" class="progress-ring" width="44" height="44" viewBox="0 0 44 44">
+                  <circle cx="22" cy="22" r="18" fill="none" stroke="#ede9fe" stroke-width="3.5"/>
+                  <circle id="mission-progress-circle" cx="22" cy="22" r="18" fill="none" stroke="#8b5cf6" stroke-width="3.5" stroke-dasharray="113.1" stroke-dashoffset="24.88"/>
+                  <text id="mission-progress-text" x="22" y="26" text-anchor="middle" font-size="11" font-weight="700" fill="#6c47ff" transform="rotate(90 22 22)">78%</text>
+                </svg>
+              </div>
+            </div>
+            <p class="mission-subtitle">Monitor Purchase &mdash; 27&quot; 4K IPS</p>
+
+            <div class="mission-stepper" id="mission-stepper">
+              <div class="step-item done" id="step-1">
+                <div class="step-icon">✓</div>
+                <div class="step-content">
+                  <b>Understanding Request</b>
+                  <span>Parsed goal ($300 cap), NEW condition &amp; 30d returns</span>
+                </div>
+              </div>
+              <div class="step-item done" id="step-2">
+                <div class="step-icon">✓</div>
+                <div class="step-content">
+                  <b>Discovering Products</b>
+                  <span>Scanning Channel3 Catalog &amp; 6 Merchant Stores...</span>
+                </div>
+              </div>
+              <div class="step-item done" id="step-3">
+                <div class="step-icon">✓</div>
+                <div class="step-content">
+                  <b>Comparing &amp; Verifying</b>
+                  <span>13 DOM checks, promo vouchers &amp; return policies</span>
+                </div>
+              </div>
+              <div class="step-item active" id="step-4">
+                <div class="step-icon">🎯</div>
+                <div class="step-content">
+                  <b>Found Best Match</b>
+                  <span>Apex 27&quot; 4K IPS &mdash; Save $50 with PAYPAL50 ($297.00)</span>
+                </div>
+              </div>
+              <div class="step-item" id="step-5">
+                <div class="step-icon">○</div>
+                <div class="step-content">
+                  <b>Awaiting Approval</b>
+                  <span>Verified by SELF &rarr; WIT &rarr; SIGN gate</span>
+                </div>
+              </div>
+              <div class="step-item" id="step-6">
+                <div class="step-icon">🛒</div>
+                <div class="step-content">
+                  <b>Complete Purchase</b>
+                  <span>Anchored in PayPal Order custom_id (VP1:)</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mission-metrics-strip">
+              <div class="mission-metric"><b>6</b><span>Stores Scanned</span></div>
+              <div class="mission-metric"><b>14</b><span>Variants Checked</span></div>
+              <div class="mission-metric"><b>1</b><span>Best Match</span></div>
+            </div>
+
+            <!-- Expandable Sniper Trap Log -->
+            <div id="sniper-box" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-subtle)">
+              <div class="sniper-head">
+                <h3 style="margin:0 0 2px;font-size:13px">Autonomous Deal &amp; Voucher Sniper (@veripact)</h3>
+                <p style="margin:0;font-size:11px;color:var(--text-muted)">Evaluates candidate merchant listings and coupon codes against your $350.00 Partition.</p>
+              </div>
+              <div id="sniper-results" class="sniper-results" aria-live="polite">
+                <div style="padding:10px;background:var(--bg-muted);border:1px dashed var(--border-subtle);border-radius:8px;text-align:center;color:var(--text-muted);font-size:11.5px">
+                  <p style="margin:0">Click <b>Run Agent ▷</b> to evaluate 6 competing merchant listings and coupons against your $350.00 PayPal Partition.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 2: Live Agent Browser -->
+          <div class="card browser-card">
+            <div class="card-head">
+              <div style="display:flex;align-items:center;gap:8px">
+                <h2>Live Agent Browser</h2>
+                <span class="status-pill status-pill-live"><span class="dot"></span> Headless (Live)</span>
+              </div>
+              <div>
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-open-anywhere" title="Toggle @veripact Overlay in Store (Alt+V)">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  <span>@veripact Overlay</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="browser-controls-bar">
+              <div class="channel3-catalog-bar">
+                <label for="channel3-sku-select">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#6c47ff" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+                  Channel3:
+                </label>
+                <select id="channel3-sku-select">
+                  <option value="APEX-27-4K-IPS">APEX-27-4K-IPS ($279 NEW) — Apex ProView 27 4K IPS Monitor</option>
+                </select>
+              </div>
+              <div class="scn-grid" role="group" aria-label="Scenario selector">
+                <button type="button" class="scn" data-scn="normal" aria-pressed="true"><b>Scenario 1</b><span>Normal</span></button>
+                <button type="button" class="scn" data-scn="surcharge_void" aria-pressed="false"><b>Scenario 2</b><span>Surcharge (&gt;$320)</span></button>
+                <button type="button" class="scn" data-scn="adversarial_hidden_dom" aria-pressed="false"><b>Scenario 3</b><span>Injection (ADVERSARIAL)</span></button>
+              </div>
+            </div>
+
+            <div class="browser">
+              <div class="browser-chrome">
+                <span class="dots" aria-hidden="true"><i class="dot-red"></i><i class="dot-yellow"></i><i class="dot-green"></i></span>
+                <span class="browser-nav-btn">&larr;</span>
+                <span class="browser-nav-btn">&rarr;</span>
+                <span class="urlbar">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#15803d" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg>
+                  <span id="store-url">https://store.example.com/product/APEX-27-4K-IPS</span>
+                </span>
+                <span class="browser-nav-btn">&#8635;</span>
+              </div>
+              <iframe id="store-frame" class="store-frame" title="Synthetic merchant storefront" src="/store/normal" scrolling="no"></iframe>
+            </div>
+
+            <div id="agent-thinking-bar" class="agent-thinking-bar" aria-live="polite">
+              ✦ Agent Thinking... Verifying seller reputation, PAYPAL50 voucher validity, and 30-day return policy...
+            </div>
+          </div>
+
+          <!-- Column 3: Deal Analysis & Approval -->
+          <div class="card approval-card" id="approval-card">
+            <div class="card-head">
+              <h2>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                Deal Analysis &amp; Approval
+              </h2>
+              <span id="gate-badge" class="pill pill-info">Awaiting witness…</span>
+            </div>
+
+            <div class="outcome-banner" id="checkout-outcome-banner" data-state="idle">
+              <svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" stroke="#d0d5dd" stroke-width="2.5"/><path d="M15 23.5l5.5 5.5L31 18" stroke="#98a2b3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div>
+                <h3>Recommended Purchase</h3>
+                <p>Meets all your conditions and safety checks.</p>
+              </div>
+            </div>
+
+            <div class="deal-price-strip">
+              <div class="price-col">
+                <b class="price-val" id="price-final-display">$297.00</b>
+                <span class="price-lbl">Final Price</span>
+              </div>
+              <div class="price-col">
+                <b class="price-val discount" id="price-discount-display">15% Off</b>
+                <span class="price-lbl">vs $347.00</span>
+              </div>
+              <div class="price-col">
+                <span class="savings-badge" id="price-savings-display">$50.00</span>
+                <span class="price-lbl">You Save</span>
+              </div>
+            </div>
+
+            <div class="deal-verification-box">
+              <div class="deal-verif-title">Verification (WIT &bull; SIGN &bull; SELF)</div>
+              <div class="deal-verif-rows">
+                <div class="deal-verif-row">
+                  <span class="deal-verif-name" id="rung-self"><span class="check-dot">✓</span> SELF &mdash; Price &amp; Policy Check</span>
+                  <span class="deal-verif-status pill-ok">✓ Passed</span>
+                </div>
+                <div class="deal-verif-row">
+                  <span class="deal-verif-name" id="rung-wit"><span class="check-dot">✓</span> WIT &mdash; Seller &amp; Channel3 Verified</span>
+                  <span class="deal-verif-status pill-ok">✓ Passed</span>
+                </div>
+                <div class="deal-verif-row">
+                  <span class="deal-verif-name" id="rung-sign"><span class="check-dot">✓</span> SIGN &mdash; Deal Integrity &amp; Offer Validity</span>
+                  <span class="deal-verif-status pill-ok">✓ Passed</span>
+                </div>
+              </div>
+              <div class="deal-verif-meta">
+                <span id="oracle-line" class="pill pill-info">Channel3 oracle: not queried yet.</span>
+                <button type="button" class="btn btn-sm btn-ghost" id="btn-witness">Witness Page</button>
+              </div>
+              <div class="suff-grid" id="suff-pills">
+                <div class="suff"><b>Brand / Model</b><span class="pill pill-info">Awaiting witness…</span></div>
+                <div class="suff"><b>Base Price</b><span class="pill pill-info">Awaiting witness…</span></div>
+                <div class="suff"><b>Shipping &amp; Tax</b><span class="pill pill-info">Awaiting witness…</span></div>
+                <div class="suff"><b>Return Policy</b><span class="pill pill-info">Awaiting witness…</span></div>
+              </div>
+            </div>
+
+            <div class="price-trend-box">
+              <div class="trend-head">Price Trend (30 Days)</div>
+              <div class="trend-content">
+                <svg class="trend-sparkline" width="160" height="50" viewBox="0 0 160 50" aria-label="30-day price trend sparkline">
+                  <defs>
+                    <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.28"/>
+                      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.02"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M 0,20 Q 30,14 60,26 T 110,36 T 160,22 L 160,50 L 0,50 Z" fill="url(#trend-fill)"/>
+                  <path d="M 0,20 Q 30,14 60,26 T 110,36 T 160,22" fill="none" stroke="#6c47ff" stroke-width="2.2" stroke-linecap="round"/>
+                  <circle cx="160" cy="22" r="3.5" fill="#6c47ff"/>
+                </svg>
+                <div class="trend-stats">
+                  <div><b class="stat-cur">$297.00</b> <span>Current</span></div>
+                  <div><b>$347.00</b> <span>Highest</span></div>
+                  <div><b>$297.00</b> <span>Lowest</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="deal-actions-box">
+              <button type="button" class="btn btn-primary btn-checkout-main" id="btn-checkout">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                <span id="btn-checkout-label">Approve &amp; Buy Now &mdash; $297.00 (Save $50)</span>
+                <span>&rarr;</span>
+              </button>
+              <div class="checkout-toggles">
+                <label><input type="checkbox" id="reviewed-toggle" checked><span>I've reviewed the merchant terms</span></label>
+                <label><input type="checkbox" id="twostep-toggle"><span id="twostep-label"><b>Two-step approval</b> (recommended)</span></label>
+              </div>
+              <p id="checkout-status" class="status-line" aria-live="polite"></p>
+              <div id="awaiting-card" hidden></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Collapsible Drawers & Tools (Record, Auditor, Wallet, Mandate, Custom HTML) -->
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:14px">
+          <div class="card" id="checkout-result">
+            <div class="card-head"><h2><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.5 4.2L8 14.2 2.5 6 8 1.8z"/><path d="M2.5 6h11M8 1.8L5.5 6 8 14.2 10.5 6 8 1.8z" stroke-width="1.2"/></svg>Transaction Record</h2></div>
+            <dl class="record-kv">
+              <dt>Order ID</dt><dd class="mono">— (awaiting checkout)</dd>
+              <dt>Authorization</dt><dd class="mono">—</dd>
+              <dt>Capture</dt><dd class="mono">—</dd>
+              <dt>Commitment</dt><dd class="mono">—</dd>
+              <dt>PayPal Mode</dt><dd class="mono">Sandbox (Deterministic)</dd>
+            </dl>
+            <div class="post-purchase"><button type="button" class="btn" disabled>Verify it yourself ↓</button><button type="button" class="btn" disabled>Simulate Merchant Drift → File Dispute</button><button type="button" class="btn" disabled>Simulate Buyer Forgery → File Dispute</button></div>
+          </div>
+
+          <div class="card auditor-card">
+            <div class="card-head"><h2><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7.5a4 4 0 0 1 8 0v4"/><path d="M2.5 7.5a5.5 5.5 0 0 1 11 0v5"/><path d="M8 5.5v6"/><path d="M6 9.5v3M10 9.5v3"/></svg>Verify-It-Yourself (Auditor)</h2></div>
+            <p class="status-line" style="margin-top:0">Your browser recomputes the receipt hash and compares it with the PayPal order record. Nothing here trusts the server.</p>
+            <details class="drawer" id="auditor"><summary>Open the client-side auditor</summary><div class="drawer-body" id="auditor-body">
+              <p class="status-line">Run a checkout first — the auditor needs a witnessed receipt and a PayPal order.</p>
+            </div></details>
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          ${walletCardHtml()}
+        </div>
+
+        <div class="card" id="mandate-card" style="margin-top:14px">
+          <div class="card-head">
+            <h2>Buyer Mandate &amp; Sufficiency</h2>
+            <button type="button" class="btn btn-sm" id="btn-mandate-edit">Edit Mandate</button>
+          </div>
+          <div class="mandate-strip">
+            <div><b class="big" id="m-cap">$320.00</b><span>Cap (all-in)</span></div>
+            <div><b class="mid" id="m-cond">NEW</b><span>Condition</span></div>
+            <div><b class="mid" id="m-days">≥ 30 days</b><span>Return window</span></div>
+            <div><b class="mid" id="m-fee">0%</b><span>Restocking fee</span></div>
+          </div>
+          <div class="mandate-editor" id="mandate-editor" hidden>
+            <label>Cap, all-in (USD)<input id="m-in-cap" type="number" min="1" max="1000000" step="0.01" value="320"></label>
+            <label>Condition<select id="m-in-cond"><option value="NEW">NEW</option><option value="REFURBISHED">REFURBISHED</option></select></label>
+            <label>Return window (days)<select id="m-in-days"><option value="14">14</option><option value="30" selected>30</option><option value="45">45</option><option value="60">60</option></select></label>
+            <label>Restocking fee (%)<select id="m-in-fee"><option value="0" selected>0%</option><option value="10">10%</option><option value="15">15%</option><option value="25">25%</option></select></label>
+            <div class="row-end"><button type="button" class="btn btn-primary" id="btn-mandate-save">Sign &amp; Lock Mandate (SELF)</button><span class="status-line" id="mandate-status" aria-live="polite"></span></div>
+          </div>
+          <details class="drawer tech-drawer" style="margin-top:10px"><summary>Inspect extracted DOM quote blocks &amp; live HTML scanner</summary><div class="drawer-body">
+            <div id="quote-badges" class="badges" aria-live="polite"><span class="badge">Witness a scenario to pin quotes…</span></div>
+            <div class="custom-lab" id="custom-lab"><h3>Test Custom Merchant HTML / Inject Trap</h3>
+              <div class="preset-row" role="group" aria-label="Custom HTML presets"><button type="button" class="btn" id="cx-preset-apex">Apex flagship</button><button type="button" class="btn" id="cx-preset-laptop">Northloop 14 ($899)</button><button type="button" class="btn" id="cx-preset-opacity">Hidden opacity trap</button><button type="button" class="btn" id="cx-preset-inject">Prompt-injection trap</button></div>
+              <label class="skip" for="custom-html">Custom merchant HTML</label><textarea id="custom-html" spellcheck="false" placeholder="Paste merchant listing HTML here, or pick a preset…"></textarea>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" class="btn btn-primary" id="btn-custom-scan">Scan &amp; Witness Custom HTML</button><span class="status-line" id="custom-status" aria-live="polite"></span></div>
+              <div id="custom-result" aria-live="polite"></div>
+            </div>
+            <label class="mutate"><input type="checkbox" id="mutate-toggle"><span><b>Post-purchase policy mutation preview.</b> Shows what a drifted policy (14-day returns, 25% restocking fee) would look like next to the witnessed terms.</span></label>
+            <div id="mutate-panel" hidden><dl class="kv">
+              <dt>Witnessed</dt><dd><span class="pill pill-ok">30-day free returns · 0% fee</span></dd>
+              <dt>Mutated listing</dt><dd><span class="pill pill-bad">14-day returns · 25% fee</span></dd>
+              <dt>Effect</dt><dd>Receipt hash would no longer match the PayPal order custom_id → MERCHANT_DRIFT_CONFIRMED.</dd>
+            </dl></div>
+          </div></details>
+        </div>
+
+        <!-- Bottom 3-Card Trust Strip -->
+        <div class="trust-strip">
+          <div class="trust-card">
+            <div class="trust-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+            <div class="trust-content"><b>Secure Purchase</b><span>Your money, your control</span></div>
+          </div>
+          <div class="trust-card">
+            <div class="trust-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+            <div class="trust-content"><b>Best Deal Guarantee</b><span>Buys only when conditions match</span></div>
+          </div>
+          <div class="trust-card">
+            <div class="trust-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+            <div class="trust-content"><b>Auto Records</b><span>Invoice, warranty &amp; proof saved</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- View 2: Dispute Desk -->
+      <section id="view-desk" hidden data-dataset="live" aria-label="Contested dispute verifier desk">
+        <div class="desk-grid">
+          <div>
+            <div class="card">
+              <h2>Contested dispute verifier desk</h2>
+              <div class="desk-tools" role="group" aria-label="Dataset toggle">
+                <span class="seg"><button type="button" class="btn" id="ds-live" aria-pressed="true">Live contested disputes (Case B &amp; Case A)</button><button type="button" class="btn" id="ds-regression" aria-pressed="false">24-scenario regression suite (72 runs, Wilson 95% CIs)</button><button type="button" class="btn" id="ds-sync" aria-pressed="false">Payment Sync (Legacy vs Protected)</button></span>
+                <span id="grid-engine" class="pill pill-info">Grid engine: detecting…</span>
+                <button type="button" class="btn" id="grid-csv" title="Export the visible grid to CSV (AG Grid engine)">Export CSV</button>
+              </div>
+              <div class="ag-shell"><div id="ag-live-disputes-grid" class="ag-theme-quartz" role="grid" aria-label="Live contested disputes grid"></div></div>
+              <div class="ag-shell" id="regression-shell" hidden><div id="ag-regression-benchmark-grid" class="ag-theme-quartz" role="grid" aria-label="Regression benchmark grid"></div></div>
+              ${syncShellHtml()}
+              <div id="matrix-wrap"></div>
+            </div>
+            <div class="inspector" id="inspector" data-widget="ContestedClaimInspectorWidget" aria-label="Contested claim inspector">
+              <div class="insp-col" id="insp-buyer"><h2>Column 1 — Buyer claim &amp; submitted receipt</h2><p class="status-line">Loading dispute data…</p></div>
+              <div class="insp-col" id="insp-witness"><h2>Column 2 — Witness provenance &amp; order anchor</h2><p class="status-line">Loading dispute data…</p></div>
+              <div class="insp-col" id="insp-seller"><h2>Column 3 — Seller counter-claim &amp; PayPal actions</h2><p class="status-line">Loading dispute data…</p></div>
+            </div>
+          </div>
+          <div class="card" id="studio-card">
+            <h2>Deterministic studio agent</h2>
+            <p class="status-line">One prompt → one filter → one chart. Same output every run; no generative calls.</p>
+            <div class="prompt-bar"><label class="skip" for="prompt-input">Analytical query</label><input id="prompt-input" name="prompt" autocomplete="off" spellcheck="false" placeholder="Ask about disputes or the regression suite…"><button type="button" class="btn btn-primary" id="prompt-run">Run</button></div>
+            <div class="preset-list" id="preset-list"></div>
+            <canvas class="chart" id="agent-chart" width="520" height="220" role="img" aria-label="Analytical chart"></canvas>
+            <div id="chart-table"></div>
+          </div>
+        </div>
+        ${connectorsRowHtml()}
+      </section>
+    </main>
+
+    <footer class="app">VeriPact Workbench · Every number on this page renders from live API data · Timestamps prove hash existence at time T plus witness observation — never content truth.</footer>
+  </div>
 </div>
-<div class="top-actions hdr-right">
-<button type="button" id="mode-pill" class="mode-pill mode-replay" title="PayPal Sandbox connection &amp; audit ledger">Detecting mode…</button>
-<p id="tour-status" role="status" aria-live="polite"></p>
-<button type="button" class="btn btn-ghost" id="btn-reset" title="Re-seed replay disputes and orders"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 1.8v2.6h-2.6"/></svg>Reset Demo</button>
-<button type="button" class="btn btn-primary" id="btn-tour">▶ Run 60s Guided Demo Tour</button>
-</div>
-</header>
-<main id="main">
-<nav id="workflow-guide-bar" class="workflow-bar" aria-label="Workbench workflow quick guide">
-<div class="wf-lead"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#1d4e89" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3.5l2.5 1.5"/></svg><span>4-Step Flow:</span></div>
-<div class="wf-pills">
-<button type="button" class="wf-btn" id="wf-step-1"><span><b>Step 1:</b> Pair Wallet &amp; Set $350 Partition</span></button>
-<button type="button" class="wf-btn" id="wf-step-2"><span><b>Step 2:</b> Shop Storefront or Run @veripact Deal Sniper</span></button>
-<button type="button" class="wf-btn" id="wf-step-3"><span><b>Step 3:</b> Verify Receipt Hash in Browser</span></button>
-<button type="button" class="wf-btn" id="wf-step-4"><span><b>Step 4:</b> Resolve Disputes &amp; Sync History</span></button>
-</div>
-</nav>
-<nav id="pipeline-ribbon" class="ribbon" aria-label="Cryptographic evidence pipeline">
-<div class="rb-title"><b>Evidence Pipeline</b><span>Verifiable · Tamper-proof · PayPal-anchored</span><span class="pill pill-info" id="rb-partition">Wallet Partition: $350.00 cap &middot; $350.00 avail</span></div>
-<div class="ribbon-step" id="rb-1"><span class="rb-num" aria-hidden="true">1</span><div style="min-width:0"><b>1. SELF — Buyer mandate locked</b><div class="rb-badges"><span class="badge" id="rb-buyer-fp" title="Ed25519 buyer key fingerprint">buyer key fp …</span><span class="badge" id="rb-ceiling">ceiling: $320.00</span></div></div></div>
-<div class="rb-connector" id="rb-conn-1" aria-hidden="true"></div>
-<div class="ribbon-step" id="rb-2"><span class="rb-num" aria-hidden="true">2</span><div style="min-width:0"><b>2. WIT — Independent HTTPS witness</b><div class="rb-badges"><span class="badge" id="rb-tsa">RFC 3161 …</span><span class="badge" id="rb-dom">DOM scan …</span><span class="badge" id="rb-ch3">Channel3 …</span></div></div></div>
-<div class="rb-connector" id="rb-conn-2" aria-hidden="true"></div>
-<div class="ribbon-step" id="rb-3"><span class="rb-num" aria-hidden="true">3</span><div style="min-width:0"><b>3. SIGN — PayPal custom_id anchor</b><div class="rb-badges"><span class="badge" id="rb-commit">VP1: …</span><span class="badge" id="rb-regate">re-gate …</span></div></div></div>
-</nav>
-<section id="view-checkout" aria-label="Buyer checkout and live receipt verifier">
-<div class="split">
-<div class="card">
-<h2>Select Scenario</h2>
-<div class="scn-grid" role="group" aria-label="Scenario selector">
-<button type="button" class="scn" data-scn="normal" aria-pressed="true"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M5.6 8.2l1.7 1.7 3.1-3.6"/></svg><b>Scenario 1</b><span>Normal checkout</span></button>
-<button type="button" class="scn" data-scn="surcharge_void" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l6 3-6 3-6-3 6-3z"/><path d="M2.5 8.2L8 10.8l5.5-2.6"/><path d="M2.5 11.2L8 13.8l5.5-2.6"/></svg><b>Scenario 2</b><span>Surcharge (&gt;$320)</span></button>
-<button type="button" class="scn" data-scn="adversarial_hidden_dom" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4L2.5 8 6 12"/><path d="M10 4l3.5 4L10 12"/></svg><b>Scenario 3</b><span>Injection (ADVERSARIAL)</span></button>
-</div>
-<div class="channel3-catalog-bar">
-<label for="channel3-sku-select">
-<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--accent-blue)" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
-Channel3 Catalog:
-</label>
-<select id="channel3-sku-select">
-<option value="APEX-27-4K-IPS">APEX-27-4K-IPS ($279 NEW) — Apex ProView 27 4K IPS Monitor</option>
-</select>
-</div>
-<div class="browser">
-<div class="browser-chrome"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="urlbar"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#0f6e56" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg><span id="store-url">https://store.example.com/product/APEX-27-4K-IPS</span></span></div>
-<iframe id="store-frame" class="store-frame" title="Synthetic merchant storefront" src="/store/normal" scrolling="no"></iframe>
-</div>
-<details class="drawer tech-drawer"><summary>Inspect extracted DOM quote blocks &amp; live HTML scanner</summary><div class="drawer-body">
-<div id="quote-badges" class="badges" aria-live="polite"><span class="badge">Witness a scenario to pin quotes…</span></div>
-<div class="custom-lab"><h3>Test Custom Merchant HTML / Inject Trap</h3>
-<div class="preset-row" role="group" aria-label="Custom HTML presets"><button type="button" class="btn" id="cx-preset-apex">Apex flagship</button><button type="button" class="btn" id="cx-preset-laptop">Northloop 14 ($899)</button><button type="button" class="btn" id="cx-preset-opacity">Hidden opacity trap</button><button type="button" class="btn" id="cx-preset-inject">Prompt-injection trap</button></div>
-<label class="skip" for="custom-html">Custom merchant HTML</label><textarea id="custom-html" spellcheck="false" placeholder="Paste merchant listing HTML here, or pick a preset…"></textarea>
-<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" class="btn btn-primary" id="btn-custom-scan">Scan &amp; Witness Custom HTML</button><span class="status-line" id="custom-status" aria-live="polite"></span></div>
-<div id="custom-result" aria-live="polite"></div>
-</div>
-<label class="mutate"><input type="checkbox" id="mutate-toggle"><span><b>Post-purchase policy mutation preview.</b> Shows what a drifted policy (14-day returns, 25% restocking fee) would look like next to the witnessed terms. Illustrative only — re-run checkout to witness current terms.</span></label>
-<div id="mutate-panel" hidden><dl class="kv">
-<dt>Witnessed</dt><dd><span class="pill pill-ok">30-day free returns · 0% fee</span></dd>
-<dt>Mutated listing</dt><dd><span class="pill pill-bad">14-day returns · 25% fee</span></dd>
-<dt>Effect</dt><dd>Receipt hash would no longer match the PayPal order custom_id → MERCHANT_DRIFT_CONFIRMED. See the drift case on the Dispute Desk.</dd>
-</dl></div>
-</div></details>
-</div>
-<div class="stack">
-<div class="card">
-<div class="card-head"><h2><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5 1.8v3.6c0 3.2-2.1 5.4-5 6.8-2.9-1.4-5-3.6-5-6.8V3.6l5-1.8z"/><path d="M5.8 8l1.6 1.6 2.8-3.2"/></svg>Buyer Mandate &amp; Sufficiency</h2><span style="display:flex;gap:8px;align-items:center"><span id="gate-badge" class="pill pill-info">Awaiting witness…</span><button type="button" class="btn" id="btn-mandate-edit" style="min-height:32px;padding:5px 12px;font-size:12px">Edit Mandate</button></span></div>
-<div class="mandate-strip">
-<div><b class="big" id="m-cap">$320.00</b><span>Cap (all-in)</span></div>
-<div><b class="mid" id="m-cond">NEW</b><span>Condition</span></div>
-<div><b class="mid" id="m-days">≥ 30 days</b><span>Return window</span></div>
-<div><b class="mid" id="m-fee">0%</b><span>Restocking fee</span></div>
-</div>
-<div class="mandate-editor" id="mandate-editor" hidden>
-<label>Cap, all-in (USD)<input id="m-in-cap" type="number" min="1" max="1000000" step="0.01" value="320"></label>
-<label>Condition<select id="m-in-cond"><option value="NEW">NEW</option><option value="REFURBISHED">REFURBISHED</option></select></label>
-<label>Return window (days)<select id="m-in-days"><option value="14">14</option><option value="30" selected>30</option><option value="45">45</option><option value="60">60</option></select></label>
-<label>Restocking fee (%)<select id="m-in-fee"><option value="0" selected>0%</option><option value="10">10%</option><option value="15">15%</option><option value="25">25%</option></select></label>
-<div class="row-end"><button type="button" class="btn btn-primary" id="btn-mandate-save">Sign &amp; Lock Mandate (SELF)</button><span class="status-line" id="mandate-status" aria-live="polite"></span></div>
-</div>
-<div class="suff-grid" id="suff-pills">
-<div class="suff"><b>Brand / Model</b><span class="pill pill-info">Awaiting witness…</span></div>
-<div class="suff"><b>Base Price</b><span class="pill pill-info">Awaiting witness…</span></div>
-<div class="suff"><b>Shipping &amp; Tax</b><span class="pill pill-info">Awaiting witness…</span></div>
-<div class="suff"><b>Return Policy</b><span class="pill pill-info">Awaiting witness…</span></div>
-</div>
-<div class="mandate-status-bar">
-<div class="rung-flow" aria-label="Evidence rung progress"><span class="rung-step on" id="rung-self"><span class="dot" aria-hidden="true">✓</span><span>SELF</span></span><span class="rung-arrow" aria-hidden="true"></span><span class="rung-step" id="rung-wit"><span class="dot" aria-hidden="true">✓</span><span>WIT</span></span><span class="rung-arrow" aria-hidden="true"></span><span class="rung-step" id="rung-sign"><span class="dot" aria-hidden="true">◎</span><span>SIGN</span></span></div>
-<div class="mandate-oracle"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 8h2.6l1.4-3.5 2.4 7 1.6-4.5 1 1H14.5"/></svg><b>Oracle:</b><span id="oracle-line" class="pill pill-info">Channel3 oracle: not queried yet.</span></div>
-</div>
-</div>
-<div class="controls-row">
-<div class="checks-card">
-<label><input type="checkbox" id="reviewed-toggle" checked><span>I've reviewed the merchant terms</span></label>
-<label><input type="checkbox" id="twostep-toggle"><span id="twostep-label"><b>Two-step approval</b> (recommended)</span></label>
-</div>
-<div class="actions-card">
-<button type="button" class="btn" id="btn-witness"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.8" y="4.5" width="12.4" height="8.5" rx="2"/><circle cx="8" cy="8.7" r="2.4"/><path d="M5.5 4.5l1-2h3l1 2"/></svg>Witness Page</button>
-<button type="button" class="btn btn-primary" id="btn-checkout"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><text x="8" y="12.5" text-anchor="middle" font-size="12" font-weight="800" fill="currentColor" font-family="Inter,system-ui,sans-serif">P</text></svg><span id="btn-checkout-label">Authorize with PayPal</span></button>
-</div>
-</div>
-<p id="checkout-status" class="status-line" aria-live="polite"></p>
-<div id="awaiting-card" hidden></div>
-</div>
-</div>
-<div class="tier-d">
-<div class="outcome-banner" id="checkout-outcome-banner" data-state="idle"><svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" stroke="#d0d5dd" stroke-width="2.5"/><path d="M15 23.5l5.5 5.5L31 18" stroke="#98a2b3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><h3>Awaiting checkout</h3><p>Run a witness pass, then authorize with PayPal.</p></div></div>
-<div class="card" id="checkout-result">
-<div class="card-head"><h2><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.5 4.2L8 14.2 2.5 6 8 1.8z"/><path d="M2.5 6h11M8 1.8L5.5 6 8 14.2 10.5 6 8 1.8z" stroke-width="1.2"/></svg>Transaction Record</h2></div>
-<dl class="record-kv">
-<dt>Order ID</dt><dd class="mono">— (awaiting checkout)</dd>
-<dt>Authorization</dt><dd class="mono">—</dd>
-<dt>Capture</dt><dd class="mono">—</dd>
-<dt>Commitment</dt><dd class="mono">—</dd>
-<dt>PayPal Mode</dt><dd class="mono">Sandbox (Deterministic)</dd>
-</dl>
-<div class="post-purchase"><button type="button" class="btn" disabled>Verify it yourself ↓</button><button type="button" class="btn" disabled>Simulate Merchant Drift → File Dispute</button><button type="button" class="btn" disabled>Simulate Buyer Forgery → File Dispute</button></div>
-</div>
-<div class="card auditor-card">
-<div class="card-head"><h2><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7.5a4 4 0 0 1 8 0v4"/><path d="M2.5 7.5a5.5 5.5 0 0 1 11 0v5"/><path d="M8 5.5v6"/><path d="M6 9.5v3M10 9.5v3"/></svg>Verify-It-Yourself (Auditor)</h2></div>
-<p class="status-line" style="margin-top:0">Your browser recomputes the receipt hash and compares it with the PayPal order record. Nothing here trusts the server.</p>
-<details class="drawer" id="auditor"><summary>Open the client-side auditor</summary><div class="drawer-body" id="auditor-body">
-<p class="status-line">Run a checkout first — the auditor needs a witnessed receipt and a PayPal order.</p>
-</div></details>
-</div>
-</div>
-${walletCardHtml()}
-</section>
-<section id="view-desk" hidden data-dataset="live" aria-label="Contested dispute verifier desk">
-<div class="desk-grid">
-<div>
-<div class="card">
-<h2>Contested dispute verifier desk</h2>
-<div class="desk-tools" role="group" aria-label="Dataset toggle">
-<span class="seg"><button type="button" class="btn" id="ds-live" aria-pressed="true">Live contested disputes (Case B &amp; Case A)</button><button type="button" class="btn" id="ds-regression" aria-pressed="false">24-scenario regression suite (72 runs, Wilson 95% CIs)</button><button type="button" class="btn" id="ds-sync" aria-pressed="false">Payment Sync (Legacy vs Protected)</button></span>
-<span id="grid-engine" class="pill pill-info">Grid engine: detecting…</span>
-<button type="button" class="btn" id="grid-csv" title="Export the visible grid to CSV (AG Grid engine)">Export CSV</button>
-</div>
-<div class="ag-shell"><div id="ag-live-disputes-grid" class="ag-theme-quartz" role="grid" aria-label="Live contested disputes grid"></div></div>
-<div class="ag-shell" id="regression-shell" hidden><div id="ag-regression-benchmark-grid" class="ag-theme-quartz" role="grid" aria-label="Regression benchmark grid"></div></div>
-${syncShellHtml()}
-<div id="matrix-wrap"></div>
-</div>
-<div class="inspector" id="inspector" data-widget="ContestedClaimInspectorWidget" aria-label="Contested claim inspector">
-<div class="insp-col" id="insp-buyer"><h2>Column 1 — Buyer claim &amp; submitted receipt</h2><p class="status-line">Loading dispute data…</p></div>
-<div class="insp-col" id="insp-witness"><h2>Column 2 — Witness provenance &amp; order anchor</h2><p class="status-line">Loading dispute data…</p></div>
-<div class="insp-col" id="insp-seller"><h2>Column 3 — Seller counter-claim &amp; PayPal actions</h2><p class="status-line">Loading dispute data…</p></div>
-</div>
-</div>
-<div class="card" id="studio-card">
-<h2>Deterministic studio agent</h2>
-<p class="status-line">One prompt → one filter → one chart. Same output every run; no generative calls.</p>
-<div class="prompt-bar"><label class="skip" for="prompt-input">Analytical query</label><input id="prompt-input" name="prompt" autocomplete="off" spellcheck="false" placeholder="Ask about disputes or the regression suite…"><button type="button" class="btn btn-primary" id="prompt-run">Run</button></div>
-<div class="preset-list" id="preset-list"></div>
-<canvas class="chart" id="agent-chart" width="520" height="220" role="img" aria-label="Analytical chart"></canvas>
-<div id="chart-table"></div>
-</div>
-</div>
-${connectorsRowHtml()}
-</section>
-</main>
-<footer class="app">VeriPact Workbench · Every number on this page renders from live API data · Timestamps prove hash existence at time T plus witness observation — never content truth.</footer>
+
 <div id="sheet-modal" hidden><div class="modal-back"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
 <h2 id="sheet-title">Printable evidence sheet</h2>
 <div id="sheet-body"></div>
 <div class="no-print" style="display:flex;gap:8px;margin-top:14px"><button type="button" class="btn btn-primary" id="sheet-print">Print</button><button type="button" class="btn" id="sheet-close">Close</button></div>
 </div></div></div>
+
 <div id="creds-modal" hidden><div class="modal-back"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="creds-title">
 <h2 id="creds-title">PayPal Sandbox Connection &amp; Audit Ledger</h2>
 <p class="status-line" style="margin-top:0">Paste sandbox REST credentials to go live (saved to <span class="mono">.env</span>, OAuth-verified immediately). Invalid or unreachable credentials fall back to deterministic replay — never a dead page.</p>
-<div class="creds-form">
-<label>Sandbox Client ID<input id="pp-client-id" type="password" autocomplete="off" spellcheck="false" placeholder="Paste sandbox client ID"></label>
-<label>Sandbox Client Secret<input id="pp-client-secret" type="password" autocomplete="off" spellcheck="false" placeholder="Paste sandbox client secret"></label>
+<div class="creds-form" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0">
+<label style="display:flex;flex-direction:column;gap:3px;font-size:12px">Sandbox Client ID<input id="pp-client-id" type="password" autocomplete="off" spellcheck="false" placeholder="Paste sandbox client ID" style="padding:6px;border:1px solid #ccc;border-radius:6px"></label>
+<label style="display:flex;flex-direction:column;gap:3px;font-size:12px">Sandbox Client Secret<input id="pp-client-secret" type="password" autocomplete="off" spellcheck="false" placeholder="Paste sandbox client secret" style="padding:6px;border:1px solid #ccc;border-radius:6px"></label>
 </div>
-<div class="creds-actions"><button type="button" class="btn btn-primary" id="btn-creds-save">Save &amp; Verify Live</button><button type="button" class="btn" id="btn-creds-replay">Use Replay Instead</button><button type="button" class="btn btn-ghost" id="btn-creds-close">Close</button><span class="status-line" id="creds-status" aria-live="polite"></span></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" class="btn btn-primary" id="btn-creds-save">Save &amp; Verify Live</button><button type="button" class="btn" id="btn-creds-replay">Use Replay Instead</button><button type="button" class="btn btn-ghost" id="btn-creds-close">Close</button><span class="status-line" id="creds-status" aria-live="polite"></span></div>
 <h3>Cryptographic clearing ledger (this session)</h3>
-<ul class="ledger-list" id="ledger-list"><li><span class="sum">Loading ledger…</span></li></ul>
-<div class="creds-actions"><button type="button" class="btn" id="btn-ledger-download">Download Signed Ledger (.json)</button></div>
+<ul class="ledger-list" id="ledger-list" style="list-style:none;margin:10px 0;padding:0;max-height:220px;overflow:auto;border:1px solid var(--border-subtle);border-radius:10px;font-size:12px"><li><span class="sum">Loading ledger…</span></li></ul>
+<div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="btn" id="btn-ledger-download">Download Signed Ledger (.json)</button></div>
 </div></div></div>
+
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="demo-toast" hidden role="status" aria-live="polite"><span id="demo-step">STEP 1 / 7</span><span id="demo-text">Starting the guided tour…</span><span id="demo-progress" aria-hidden="true"><i id="demo-bar"></i></span><button type="button" id="demo-stop">Stop Tour</button></div>
 <script src="/vendor/ag-grid-community.min.js" defer></script>
@@ -607,7 +912,7 @@ var o=s.oracleResult||{};$('rb-ch3').textContent=(o.matched?'✓ ':'✗ ')+(o.pr
 function ribbonFillCheckout(r){var box=$('rb-3');if(r.outcome==='BLOCKED_PRE_CHECKOUT'){ribbonTo(2,true);$('rb-regate').textContent='re-gate BLOCKED pre-checkout';if(box)box.dataset.state='blocked';return;}
 ribbonTo(3,false);var c=r.snapshot.commitment;$('rb-commit').textContent=c.slice(0,16)+'…';$('rb-commit').title='PayPal purchase_units[0].custom_id = '+c;
 $('rb-regate').textContent='$'+Number(r.finalTotalUsd).toFixed(2)+' '+(r.outcome==='CAPTURED'?'CAPTURED':'AUTO-VOIDED');if(box)box.dataset.state=r.outcome==='CAPTURED'?'captured':'voided';}
-function showView(which){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');if(!c){ensureDesk().catch(function(){});}}
+function showView(which){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');var navStudio=$('nav-studio'),navActivity=$('nav-activity');if(c&&navStudio){var all=document.querySelectorAll('.sidebar-nav-item');for(var i=0;i<all.length;i++)all[i].classList.remove('active');navStudio.classList.add('active');}else if(!c&&navActivity){var all2=document.querySelectorAll('.sidebar-nav-item');for(var j=0;j<all2.length;j++)all2[j].classList.remove('active');navActivity.classList.add('active');}if(!c){ensureDesk().catch(function(){});}}
 function setView(which){showView(which);}
 function resetDemo(){return api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;state.mandate=null;state.sku='APEX-27-4K-IPS';var sel=$('channel3-sku-select');if(sel)sel.value='APEX-27-4K-IPS';updateSpendBtnLabel();resetWalletUi();resetSniperUi();resetOutcomeBanner();resetTransactionRecord();refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);throw e;});}
 $('tab-checkout').addEventListener('click',function(){showView('checkout');});
@@ -623,7 +928,7 @@ if(s4)s4.addEventListener('click',function(){showView('desk');var d=$('view-desk
 wireWorkflowGuide();
 /* ---------- view 1 ---------- */
 var scnBtns=Array.prototype.slice.call(document.querySelectorAll('[data-scn]'));
-function resetOutcomeBanner(){var b=$('checkout-outcome-banner');if(!b)return;b.dataset.state='idle';b.innerHTML=ICON_IDLE+'<div><h3>Awaiting checkout</h3><p>Run a witness pass, then authorize with PayPal.</p></div>';}
+function resetOutcomeBanner(){var b=$('checkout-outcome-banner');if(!b)return;b.dataset.state='idle';b.innerHTML=ICON_IDLE+'<div><h3>Recommended Purchase</h3><p>Meets all your conditions and safety checks.</p></div>';var tb=$('agent-thinking-bar');if(tb)tb.textContent='✦ Agent Thinking... Verifying seller reputation, PAYPAL50 voucher validity, and 30-day return policy...';var ring=$('mission-progress-circle');if(ring)ring.setAttribute('stroke-dashoffset','24.88');var ringTxt=$('mission-progress-text');if(ringTxt)ringTxt.textContent='78%';}
 function resetTransactionRecord(){var rEl=$('checkout-result');if(!rEl)return;var modeStr=state.hasPaypalCredentials?'Live PayPal Sandbox':'Sandbox (Deterministic)';var html='<div class="card-head"><h2>'+DIAMOND_SVG+'Transaction Record</h2></div><dl class="record-kv"><dt>Order ID</dt><dd class="mono">— (awaiting checkout)</dd><dt>Authorization</dt><dd class="mono">—</dd><dt>Capture</dt><dd class="mono">—</dd><dt>Commitment</dt><dd class="mono">—</dd><dt>PayPal Mode</dt><dd class="mono">'+esc(modeStr)+'</dd></dl><div class="post-purchase"><button type="button" class="btn" disabled>Verify it yourself ↓</button><button type="button" class="btn" disabled>Simulate Merchant Drift → File Dispute</button><button type="button" class="btn" disabled>Simulate Buyer Forgery → File Dispute</button></div>';rEl.innerHTML=html;}
 function selectScenario(scn){state.scenario=scn;scnBtns.forEach(function(x){x.setAttribute('aria-pressed',x.getAttribute('data-scn')===scn?'true':'false');});var sku=state.sku||'APEX-27-4K-IPS';$('store-frame').src='/store/'+scn+'?sku='+encodeURIComponent(sku);var su=$('store-url');if(su)su.textContent='https://store.example.com/product/'+sku+(scn==='normal'?'':'/'+scn);resetTransactionRecord();$('awaiting-card').hidden=true;$('checkout-status').textContent='';resetOutcomeBanner();}
 scnBtns.forEach(function(b){b.addEventListener('click',function(){selectScenario(b.getAttribute('data-scn'));});});
@@ -711,9 +1016,9 @@ function renderCheckoutDone(r){state.checkout=r;state.verify=null;if(r.outcome!=
 oracleLine(r.snapshot.oracleResult);
 $('quote-badges').innerHTML=badgeHtml(r.snapshot);
 var banner=$('checkout-outcome-banner');var total='$'+Number(r.finalTotalUsd).toFixed(2);
-if(r.outcome==='CAPTURED'){banner.dataset.state='captured';banner.innerHTML=ICON_OK+'<div><h3>Purchase Captured</h3><p>Order completed and anchored to PayPal · '+total+'</p></div>';}
-else if(r.outcome==='AUTO_VOIDED'){banner.dataset.state='voided';banner.innerHTML=ICON_BAD+'<div><h3>Authorization Auto-Voided</h3><p>'+total+' exceeded $320.00 cap · $0 captured</p></div>';}
-else{banner.dataset.state='blocked';banner.innerHTML=ICON_BAD+'<div><h3>Blocked Pre-Checkout</h3><p>ADVERSARIAL_DOM detected · 0 PayPal API calls</p></div>';}
+if(r.outcome==='CAPTURED'){banner.dataset.state='captured';banner.innerHTML=ICON_OK+'<div><h3>Purchase Captured</h3><p>Order completed and anchored to PayPal · '+total+'</p></div>';var tb=$('agent-thinking-bar');if(tb)tb.textContent='✦ Deal Verified! Locked VP1 commitment hash and captured '+total+' via PayPal Partition.';var ring=$('mission-progress-circle');if(ring)ring.setAttribute('stroke-dashoffset','0');var ringTxt=$('mission-progress-text');if(ringTxt)ringTxt.textContent='100%';if(typeof window.setRobotState==='function')window.setRobotState('celebrate');}
+else if(r.outcome==='AUTO_VOIDED'){banner.dataset.state='voided';banner.innerHTML=ICON_BAD+'<div><h3>Authorization Auto-Voided</h3><p>'+total+' exceeded $320.00 cap · $0 captured</p></div>';var tb=$('agent-thinking-bar');if(tb)tb.textContent='✦ Protection Wall Engaged! Total '+total+' exceeded $320.00 cap — Authorization Auto-Voided ($0 captured).';if(typeof window.setRobotState==='function')window.setRobotState('blocked');}
+else{banner.dataset.state='blocked';banner.innerHTML=ICON_BAD+'<div><h3>Blocked Pre-Checkout</h3><p>ADVERSARIAL_DOM detected · 0 PayPal API calls</p></div>';var tb=$('agent-thinking-bar');if(tb)tb.textContent='✦ Adversarial Trap Detected! Injection blocked pre-checkout via 3-Rung gate (0 PayPal API calls).';if(typeof window.setRobotState==='function')window.setRobotState('blocked');}
 var html='<div class="card-head"><h2>'+DIAMOND_SVG+'Transaction Record</h2></div><dl class="record-kv">';
 if(r.orderId)html+='<dt>Order ID</dt><dd class="mono">'+esc(r.orderId)+'</dd>';
 else html+='<dt>Order ID</dt><dd class="mono">— (none created)</dd>';
@@ -1161,7 +1466,7 @@ function updateSniperBtnLabel(){
   var btn=$('btn-sniper-run');
   if(!btn)return;
   var val=inp?(parseInt(inp.value,10)||300):300;
-  btn.innerHTML='&#127919; Hunt Vouchers &amp; Auto-Buy Under $'+val;
+  btn.innerHTML='<span>Run Agent &#9655;</span> <span class="btn-run-sub">Under $'+val+'</span><span class="skip">Hunt Vouchers &amp; Auto-Buy Under $'+val+'</span>';
 }
 function resetSniperUi(){
   var inp=$('sniper-target-input');
@@ -1314,7 +1619,7 @@ var av=$('part-available');av.textContent=wpMoney(avail);
 var st=avail<=0?'wall':(avail<150?'low':'healthy');
 av.setAttribute('data-state',st);
 var fill=$('part-progress-fill');fill.style.width=(cap>0?Math.min(100,Math.max(0,netUsed/cap*100)):0)+'%';fill.setAttribute('data-state',st);
-var rb=$('rb-partition');if(rb)rb.textContent='Wallet Partition: '+wpMoney(cap)+' cap \u00B7 '+wpMoney(avail)+' avail';}
+var rb=$('rb-partition');if(rb)rb.textContent='Wallet Partition: '+wpMoney(cap)+' cap \u00B7 '+wpMoney(avail)+' avail';var hp=$('hdr-part-text');if(hp)hp.textContent=wpMoney(avail)+' Available';}
 function paintPair(){
 var s=wallet.session;
 $('pair-code').textContent=s?s.pairingCode:'\u00B7\u00B7\u00B7\u00B7\u00B7\u00B7';
@@ -1328,10 +1633,819 @@ else{a.setAttribute('href','#');a.setAttribute('aria-disabled','true');}
 paintQr();}
 paintPair();refreshWallet();
 document.addEventListener('DOMContentLoaded',function(){autoPopulate();});
+
+/* ---------- 3D Animated AI Robot Mascot Companion ---------- */
+var robotState='idle';
+var robotStateTimer=null;
+window.setRobotState=function(st){
+  robotState=st;
+  if(robotStateTimer){clearTimeout(robotStateTimer);robotStateTimer=null;}
+  if(st==='celebrate'||st==='blocked'){
+    robotStateTimer=setTimeout(function(){robotState='idle';},4500);
+  }
+};
+var mouseLookX=0,mouseLookY=0;
+window.addEventListener('mousemove',function(e){
+  var ww=window.innerWidth||1200;
+  var wh=window.innerHeight||800;
+  mouseLookX=((e.clientX/ww)-0.5)*2;
+  mouseLookY=((e.clientY/wh)-0.5)*2;
+});
+
+function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
+  if(!canvas||!canvas.getContext)return;
+  var ctx=canvas.getContext('2d');
+  if(!ctx||typeof ctx.arc!=='function'||typeof ctx.createRadialGradient!=='function')return;
+  var dpr=(typeof window!=='undefined'&&window.devicePixelRatio)||1;
+  var w=canvas.width,h=canvas.height;
+  if(!w||!h)return;
+  if(ctx.save)ctx.save();
+  ctx.clearRect(0,0,w,h);
+
+  var cx=w*0.5;
+  var baseCy=h*0.52;
+  var r=Math.min(w,h)*0.31*(scaleRatio||1.0);
+
+  var bobY=Math.sin(time*2.2)*(3*dpr);
+  var tilt=0;
+  var leanX=0;
+  if(state==='listening'){
+    tilt=0.10;
+    bobY=1*dpr;
+    leanX=2*dpr;
+  }else if(state==='hunting'){
+    bobY=Math.sin(time*5)*(1.5*dpr);
+  }else if(state==='blocked'){
+    bobY=Math.sin(time*12)*(1.5*dpr);
+    tilt=Math.sin(time*10)*0.04;
+  }else if(state==='celebrate'){
+    bobY=-Math.abs(Math.sin(time*7))*(9*dpr);
+    tilt=Math.sin(time*7)*0.08;
+  }
+
+  var cy=baseCy+bobY;
+  cx=cx+leanX;
+
+  // 1. Ambient drop shadow under robot
+  var shadowGrad=ctx.createRadialGradient(cx,baseCy+r*1.04,r*0.2,cx,baseCy+r*1.04,r*0.95);
+  shadowGrad.addColorStop(0,'rgba(108, 71, 255, 0.22)');
+  shadowGrad.addColorStop(0.6,'rgba(139, 92, 246, 0.08)');
+  shadowGrad.addColorStop(1,'rgba(139, 92, 246, 0)');
+  ctx.fillStyle=shadowGrad;
+  ctx.beginPath();
+  if(ctx.ellipse){
+    ctx.ellipse(cx,baseCy+r*1.04,r*0.85,r*0.22,0,0,Math.PI*2);
+  }else{
+    ctx.arc(cx,baseCy+r*1.04,r*0.5,0,Math.PI*2);
+  }
+  ctx.fill();
+
+  if(ctx.translate&&ctx.rotate){
+    ctx.translate(cx,cy);
+    ctx.rotate(tilt);
+    ctx.translate(-cx,-cy);
+  }
+
+  // 2. Rounded Shoulders (torso support)
+  var torsoY=cy+r*0.65;
+  var torsoW=r*1.38;
+  var torsoH=r*0.42;
+  var torsoGrad=ctx.createLinearGradient(cx-torsoW*0.5,torsoY,cx+torsoW*0.5,torsoY+torsoH);
+  torsoGrad.addColorStop(0,'#f8f6ff');
+  torsoGrad.addColorStop(0.5,'#ede9fe');
+  torsoGrad.addColorStop(1,'#c4b5fd');
+  ctx.fillStyle=torsoGrad;
+  ctx.beginPath();
+  if(ctx.roundRect){
+    ctx.roundRect(cx-torsoW*0.5,torsoY,torsoW,torsoH,r*0.2);
+  }else{
+    ctx.rect(cx-torsoW*0.5,torsoY,torsoW,torsoH);
+  }
+  ctx.fill();
+
+  // 3. Floating Side Ear-Pods
+  var epR=r*0.24;
+  var epDist=r*1.08;
+  [-1, 1].forEach(function(side){
+    var epX=cx+side*epDist;
+    var epY=cy;
+    if(state==='listening'){
+      for(var pulse=0;pulse<2;pulse++){
+        var ringDist=((time*40+pulse*14)%24)*dpr;
+        var alpha=Math.max(0,1-(ringDist/(24*dpr)));
+        ctx.strokeStyle='rgba(139, 92, 246, '+(alpha*0.55).toFixed(2)+')';
+        ctx.lineWidth=1.8*dpr;
+        ctx.beginPath();
+        ctx.arc(epX,epY,epR+ringDist,0,Math.PI*2);
+        ctx.stroke();
+      }
+    }
+    var epGrad=ctx.createRadialGradient(epX-epR*0.3*side,epY-epR*0.3,epR*0.1,epX,epY,epR);
+    epGrad.addColorStop(0,'#ffffff');
+    epGrad.addColorStop(0.4,'#f5f3ff');
+    epGrad.addColorStop(0.8,'#ddd6fe');
+    epGrad.addColorStop(1,'#a78bfa');
+    ctx.fillStyle=epGrad;
+    ctx.beginPath();
+    ctx.arc(epX,epY,epR,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle=(state==='blocked'?'#ef4444':(state==='hunting'?'#00f0ff':'#8b5cf6'));
+    ctx.beginPath();
+    ctx.arc(epX,epY,epR*0.28,0,Math.PI*2);
+    ctx.fill();
+  });
+
+  // 4. Glossy Spherical 3D Robot Head
+  var headGrad=ctx.createRadialGradient(cx-r*0.28,cy-r*0.32,r*0.1,cx,cy,r);
+  headGrad.addColorStop(0,'#ffffff');
+  headGrad.addColorStop(0.35,'#faf8ff');
+  headGrad.addColorStop(0.7,'#ede9fe');
+  headGrad.addColorStop(0.92,'#ddd6fe');
+  headGrad.addColorStop(1,'#b4a0f8');
+  ctx.fillStyle=headGrad;
+  ctx.beginPath();
+  ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fill();
+
+  var specGrad=ctx.createRadialGradient(cx-r*0.32,cy-r*0.34,1,cx-r*0.32,cy-r*0.34,r*0.45);
+  specGrad.addColorStop(0,'rgba(255, 255, 255, 0.9)');
+  specGrad.addColorStop(0.5,'rgba(255, 255, 255, 0.3)');
+  specGrad.addColorStop(1,'rgba(255, 255, 255, 0)');
+  ctx.fillStyle=specGrad;
+  ctx.beginPath();
+  ctx.arc(cx-r*0.32,cy-r*0.34,r*0.45,0,Math.PI*2);
+  ctx.fill();
+
+  // 5. Visor (Curved dark glass)
+  var vW=r*1.34;
+  var vH=r*0.68;
+  var vX=cx-vW*0.5;
+  var vY=cy-r*0.18;
+  var vCorner=vH*0.45;
+
+  if(state==='blocked'){
+    ctx.strokeStyle='rgba(239, 68, 68, '+(0.45+0.35*Math.sin(time*8)).toFixed(2)+')';
+    ctx.lineWidth=3.5*dpr;
+    ctx.beginPath();
+    if(ctx.roundRect)ctx.roundRect(vX-3,vY-3,vW+6,vH+6,vCorner+2);
+    ctx.stroke();
+  }
+
+  var visorGrad=ctx.createLinearGradient(vX,vY,vX,vY+vH);
+  if(state==='blocked'){
+    visorGrad.addColorStop(0,'#2d0a14');
+    visorGrad.addColorStop(1,'#15050a');
+  }else{
+    visorGrad.addColorStop(0,'#0f1123');
+    visorGrad.addColorStop(1,'#1b1d38');
+  }
+  ctx.fillStyle=visorGrad;
+  ctx.beginPath();
+  if(ctx.roundRect){
+    ctx.roundRect(vX,vY,vW,vH,vCorner);
+  }else{
+    ctx.rect(vX,vY,vW,vH);
+  }
+  ctx.fill();
+
+  ctx.fillStyle='rgba(255, 255, 255, 0.12)';
+  ctx.beginPath();
+  if(ctx.roundRect){
+    ctx.roundRect(vX+vW*0.08,vY+vH*0.08,vW*0.84,vH*0.3,vCorner*0.6);
+  }
+  ctx.fill();
+
+  ctx.strokeStyle=(state==='blocked'?'rgba(239, 68, 68, 0.6)':'rgba(167, 139, 250, 0.45)');
+  ctx.lineWidth=1.2*dpr;
+  ctx.beginPath();
+  if(ctx.roundRect){
+    ctx.roundRect(vX,vY,vW,vH,vCorner);
+  }
+  ctx.stroke();
+
+  // 6. Glowing LED Expressive Eyes
+  var eyeSpacing=r*0.36;
+  var eyeCenterY=vY+vH*0.52+(lookY||0)*(3.5*dpr);
+  var eyeL=cx-eyeSpacing+(lookX||0)*(5.5*dpr);
+  var eyeR=cx+eyeSpacing+(lookX||0)*(5.5*dpr);
+
+  var eyeColor='#00f0ff';
+  var glowColor='#00f0ff';
+  if(state==='blocked'){
+    eyeColor='#f59e0b';
+    glowColor='#f59e0b';
+  }
+
+  var isBlinking=false;
+  var blinkScale=1.0;
+  if(state==='idle'){
+    var blinkCycle=(time%3.6);
+    if(blinkCycle<0.18){
+      isBlinking=true;
+      blinkScale=Math.sin((blinkCycle/0.18)*Math.PI)*0.1;
+    }
+  }
+
+  ctx.shadowColor=glowColor;
+  ctx.shadowBlur=10*dpr;
+
+  if(state==='celebrate'){
+    ctx.strokeStyle='#00f0ff';
+    ctx.lineWidth=3.2*dpr;
+    ctx.lineCap='round';
+    [eyeL,eyeR].forEach(function(ex){
+      ctx.beginPath();
+      ctx.arc(ex,eyeCenterY+4*dpr,r*0.14,Math.PI*1.15,Math.PI*1.85);
+      ctx.stroke();
+    });
+    for(var sp=0;sp<5;sp++){
+      var spAngle=time*2.5+sp*(Math.PI*2/5);
+      var spDist=r*(1.1+0.15*Math.sin(time*3+sp));
+      var spX=cx+Math.cos(spAngle)*spDist;
+      var spY=cy+Math.sin(spAngle)*(spDist*0.7);
+      ctx.fillStyle='#fef08a';
+      ctx.beginPath();
+      ctx.arc(spX,spY,2.2*dpr,0,Math.PI*2);
+      ctx.fill();
+    }
+  }else if(state==='hunting'){
+    ctx.fillStyle=eyeColor;
+    var eyeW=r*0.18;
+    var eyeH=r*0.08;
+    [eyeL,eyeR].forEach(function(ex){
+      ctx.beginPath();
+      if(ctx.roundRect)ctx.roundRect(ex-eyeW*0.5,eyeCenterY-eyeH*0.5,eyeW,eyeH,eyeH*0.5);
+      else ctx.rect(ex-eyeW*0.5,eyeCenterY-eyeH*0.5,eyeW,eyeH);
+      ctx.fill();
+    });
+    var laserX=cx+Math.sin(time*5.5)*(vW*0.42);
+    var laserGrad=ctx.createLinearGradient(laserX,vY,laserX,vY+vH);
+    laserGrad.addColorStop(0,'rgba(0, 240, 255, 0)');
+    laserGrad.addColorStop(0.5,'rgba(0, 240, 255, 0.9)');
+    laserGrad.addColorStop(1,'rgba(0, 240, 255, 0)');
+    ctx.strokeStyle=laserGrad;
+    ctx.lineWidth=2.5*dpr;
+    ctx.beginPath();
+    ctx.moveTo(laserX,vY+4);
+    ctx.lineTo(laserX,vY+vH-4);
+    ctx.stroke();
+  }else{
+    ctx.fillStyle=eyeColor;
+    var defW=r*0.18;
+    var defH=r*0.22*(isBlinking?blinkScale:1.0);
+    [eyeL,eyeR].forEach(function(ex){
+      ctx.beginPath();
+      if(ctx.ellipse){
+        ctx.ellipse(ex,eyeCenterY,defW*0.5,Math.max(1,defH*0.5),0,0,Math.PI*2);
+      }else{
+        ctx.arc(ex,eyeCenterY,defW*0.5,0,Math.PI*2);
+      }
+      ctx.fill();
+      if(!isBlinking){
+        ctx.fillStyle='#ffffff';
+        ctx.beginPath();
+        ctx.arc(ex+defW*0.15,eyeCenterY-defH*0.2,defW*0.14,0,Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle=eyeColor;
+      }
+    });
+  }
+
+  ctx.shadowBlur=0;
+  if(ctx.restore)ctx.restore();
+}
+
+function robotAnimLoop(now){
+  var t=(now||0)*0.001;
+  var topCanvas=$('agent-robot-3d-canvas');
+  if(topCanvas&&topCanvas.getContext){
+    drawRobot(topCanvas,robotState,t,mouseLookX,mouseLookY,1.0);
+  }
+  var sideCanvas=$('sidebar-robot-canvas');
+  if(sideCanvas&&sideCanvas.getContext){
+    drawRobot(sideCanvas,robotState,t,mouseLookX*0.6,mouseLookY*0.6,0.76);
+  }
+  if(typeof window!=='undefined'&&typeof window.requestAnimationFrame==='function'){
+    window.requestAnimationFrame(robotAnimLoop);
+  }
+}
+if(typeof window!=='undefined'&&typeof window.requestAnimationFrame==='function'){
+  window.requestAnimationFrame(robotAnimLoop);
+}
+
+/* Prompt sync & natural language parser */
+var promptInp=$('sniper-intent-prompt');
+if(promptInp){
+  promptInp.addEventListener('input',function(e){
+    if(typeof window.setRobotState==='function')window.setRobotState('listening');
+    var val=e.target.value;
+    var m=val.match(/(?:\$|under\s+|cap\s+)(\d+(?:\.\d+)?)/i)||val.match(/\b(\d{2,4})\b/);
+    if(m&&m[1]){
+      var num=parseFloat(m[1]);
+      if(num>=50&&num<=5000){
+        var targetInp=$('sniper-target-input');
+        if(targetInp){
+          targetInp.value=String(Math.round(num));
+          updateSniperBtnLabel();
+        }
+      }
+    }
+  });
+  promptInp.addEventListener('focus',function(e){
+    if(typeof window.setRobotState==='function')window.setRobotState('listening');
+  });
+  promptInp.addEventListener('blur',function(e){
+    if(typeof window.setRobotState==='function')window.setRobotState('idle');
+  });
+}
+
+var btnFilter=$('btn-mandate-filter-toggle');
+if(btnFilter){
+  btnFilter.addEventListener('click',function(e){
+    var ed=$('mandate-editor');
+    if(ed)ed.hidden=!ed.hidden;
+  });
+}
+
+/* Sidebar navigation wiring */
+function wireSidebar(){
+  var navHome=$('nav-home');
+  var navStudio=$('nav-studio');
+  var navPurchases=$('nav-purchases');
+  var navWatchlist=$('nav-watchlist');
+  var navPolicies=$('nav-policies');
+  var navPayments=$('nav-payments');
+  var navActivity=$('nav-activity');
+
+  function setActiveNav(btn){
+    var all=document.querySelectorAll('.sidebar-nav-item');
+    for(var i=0;i<all.length;i++)all[i].classList.remove('active');
+    if(btn)btn.classList.add('active');
+  }
+
+  if(navHome){
+    navHome.addEventListener('click',function(e){
+      showView('checkout');
+      setActiveNav(navStudio);
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  }
+  if(navStudio){
+    navStudio.addEventListener('click',function(e){
+      showView('checkout');
+      setActiveNav(navStudio);
+    });
+  }
+  if(navPurchases){
+    navPurchases.addEventListener('click',function(e){
+      showView('desk');
+      setDataset('sync');
+      setActiveNav(navPurchases);
+    });
+  }
+  if(navWatchlist){
+    navWatchlist.addEventListener('click',function(e){
+      showView('checkout');
+      setActiveNav(navStudio);
+      var el=$('channel3-sku-select');
+      if(el){tourScroll(el);tourRing(el);setTimeout(tourUnring,1800);}
+    });
+  }
+  if(navPolicies){
+    navPolicies.addEventListener('click',function(e){
+      showView('checkout');
+      setActiveNav(navStudio);
+      var ed=$('mandate-editor');
+      if(ed)ed.hidden=false;
+      var el=ed||$('mandate-strip');
+      if(el){tourScroll(el);tourRing(el);setTimeout(tourUnring,1800);}
+    });
+  }
+  if(navPayments){
+    navPayments.addEventListener('click',function(e){
+      showView('checkout');
+      setActiveNav(navStudio);
+      var el=$('wallet-card');
+      if(el){tourScroll(el);tourRing(el);setTimeout(tourUnring,1800);}
+    });
+  }
+  if(navActivity){
+    navActivity.addEventListener('click',function(e){
+      showView('desk');
+      setDataset('live');
+      setActiveNav(navActivity);
+    });
+  }
+}
+wireSidebar();
+
+/* ---------- 3D Animated AI Robot Mascot Companion ---------- */
+var robotState='idle';
+var robotStateTimer=null;
+window.setRobotState=function(st){
+  robotState=st;
+  if(robotStateTimer){clearTimeout(robotStateTimer);robotStateTimer=null;}
+  if(st==='celebrate'||st==='blocked'){
+    robotStateTimer=setTimeout(function(){robotState='idle';},4500);
+  }
+};
+var mouseLookX=0,mouseLookY=0;
+window.addEventListener('mousemove',function(e){
+  var ww=window.innerWidth||1200;
+  var wh=window.innerHeight||800;
+  mouseLookX=((e.clientX/ww)-0.5)*2;
+  mouseLookY=((e.clientY/wh)-0.5)*2;
+});
+
+function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
+  if(!canvas||!canvas.getContext)return;
+  var ctx=canvas.getContext('2d');
+  if(!ctx||typeof ctx.arc!=='function'||typeof ctx.createRadialGradient!=='function')return;
+  var dpr=(typeof window!=='undefined'&&window.devicePixelRatio)||1;
+  var w=canvas.width,h=canvas.height;
+  if(!w||!h)return;
+  if(ctx.save)ctx.save();
+  ctx.clearRect(0,0,w,h);
+
+  var cx=w*0.5;
+  var baseCy=h*0.52;
+  var r=Math.min(w,h)*0.31*(scaleRatio||1.0);
+
+  var bobY=Math.sin(time*2.2)*(3*dpr);
+  var tilt=0;
+  var leanX=0;
+  if(state==='listening'){
+    tilt=0.10;
+    bobY=1*dpr;
+    leanX=2*dpr;
+  }else if(state==='hunting'){
+    bobY=Math.sin(time*5)*(1.5*dpr);
+  }else if(state==='blocked'){
+    bobY=Math.sin(time*12)*(1.5*dpr);
+    tilt=Math.sin(time*10)*0.04;
+  }else if(state==='celebrate'){
+    bobY=-Math.abs(Math.sin(time*7))*(9*dpr);
+    tilt=Math.sin(time*7)*0.08;
+  }
+
+  var cy=baseCy+bobY;
+  cx=cx+leanX;
+
+  // 1. Ambient drop shadow under robot
+  var shadowGrad=ctx.createRadialGradient(cx,baseCy+r*1.04,r*0.2,cx,baseCy+r*1.04,r*0.95);
+  shadowGrad.addColorStop(0,'rgba(108, 71, 255, 0.22)');
+  shadowGrad.addColorStop(0.6,'rgba(139, 92, 246, 0.08)');
+  shadowGrad.addColorStop(1,'rgba(139, 92, 246, 0)');
+  ctx.fillStyle=shadowGrad;
+  ctx.beginPath();
+  if(ctx.ellipse){
+    ctx.ellipse(cx,baseCy+r*1.04,r*0.85,r*0.22,0,0,Math.PI*2);
+  }else{
+    ctx.arc(cx,baseCy+r*1.04,r*0.5,0,Math.PI*2);
+  }
+  ctx.fill();
+
+  if(ctx.translate&&ctx.rotate){
+    ctx.translate(cx,cy);
+    ctx.rotate(tilt);
+    ctx.translate(-cx,-cy);
+  }
+
+  // 2. Rounded Shoulders (torso support)
+  var torsoY=cy+r*0.65;
+  var torsoW=r*1.38;
+  var torsoH=r*0.42;
+  var torsoGrad=ctx.createLinearGradient(cx-torsoW*0.5,torsoY,cx+torsoW*0.5,torsoY+torsoH);
+  torsoGrad.addColorStop(0,'#f8f6ff');
+  torsoGrad.addColorStop(0.5,'#ede9fe');
+  torsoGrad.addColorStop(1,'#c4b5fd');
+  ctx.fillStyle=torsoGrad;
+  ctx.beginPath();
+  if(ctx.roundRect){
+    ctx.roundRect(cx-torsoW*0.5,torsoY,torsoW,torsoH,r*0.2);
+  }else{
+    ctx.rect(cx-torsoW*0.5,torsoY,torsoW,torsoH);
+  }
+  ctx.fill();
+
+  // 3. Floating Side Ear-Pods
+  var epR=r*0.24;
+  var epDist=r*1.08;
+  [-1, 1].forEach(function(side){
+    var epX=cx+side*epDist;
+    var epY=cy;
+    if(state==='listening'){
+      for(var pulse=0;pulse<2;pulse++){
+        var ringDist=((time*40+pulse*14)%24)*dpr;
+        var alpha=Math.max(0,1-(ringDist/(24*dpr)));
+        ctx.strokeStyle='rgba(139, 92, 246, '+(alpha*0.55).toFixed(2)+')';
+        ctx.lineWidth=1.8*dpr;
+        ctx.beginPath();
+        ctx.arc(epX,epY,epR+ringDist,0,Math.PI*2);
+        ctx.stroke();
+      }
+    }
+    var epGrad=ctx.createRadialGradient(epX-epR*0.3*side,epY-epR*0.3,epR*0.1,epX,epY,epR);
+    epGrad.addColorStop(0,'#ffffff');
+    epGrad.addColorStop(0.4,'#f5f3ff');
+    epGrad.addColorStop(0.8,'#ddd6fe');
+    epGrad.addColorStop(1,'#a78bfa');
+    ctx.fillStyle=epGrad;
+    ctx.beginPath();
+    ctx.arc(epX,epY,epR,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle=(state==='blocked'?'#ef4444':(state==='hunting'?'#00f0ff':'#8b5cf6'));
+    ctx.beginPath();
+    ctx.arc(epX,epY,epR*0.28,0,Math.PI*2);
+    ctx.fill();
+  });
+
+  // 4. Glossy Spherical 3D Robot Head
+  var headGrad=ctx.createRadialGradient(cx-r*0.28,cy-r*0.32,r*0.1,cx,cy,r);
+  headGrad.addColorStop(0,'#ffffff');
+  headGrad.addColorStop(0.35,'#faf8ff');
+  headGrad.addColorStop(0.7,'#ede9fe');
+  headGrad.addColorStop(0.92,'#ddd6fe');
+  headGrad.addColorStop(1,'#b4a0f8');
+  ctx.fillStyle=headGrad;
+  ctx.beginPath();
+  ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fill();
+
+  var specGrad=ctx.createRadialGradient(cx-r*0.32,cy-r*0.34,1,cx-r*0.32,cy-r*0.34,r*0.45);
+  specGrad.addColorStop(0,'rgba(255, 255, 255, 0.9)');
+  specGrad.addColorStop(0.5,'rgba(255, 255, 255, 0.3)');
+  specGrad.addColorStop(1,'rgba(255, 255, 255, 0)');
+  ctx.fillStyle=specGrad;
+  ctx.beginPath();
+  ctx.arc(cx-r*0.32,cy-r*0.34,r*0.45,0,Math.PI*2);
+  ctx.fill();
+
+  // 5. Visor (Curved dark glass)
+  var vW=r*1.34;
+  var vH=r*0.68;
+  var vX=cx-vW*0.5;
+  var vY=cy-r*0.18;
+  var vCorner=vH*0.45;
+
+  if(state==='blocked'){
+    ctx.strokeStyle='rgba(239, 68, 68, '+(0.45+0.35*Math.sin(time*8)).toFixed(2)+')';
+    ctx.lineWidth=3.5*dpr;
+    ctx.beginPath();
+    if(ctx.roundRect)ctx.roundRect(vX-3,vY-3,vW+6,vH+6,vCorner+2);
+    ctx.stroke();
+  }
+
+  var visorGrad=ctx.createLinearGradient(vX,vY,vX,vY+vH);
+  if(state==='blocked'){
+    visorGrad.addColorStop(0,'#2d0a14');
+    visorGrad.addColorStop(1,'#15050a');
+  }else{
+    visorGrad.addColorStop(0,'#0f1123');
+    visorGrad.addColorStop(1,'#1b1d38');
+  }
+  ctx.fillStyle=visorGrad;
+  ctx.beginPath();
+  if(ctx.roundRect){
+    ctx.roundRect(vX,vY,vW,vH,vCorner);
+  }else{
+    ctx.rect(vX,vY,vW,vH);
+  }
+  ctx.fill();
+
+  ctx.fillStyle='rgba(255, 255, 255, 0.12)';
+  ctx.beginPath();
+  if(ctx.roundRect){
+    ctx.roundRect(vX+vW*0.08,vY+vH*0.08,vW*0.84,vH*0.3,vCorner*0.6);
+  }
+  ctx.fill();
+
+  ctx.strokeStyle=(state==='blocked'?'rgba(239, 68, 68, 0.6)':'rgba(167, 139, 250, 0.45)');
+  ctx.lineWidth=1.2*dpr;
+  ctx.beginPath();
+  if(ctx.roundRect){
+    ctx.roundRect(vX,vY,vW,vH,vCorner);
+  }
+  ctx.stroke();
+
+  // 6. Glowing LED Expressive Eyes
+  var eyeSpacing=r*0.36;
+  var eyeCenterY=vY+vH*0.52+(lookY||0)*(3.5*dpr);
+  var eyeL=cx-eyeSpacing+(lookX||0)*(5.5*dpr);
+  var eyeR=cx+eyeSpacing+(lookX||0)*(5.5*dpr);
+
+  var eyeColor='#00f0ff';
+  var glowColor='#00f0ff';
+  if(state==='blocked'){
+    eyeColor='#f59e0b';
+    glowColor='#f59e0b';
+  }
+
+  var isBlinking=false;
+  var blinkScale=1.0;
+  if(state==='idle'){
+    var blinkCycle=(time%3.6);
+    if(blinkCycle<0.18){
+      isBlinking=true;
+      blinkScale=Math.sin((blinkCycle/0.18)*Math.PI)*0.1;
+    }
+  }
+
+  ctx.shadowColor=glowColor;
+  ctx.shadowBlur=10*dpr;
+
+  if(state==='celebrate'){
+    ctx.strokeStyle='#00f0ff';
+    ctx.lineWidth=3.2*dpr;
+    ctx.lineCap='round';
+    [eyeL,eyeR].forEach(function(ex){
+      ctx.beginPath();
+      ctx.arc(ex,eyeCenterY+4*dpr,r*0.14,Math.PI*1.15,Math.PI*1.85);
+      ctx.stroke();
+    });
+    for(var sp=0;sp<5;sp++){
+      var spAngle=time*2.5+sp*(Math.PI*2/5);
+      var spDist=r*(1.1+0.15*Math.sin(time*3+sp));
+      var spX=cx+Math.cos(spAngle)*spDist;
+      var spY=cy+Math.sin(spAngle)*(spDist*0.7);
+      ctx.fillStyle='#fef08a';
+      ctx.beginPath();
+      ctx.arc(spX,spY,2.2*dpr,0,Math.PI*2);
+      ctx.fill();
+    }
+  }else if(state==='hunting'){
+    ctx.fillStyle=eyeColor;
+    var eyeW=r*0.18;
+    var eyeH=r*0.08;
+    [eyeL,eyeR].forEach(function(ex){
+      ctx.beginPath();
+      if(ctx.roundRect)ctx.roundRect(ex-eyeW*0.5,eyeCenterY-eyeH*0.5,eyeW,eyeH,eyeH*0.5);
+      else ctx.rect(ex-eyeW*0.5,eyeCenterY-eyeH*0.5,eyeW,eyeH);
+      ctx.fill();
+    });
+    var laserX=cx+Math.sin(time*5.5)*(vW*0.42);
+    var laserGrad=ctx.createLinearGradient(laserX,vY,laserX,vY+vH);
+    laserGrad.addColorStop(0,'rgba(0, 240, 255, 0)');
+    laserGrad.addColorStop(0.5,'rgba(0, 240, 255, 0.9)');
+    laserGrad.addColorStop(1,'rgba(0, 240, 255, 0)');
+    ctx.strokeStyle=laserGrad;
+    ctx.lineWidth=2.5*dpr;
+    ctx.beginPath();
+    ctx.moveTo(laserX,vY+4);
+    ctx.lineTo(laserX,vY+vH-4);
+    ctx.stroke();
+  }else{
+    ctx.fillStyle=eyeColor;
+    var defW=r*0.18;
+    var defH=r*0.22*(isBlinking?blinkScale:1.0);
+    [eyeL,eyeR].forEach(function(ex){
+      ctx.beginPath();
+      if(ctx.ellipse){
+        ctx.ellipse(ex,eyeCenterY,defW*0.5,Math.max(1,defH*0.5),0,0,Math.PI*2);
+      }else{
+        ctx.arc(ex,eyeCenterY,defW*0.5,0,Math.PI*2);
+      }
+      ctx.fill();
+      if(!isBlinking){
+        ctx.fillStyle='#ffffff';
+        ctx.beginPath();
+        ctx.arc(ex+defW*0.15,eyeCenterY-defH*0.2,defW*0.14,0,Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle=eyeColor;
+      }
+    });
+  }
+
+  ctx.shadowBlur=0;
+  if(ctx.restore)ctx.restore();
+}
+
+function robotAnimLoop(now){
+  var t=(now||0)*0.001;
+  var topCanvas=$('agent-robot-3d-canvas');
+  if(topCanvas&&topCanvas.getContext){
+    drawRobot(topCanvas,robotState,t,mouseLookX,mouseLookY,1.0);
+  }
+  var sideCanvas=$('sidebar-robot-canvas');
+  if(sideCanvas&&sideCanvas.getContext){
+    drawRobot(sideCanvas,robotState,t,mouseLookX*0.6,mouseLookY*0.6,0.76);
+  }
+  if(typeof window!=='undefined'&&typeof window.requestAnimationFrame==='function'){
+    window.requestAnimationFrame(robotAnimLoop);
+  }
+}
+if(typeof window!=='undefined'&&typeof window.requestAnimationFrame==='function'){
+  window.requestAnimationFrame(robotAnimLoop);
+}
+
+/* Prompt sync & natural language parser */
+var promptInp=$('sniper-intent-prompt');
+if(promptInp){
+  promptInp.addEventListener('input',function(e){
+    if(typeof window.setRobotState==='function')window.setRobotState('listening');
+    var val=e.target.value;
+    var m=val.match(/(?:\$|under\s+|cap\s+)(\d+(?:\.\d+)?)/i)||val.match(/\b(\d{2,4})\b/);
+    if(m&&m[1]){
+      var num=parseFloat(m[1]);
+      if(num>=50&&num<=5000){
+        var targetInp=$('sniper-target-input');
+        if(targetInp){
+          targetInp.value=String(Math.round(num));
+          updateSniperBtnLabel();
+        }
+      }
+    }
+  });
+  promptInp.addEventListener('focus',function(e){
+    if(typeof window.setRobotState==='function')window.setRobotState('listening');
+  });
+  promptInp.addEventListener('blur',function(e){
+    if(typeof window.setRobotState==='function')window.setRobotState('idle');
+  });
+}
+
+var btnFilter=$('btn-mandate-filter-toggle');
+if(btnFilter){
+  btnFilter.addEventListener('click',function(e){
+    var ed=$('mandate-editor');
+    if(ed)ed.hidden=!ed.hidden;
+  });
+}
+
+/* Sidebar navigation wiring */
+function wireSidebar(){
+  var navHome=$('nav-home');
+  var navStudio=$('nav-studio');
+  var navPurchases=$('nav-purchases');
+  var navWatchlist=$('nav-watchlist');
+  var navPolicies=$('nav-policies');
+  var navPayments=$('nav-payments');
+  var navActivity=$('nav-activity');
+
+  function setActiveNav(btn){
+    var all=document.querySelectorAll('.sidebar-nav-item');
+    for(var i=0;i<all.length;i++)all[i].classList.remove('active');
+    if(btn)btn.classList.add('active');
+  }
+
+  if(navHome){
+    navHome.addEventListener('click',function(e){
+      showView('checkout');
+      setActiveNav(navStudio);
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  }
+  if(navStudio){
+    navStudio.addEventListener('click',function(e){
+      showView('checkout');
+      setActiveNav(navStudio);
+    });
+  }
+  if(navPurchases){
+    navPurchases.addEventListener('click',function(e){
+      showView('desk');
+      setDataset('sync');
+      setActiveNav(navPurchases);
+    });
+  }
+  if(navWatchlist){
+    navWatchlist.addEventListener('click',function(e){
+      showView('checkout');
+      setActiveNav(navStudio);
+      var el=$('channel3-sku-select');
+      if(el){tourScroll(el);tourRing(el);setTimeout(tourUnring,1800);}
+    });
+  }
+  if(navPolicies){
+    navPolicies.addEventListener('click',function(e){
+      showView('checkout');
+      setActiveNav(navStudio);
+      var ed=$('mandate-editor');
+      if(ed)ed.hidden=false;
+      var el=ed||$('mandate-strip');
+      if(el){tourScroll(el);tourRing(el);setTimeout(tourUnring,1800);}
+    });
+  }
+  if(navPayments){
+    navPayments.addEventListener('click',function(e){
+      showView('checkout');
+      setActiveNav(navStudio);
+      var el=$('wallet-card');
+      if(el){tourScroll(el);tourRing(el);setTimeout(tourUnring,1800);}
+    });
+  }
+  if(navActivity){
+    navActivity.addEventListener('click',function(e){
+      showView('desk');
+      setDataset('live');
+      setActiveNav(navActivity);
+    });
+  }
+}
+wireSidebar();
+
 </script>
 </body></html>`;
 }
-
-
-
-
