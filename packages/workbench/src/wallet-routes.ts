@@ -47,6 +47,19 @@ import {
 } from './routes';
 import { PAIRING_PAYER_EMAIL, renderPairPage } from './wallet-template';
 import { findCatalogProduct } from './storefront-template';
+import {
+  completeOnboarding,
+  createSubAgent,
+  getFleetSnapshot,
+  resetFleetStore,
+  triggerBackgroundPriceDrop,
+  type CompleteOnboardingInput,
+} from './fleet-store';
+
+/** Reset in-memory / disk fleet state. Exported for workbench routes and tests. */
+export function resetWalletRouteState(): void {
+  resetFleetStore();
+}
 
 /** Wallet paths served by this module (mirrored in ROUTES). */
 export const WALLET_ROUTES = [
@@ -60,6 +73,10 @@ export const WALLET_ROUTES = [
   '/api/wallet/sync',
   '/api/wallet/connectors',
   '/api/wallet/sniper',
+  '/api/onboarding/state',
+  '/api/onboarding/complete',
+  '/api/agents/spawn',
+  '/api/agents/webhook/price-drop',
 ];
 
 /** Safe pairing-token shape (`400` on anything else — never a lookup). */
@@ -518,6 +535,160 @@ function handleConnectors(body: Record<string, unknown>, res: WorkbenchResponse)
   }
 }
 
+function handleOnboardingState(res: WorkbenchResponse): void {
+  const snapshot = getFleetSnapshot();
+  sendJson(res, 200, snapshot);
+}
+
+async function handleOnboardingComplete(
+  body: Record<string, unknown>,
+  res: WorkbenchResponse,
+): Promise<void> {
+  const email = body['email'];
+  if (typeof email !== 'string' || !email.includes('@')) {
+    throw new HttpError(400, 'email must be a valid email string');
+  }
+  const displayName = body['displayName'];
+  if (typeof displayName !== 'string' || displayName.trim().length === 0) {
+    throw new HttpError(400, 'displayName must be a non-empty string');
+  }
+  const authProvider = body['authProvider'];
+  if (
+    authProvider !== 'CLERK_GOOGLE_OAUTH' &&
+    authProvider !== 'CLERK_SESSION' &&
+    authProvider !== 'DEMO_PASSKEY'
+  ) {
+    throw new HttpError(
+      400,
+      "authProvider must be 'CLERK_GOOGLE_OAUTH', 'CLERK_SESSION', or 'DEMO_PASSKEY'",
+    );
+  }
+  const clerkToken = typeof body['clerkToken'] === 'string' ? body['clerkToken'] : undefined;
+  const paypalPayerEmail =
+    typeof body['paypalPayerEmail'] === 'string' ? body['paypalPayerEmail'] : undefined;
+  const masterPartitionUsd =
+    typeof body['masterPartitionUsd'] === 'number' && Number.isFinite(body['masterPartitionUsd'])
+      ? body['masterPartitionUsd']
+      : undefined;
+  const initialAgents = Array.isArray(body['initialAgents'])
+    ? (body['initialAgents'] as CompleteOnboardingInput['initialAgents'])
+    : undefined;
+
+  try {
+    const fleet = await completeOnboarding({
+      email,
+      displayName,
+      authProvider,
+      clerkToken,
+      paypalPayerEmail,
+      masterPartitionUsd,
+      initialAgents,
+    });
+    appendLedger({
+      kind: 'onboarding-complete',
+      summary: `User ${displayName} (${email}) completed onboarding (${authProvider}) with $${(masterPartitionUsd ?? 350).toFixed(2)} master partition`,
+    });
+    sendJson(res, 200, fleet);
+  } catch (e) {
+    const inputError = asWalletInputError(e);
+    if (inputError !== null) {
+      throw inputError;
+    }
+    throw e;
+  }
+}
+
+function handleAgentsSpawn(body: Record<string, unknown>, res: WorkbenchResponse): void {
+  const name = body['name'];
+  if (typeof name !== 'string' || name.trim().length === 0) {
+    throw new HttpError(400, 'wallet: sub-agent name is required');
+  }
+  const sku = body['sku'];
+  if (typeof sku !== 'string' || sku.trim().length === 0) {
+    throw new HttpError(400, 'wallet: sku is required');
+  }
+  const targetMaxAllInUsd = body['targetMaxAllInUsd'];
+  if (
+    typeof targetMaxAllInUsd !== 'number' ||
+    !Number.isFinite(targetMaxAllInUsd) ||
+    targetMaxAllInUsd <= 0
+  ) {
+    throw new HttpError(400, 'wallet: targetMaxAllInUsd must be greater than 0');
+  }
+  const subAllocationUsd = body['subAllocationUsd'];
+  if (
+    typeof subAllocationUsd !== 'number' ||
+    !Number.isFinite(subAllocationUsd) ||
+    subAllocationUsd <= 0
+  ) {
+    throw new HttpError(400, 'wallet: subAllocationUsd must be greater than 0');
+  }
+  const autoBuyEnabled =
+    typeof body['autoBuyEnabled'] === 'boolean' ? body['autoBuyEnabled'] : true;
+
+  try {
+    const result = createSubAgent({
+      name,
+      sku,
+      targetMaxAllInUsd,
+      subAllocationUsd,
+      autoBuyEnabled,
+    });
+    appendLedger({
+      kind: 'agent-spawn',
+      summary: `Sub-agent ${name} (${result.agent.agentId}) spawned for ${sku} ($${subAllocationUsd.toFixed(2)} sub-alloc, $${targetMaxAllInUsd.toFixed(2)} target)`,
+    });
+    sendJson(res, 200, result);
+  } catch (e) {
+    const inputError = asWalletInputError(e);
+    if (inputError !== null) {
+      throw inputError;
+    }
+    throw e;
+  }
+}
+
+async function handlePriceDropWebhook(
+  body: Record<string, unknown>,
+  res: WorkbenchResponse,
+): Promise<void> {
+  const sku = body['sku'];
+  if (typeof sku !== 'string' || sku.trim().length === 0) {
+    throw new HttpError(400, 'wallet: sku is required');
+  }
+  const newBasePriceUsd =
+    typeof body['newBasePriceUsd'] === 'number' && Number.isFinite(body['newBasePriceUsd'])
+      ? body['newBasePriceUsd']
+      : undefined;
+  const allInUsd =
+    typeof body['allInUsd'] === 'number' && Number.isFinite(body['allInUsd'])
+      ? body['allInUsd']
+      : undefined;
+  const voucherCode =
+    typeof body['voucherCode'] === 'string' ? body['voucherCode'] : undefined;
+  const triggerType =
+    body['triggerType'] === 'WATCHDOG_POLL_TICK'
+      ? 'WATCHDOG_POLL_TICK'
+      : 'CHANNEL3_PRICE_DROP_WEBHOOK';
+
+  try {
+    const result = await triggerBackgroundPriceDrop({
+      sku,
+      newBasePriceUsd,
+      allInUsd,
+      voucherCode,
+      triggerType,
+    });
+    sendJson(res, 200, result);
+  } catch (e) {
+    const inputError = asWalletInputError(e);
+    if (inputError !== null) {
+      throw inputError;
+    }
+    throw e;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Dispatch                                                             */
 /* ------------------------------------------------------------------ */
@@ -617,6 +788,38 @@ export async function handleWalletRequest(
         return true;
       }
       await handleSniper(parseJsonBody(await readBody(req)), res);
+      return true;
+    }
+    case '/api/onboarding/state': {
+      if (method !== 'GET') {
+        sendJson(res, 405, { error: 'method not allowed' });
+        return true;
+      }
+      handleOnboardingState(res);
+      return true;
+    }
+    case '/api/onboarding/complete': {
+      if (method !== 'POST') {
+        sendJson(res, 405, { error: 'method not allowed' });
+        return true;
+      }
+      await handleOnboardingComplete(parseJsonBody(await readBody(req)), res);
+      return true;
+    }
+    case '/api/agents/spawn': {
+      if (method !== 'POST') {
+        sendJson(res, 405, { error: 'method not allowed' });
+        return true;
+      }
+      handleAgentsSpawn(parseJsonBody(await readBody(req)), res);
+      return true;
+    }
+    case '/api/agents/webhook/price-drop': {
+      if (method !== 'POST') {
+        sendJson(res, 405, { error: 'method not allowed' });
+        return true;
+      }
+      await handlePriceDropWebhook(parseJsonBody(await readBody(req)), res);
       return true;
     }
     default: {

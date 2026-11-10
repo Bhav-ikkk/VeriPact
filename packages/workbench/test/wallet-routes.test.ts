@@ -12,6 +12,8 @@ import {
   handleWorkbenchRequest,
   resetDemoState,
   ROUTES,
+  type AutonomousSubAgent,
+  type FleetStateSnapshot,
   type WorkbenchResponse,
 } from '../src/index';
 import {
@@ -71,12 +73,14 @@ const ENV_VARS = [
   'PAYPAL_CLIENT_SECRET',
   'VERIPACT_ENV_FILE',
   'VERIPACT_WALLET_STATE_FILE',
+  'VERIPACT_FLEET_STATE_FILE',
 ] as const;
 
 // Hermetic env (mirrors workbench.test.ts) + an isolated wallet store file
 // so wallet route tests never touch the repo-root demo store.
 const ABSENT_ENV = join(process.cwd(), '.vitest-tmp', 'absent-credentials.env');
 const WALLET_STATE = join(process.cwd(), '.vitest-tmp', 'wallet-routes-state.json');
+const FLEET_STATE = join(process.cwd(), '.vitest-tmp', 'fleet-routes-state.json');
 
 const savedEnv: Record<string, string | undefined> = {};
 beforeEach(() => {
@@ -86,6 +90,7 @@ beforeEach(() => {
   }
   process.env.VERIPACT_ENV_FILE = ABSENT_ENV;
   process.env.VERIPACT_WALLET_STATE_FILE = WALLET_STATE;
+  process.env.VERIPACT_FLEET_STATE_FILE = FLEET_STATE;
   resetDemoState();
 });
 afterEach(() => {
@@ -632,5 +637,176 @@ describe('GET /embed/veripact-anywhere.js', () => {
     const store = await get('/store/normal');
     expect(store.status).toBe(200);
     expect(store.body).toContain('<script src="/embed/veripact-anywhere.js" defer></script>');
+  });
+});
+
+describe('@veripact/workbench Onboarding & Multi-Agent Fleet Routes', () => {
+  it('POST /api/onboarding/complete sets up a Clerk/Google user session, links PayPal Vault with a $350 master partition, and creates 3 sub-agents ($200 + $100 + $50 = $350)', async () => {
+    // Check initial state before onboarding
+    const initialRes = await get('/api/onboarding/state');
+    expect(initialRes.status).toBe(200);
+    const initialFleet = json<FleetStateSnapshot>(initialRes);
+    expect(initialFleet.user).toBeNull();
+    expect(initialFleet.masterPartitionUsd).toBe(350);
+    expect(initialFleet.agents.length).toBe(2);
+
+    // Complete onboarding with 3 sub-agents ($200 + $100 + $50 = $350)
+    const res = await post('/api/onboarding/complete', {
+      email: 'alex.chen@example.com',
+      displayName: 'Alex Chen',
+      authProvider: 'CLERK_GOOGLE_OAUTH',
+      clerkToken: 'clerk_test_token_987',
+      paypalPayerEmail: 'alex.chen.paypal@example.com',
+      masterPartitionUsd: 350,
+      initialAgents: [
+        {
+          name: 'Monitor Sniper',
+          sku: 'APEX-27-4K-IPS',
+          targetMaxAllInUsd: 300,
+          subAllocationUsd: 200,
+          autoBuyEnabled: true,
+        },
+        {
+          name: 'Kanso Audio Bot',
+          sku: 'KANSO-Q35',
+          targetMaxAllInUsd: 100,
+          subAllocationUsd: 100,
+          autoBuyEnabled: true,
+        },
+        {
+          name: 'Dock Deal Bot',
+          sku: 'VIREO-DOCK-C',
+          targetMaxAllInUsd: 60,
+          subAllocationUsd: 50,
+          autoBuyEnabled: true,
+        },
+      ],
+    });
+
+    expect(res.status).toBe(200);
+    const fleet = json<FleetStateSnapshot>(res);
+    expect(fleet.user).not.toBeNull();
+    expect(fleet.user?.email).toBe('alex.chen@example.com');
+    expect(fleet.user?.displayName).toBe('Alex Chen');
+    expect(fleet.user?.authProvider).toBe('CLERK_GOOGLE_OAUTH');
+    expect(fleet.user?.clerkSessionId).toBe('clerk_test_token_987');
+    expect(fleet.user?.paypalConnected).toBe(true);
+    expect(fleet.user?.paypalVaultTokenId).toMatch(/^PM-VP-VAULT-/);
+    expect(fleet.masterPartitionUsd).toBe(350);
+    expect(fleet.totalSubAllocatedUsd).toBe(350);
+    expect(fleet.unallocatedMasterUsd).toBe(0);
+    expect(fleet.agents.length).toBe(3);
+
+    // Verify GET /api/onboarding/state returns identical state
+    const checkRes = await get('/api/onboarding/state');
+    expect(checkRes.status).toBe(200);
+    const checkFleet = json<FleetStateSnapshot>(checkRes);
+    expect(checkFleet.user?.email).toBe('alex.chen@example.com');
+    expect(checkFleet.totalSubAllocatedUsd).toBe(350);
+    expect(checkFleet.unallocatedMasterUsd).toBe(0);
+  });
+
+  it('POST /api/agents/spawn rejects a sub-agent whose subAllocationUsd exceeds the unallocated master partition balance with 400', async () => {
+    // Clean state has 2 sub-agents ($220 + $100 = $320), master partition = $350, unallocated = $30.00
+    const stateRes = await get('/api/onboarding/state');
+    const state = json<FleetStateSnapshot>(stateRes);
+    expect(state.totalSubAllocatedUsd).toBe(320);
+    expect(state.unallocatedMasterUsd).toBe(30);
+
+    // Try to allocate $50 when only $30 is available
+    const failRes = await post('/api/agents/spawn', {
+      name: 'Greedy Bot',
+      sku: 'VIREO-DOCK-C',
+      targetMaxAllInUsd: 70,
+      subAllocationUsd: 50,
+      autoBuyEnabled: true,
+    });
+    expect(failRes.status).toBe(400);
+    const failBody = json<{ error: string }>(failRes);
+    expect(failBody.error).toBe(
+      'wallet: sub-allocation ($50.00) exceeds unallocated master partition balance ($30.00 available of $350.00 master cap).',
+    );
+
+    // Also test onboarding setup where initial agents exceed master partition ($150 + $150 + $100 = $400 with $350 master partition)
+    const failOnboarding = await post('/api/onboarding/complete', {
+      email: 'exceed@example.com',
+      displayName: 'Exceed User',
+      authProvider: 'DEMO_PASSKEY',
+      masterPartitionUsd: 350,
+      initialAgents: [
+        { name: 'Bot 1', sku: 'APEX-27-4K-IPS', targetMaxAllInUsd: 200, subAllocationUsd: 150 },
+        { name: 'Bot 2', sku: 'KANSO-Q35', targetMaxAllInUsd: 200, subAllocationUsd: 150 },
+        { name: 'Bot 3', sku: 'VIREO-DOCK-C', targetMaxAllInUsd: 150, subAllocationUsd: 100 },
+      ],
+    });
+    expect(failOnboarding.status).toBe(400);
+    const failOnboardingBody = json<{ error: string }>(failOnboarding);
+    expect(failOnboardingBody.error).toBe(
+      'wallet: sub-allocation ($100.00) exceeds unallocated master partition balance ($50.00 available of $350.00 master cap).',
+    );
+  });
+
+  it('POST /api/agents/webhook/price-drop for KANSO-Q35 (newBasePriceUsd: 82, $100.00 all-in) wakes up the $100 ARMED_WATCHING Kanso sub-agent, verifies WIT terms, captures $100.00 via PayPal with a VP1: commitment, and reduces that sub-agent\'s remainingSubAllocationUsd from $100.00 to $0.00!', async () => {
+    // Initial clean reset state has Agent-02: Kanso Audio Bot with $100.00 sub-allocation / $100.00 target
+    const preRes = await get('/api/onboarding/state');
+    const preFleet = json<FleetStateSnapshot>(preRes);
+    const kansoPre = preFleet.agents.find((a) => a.sku === 'KANSO-Q35');
+    expect(kansoPre).toBeDefined();
+    expect(kansoPre!.status).toBe('ARMED_WATCHING');
+    expect(kansoPre!.subAllocationUsd).toBe(100);
+    expect(kansoPre!.remainingSubAllocationUsd).toBe(100);
+    expect(kansoPre!.spentUsd).toBe(0);
+
+    // Trigger price drop: new base price $82.00 + $11.50 shipping + $6.50 tax = $100.00 all-in
+    const dropRes = await post('/api/agents/webhook/price-drop', {
+      sku: 'KANSO-Q35',
+      newBasePriceUsd: 82,
+      triggerType: 'CHANNEL3_PRICE_DROP_WEBHOOK',
+    });
+    expect(dropRes.status).toBe(200);
+    const dropBody = json<{
+      triggeredAgents: AutonomousSubAgent[];
+      fleet: FleetStateSnapshot;
+    }>(dropRes);
+
+    const triggeredKanso = dropBody.triggeredAgents.find((a) => a.sku === 'KANSO-Q35');
+    expect(triggeredKanso).toBeDefined();
+    expect(triggeredKanso!.status).toBe('GOAL_CAPTURED');
+    expect(triggeredKanso!.capturedAmountUsd).toBe(100);
+    expect(triggeredKanso!.commitment).toMatch(/^VP1:/);
+    expect(triggeredKanso!.capturedOrderId).toBeDefined();
+    expect(triggeredKanso!.capturedOrderId).toMatch(/^ORD-VP-/);
+    expect(triggeredKanso!.remainingSubAllocationUsd).toBe(0);
+    expect(triggeredKanso!.spentUsd).toBe(100);
+    expect(triggeredKanso!.savedUsd).toBeGreaterThanOrEqual(0);
+
+    // Verify in updated fleet snapshot as well
+    const kansoPost = dropBody.fleet.agents.find((a) => a.sku === 'KANSO-Q35');
+    expect(kansoPost?.status).toBe('GOAL_CAPTURED');
+    expect(kansoPost?.remainingSubAllocationUsd).toBe(0);
+    expect(kansoPost?.spentUsd).toBe(100);
+  });
+
+  it('POST /api/agents/webhook/price-drop blocks when the price drop ($120.00 all-in) exceeds the agent\'s $100.00 sub-allocation wall (BLOCKED_SUB_ALLOCATION_WALL)', async () => {
+    // Initial state has Agent-02: Kanso Audio Bot with $100 sub-allocation.
+    // Trigger price drop with newBasePriceUsd: 102 ($102 + $11.50 shipping + $6.50 tax = $120.00 all-in).
+    const dropRes = await post('/api/agents/webhook/price-drop', {
+      sku: 'KANSO-Q35',
+      newBasePriceUsd: 102,
+      triggerType: 'CHANNEL3_PRICE_DROP_WEBHOOK',
+    });
+    expect(dropRes.status).toBe(200);
+    const dropBody = json<{
+      triggeredAgents: AutonomousSubAgent[];
+      fleet: FleetStateSnapshot;
+    }>(dropRes);
+
+    const kansoAgent = dropBody.triggeredAgents.find((a) => a.sku === 'KANSO-Q35');
+    expect(kansoAgent).toBeDefined();
+    expect(kansoAgent!.status).toBe('BLOCKED_SUB_ALLOCATION_WALL');
+    expect(kansoAgent!.spentUsd).toBe(0);
+    expect(kansoAgent!.remainingSubAllocationUsd).toBe(100);
+    expect(kansoAgent!.capturedOrderId).toBeUndefined();
+    expect(kansoAgent!.lastEventSummary).toContain('Blocked by sub-allocation wall');
   });
 });

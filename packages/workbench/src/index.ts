@@ -31,6 +31,25 @@ export { renderIndexPage } from './ui-template';
 export { renderStorefront } from './storefront-template';
 export { renderApprovalPage, type ApprovalPageData } from './approval-template';
 export { buildOpenApiSpec } from './openapi-route';
+export { resetWalletRouteState, WALLET_ROUTES } from './wallet-routes';
+export {
+  completeOnboarding,
+  createSubAgent,
+  getFleetSnapshot,
+  isClerkConfigured,
+  isNeonConfigured,
+  resetFleetStore,
+  resolveFleetStateFile,
+  syncWithNeonDb,
+  triggerBackgroundPriceDrop,
+  type AutonomousSubAgent,
+  type CompleteOnboardingInput,
+  type CreateSubAgentInput,
+  type FleetBackgroundEvent,
+  type FleetStateSnapshot,
+  type OnboardingUserSession,
+  type PriceDropWebhookInput,
+} from './fleet-store';
 
 const entrypoint = process.argv[1] ?? '';
 if (entrypoint.endsWith('index.js')) {

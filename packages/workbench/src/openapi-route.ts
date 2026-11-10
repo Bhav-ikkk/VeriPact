@@ -417,6 +417,167 @@ export function buildOpenApiSpec(): Record<string, unknown> {
           },
         },
       },
+      '/api/onboarding/state': {
+        get: {
+          operationId: 'getOnboardingState',
+          summary: 'Retrieve onboarding user session and autonomous sub-agent fleet state',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': {
+              description:
+                'FleetStateSnapshot containing storage engine, user session, master partition, sub-agents, and background events',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/FleetStateSnapshot' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/onboarding/complete': {
+        post: {
+          operationId: 'completeOnboarding',
+          summary:
+            'Connect user session, link PayPal Vault, initialize master partition, and provision sub-agents',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['email', 'displayName', 'authProvider'],
+                  properties: {
+                    email: { type: 'string' },
+                    displayName: { type: 'string' },
+                    authProvider: {
+                      type: 'string',
+                      enum: ['CLERK_GOOGLE_OAUTH', 'CLERK_SESSION', 'DEMO_PASSKEY'],
+                    },
+                    clerkToken: { type: 'string' },
+                    paypalPayerEmail: { type: 'string' },
+                    masterPartitionUsd: { type: 'number' },
+                    initialAgents: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        required: ['name', 'sku', 'targetMaxAllInUsd', 'subAllocationUsd'],
+                        properties: {
+                          name: { type: 'string' },
+                          sku: { type: 'string' },
+                          targetMaxAllInUsd: { type: 'number' },
+                          subAllocationUsd: { type: 'number' },
+                          autoBuyEnabled: { type: 'boolean' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Updated FleetStateSnapshot',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/FleetStateSnapshot' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/agents/spawn': {
+        post: {
+          operationId: 'spawnSubAgent',
+          summary:
+            'Spawn an autonomous sub-agent with a dedicated sub-allocation under the master partition',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['name', 'sku', 'targetMaxAllInUsd', 'subAllocationUsd'],
+                  properties: {
+                    name: { type: 'string' },
+                    sku: { type: 'string' },
+                    targetMaxAllInUsd: { type: 'number' },
+                    subAllocationUsd: { type: 'number' },
+                    autoBuyEnabled: { type: 'boolean' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Created AutonomousSubAgent and updated FleetStateSnapshot',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      agent: { $ref: '#/components/schemas/AutonomousSubAgent' },
+                      fleet: { $ref: '#/components/schemas/FleetStateSnapshot' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/agents/webhook/price-drop': {
+        post: {
+          operationId: 'triggerPriceDropWebhook',
+          summary:
+            'Trigger background price-drop webhook, wake matching sub-agents, and execute autonomous 3-rung settlement',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['sku'],
+                  properties: {
+                    sku: { type: 'string' },
+                    newBasePriceUsd: { type: 'number' },
+                    voucherCode: { type: 'string' },
+                    triggerType: {
+                      type: 'string',
+                      enum: ['CHANNEL3_PRICE_DROP_WEBHOOK', 'WATCHDOG_POLL_TICK'],
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Triggered sub-agents and updated fleet snapshot',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      triggeredAgents: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/AutonomousSubAgent' },
+                      },
+                      fleet: { $ref: '#/components/schemas/FleetStateSnapshot' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       '/api/witness/snapshot': {
         post: {
           operationId: 'witnessSnapshot',
@@ -656,6 +817,82 @@ export function buildOpenApiSpec(): Record<string, unknown> {
               anyOf: [{ $ref: '#/components/schemas/PartitionSpec' }, { type: 'null' }],
             },
             completedAtUtc: { type: 'string' },
+          },
+        },
+        OnboardingUserSession: {
+          type: 'object',
+          properties: {
+            userId: { type: 'string' },
+            email: { type: 'string' },
+            displayName: { type: 'string' },
+            avatarUrl: { type: 'string' },
+            authProvider: {
+              type: 'string',
+              enum: ['CLERK_GOOGLE_OAUTH', 'CLERK_SESSION', 'DEMO_PASSKEY'],
+            },
+            clerkSessionId: { type: 'string' },
+            paypalConnected: { type: 'boolean' },
+            paypalPayerEmail: { type: 'string' },
+            paypalVaultTokenId: { type: 'string' },
+            masterPartitionUsd: { type: 'number' },
+            onboardingCompletedAtUtc: { type: 'string' },
+          },
+        },
+        AutonomousSubAgent: {
+          type: 'object',
+          properties: {
+            agentId: { type: 'string' },
+            name: { type: 'string' },
+            sku: { type: 'string' },
+            productTitle: { type: 'string' },
+            retailPriceUsd: { type: 'number' },
+            targetMaxAllInUsd: { type: 'number' },
+            subAllocationUsd: { type: 'number' },
+            spentUsd: { type: 'number' },
+            remainingSubAllocationUsd: { type: 'number' },
+            autoBuyEnabled: { type: 'boolean' },
+            status: {
+              type: 'string',
+              enum: [
+                'ARMED_WATCHING',
+                'EXECUTING',
+                'GOAL_CAPTURED',
+                'BLOCKED_TRAP',
+                'BLOCKED_SUB_ALLOCATION_WALL',
+              ],
+            },
+            lastEventSummary: { type: 'string' },
+            capturedOrderId: { type: 'string' },
+            capturedAmountUsd: { type: 'number' },
+            savedUsd: { type: 'number' },
+            commitment: { type: 'string' },
+            createdAtUtc: { type: 'string' },
+            updatedAtUtc: { type: 'string' },
+          },
+        },
+        FleetStateSnapshot: {
+          type: 'object',
+          properties: {
+            storageEngine: {
+              type: 'string',
+              enum: ['NEON_SERVERLESS_POSTGRES', 'LOCAL_HERMETIC_MIRROR'],
+            },
+            clerkConfigured: { type: 'boolean' },
+            neonConfigured: { type: 'boolean' },
+            user: {
+              anyOf: [
+                { $ref: '#/components/schemas/OnboardingUserSession' },
+                { type: 'null' },
+              ],
+            },
+            masterPartitionUsd: { type: 'number' },
+            totalSubAllocatedUsd: { type: 'number' },
+            unallocatedMasterUsd: { type: 'number' },
+            agents: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AutonomousSubAgent' },
+            },
+            recentBackgroundEvents: { type: 'array', items: { type: 'object' } },
           },
         },
       },

@@ -76,7 +76,7 @@ import {
 } from '@veripact/sdk';
 import { renderApprovalPage } from './approval-template';
 import { buildOpenApiSpec } from './openapi-route';
-import { handleWalletRequest, WALLET_ROUTES } from './wallet-routes';
+import { handleWalletRequest, resetWalletRouteState, WALLET_ROUTES } from './wallet-routes';
 import { renderIndexPage } from './ui-template';
 import { renderAnywhereScript } from './anywhere-script';
 import { findCatalogProduct, renderStorefront } from './storefront-template';
@@ -512,6 +512,7 @@ export function resetDemoState(): void {
   // v5 wallet store (pairings, partitions, orders, connectors) resets with
   // the demo so E2E and tests always start from a fresh wallet.
   resetWalletState();
+  resetWalletRouteState();
   try {
     unlinkSync(PENDING_FILE);
   } catch {
@@ -2504,7 +2505,9 @@ export async function handleWorkbenchRequest(
     if (
       pathname === '/pair' ||
       pathname.startsWith('/pair/') ||
-      pathname.startsWith('/api/wallet/')
+      pathname.startsWith('/api/wallet/') ||
+      pathname.startsWith('/api/onboarding/') ||
+      pathname.startsWith('/api/agents/')
     ) {
       if (await handleWalletRequest(req, res)) {
         return;
