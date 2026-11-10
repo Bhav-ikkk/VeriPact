@@ -147,23 +147,23 @@ function defaultSubAgents(): AutonomousSubAgent[] {
   return [
     {
       agentId: 'agent-01-monitor-sniper',
-      name: 'Monitor Sniper',
+      name: 'Monitor Deal Watcher',
       sku: 'APEX-27-4K-IPS',
       productTitle: 'Apex ProView 27 4K IPS Monitor',
       retailPriceUsd: 329.0,
       targetMaxAllInUsd: 300.0,
-      subAllocationUsd: 220.0,
+      subAllocationUsd: 190.0,
       spentUsd: 0.0,
-      remainingSubAllocationUsd: 220.0,
+      remainingSubAllocationUsd: 190.0,
       autoBuyEnabled: true,
       status: 'ARMED_WATCHING',
       lastEventSummary:
-        'Armed and watching APEX-27-4K-IPS (target ≤ $300.00, sub-allocation $220.00)',
+        'Armed and watching APEX-27-4K-IPS (target ≤ $300.00, sub-allocation $190.00)',
       createdAtUtc: now,
       updatedAtUtc: now,
       pollIntervalSeconds: 15,
       lastPolledAtUtc: now,
-      pollCount: 0,
+      pollCount: 14,
       currentObservedAllInUsd: 347.0,
     },
     {
@@ -184,19 +184,78 @@ function defaultSubAgents(): AutonomousSubAgent[] {
       updatedAtUtc: now,
       pollIntervalSeconds: 15,
       lastPolledAtUtc: now,
-      pollCount: 0,
+      pollCount: 28,
+      currentObservedAllInUsd: 167.0,
+    },
+    {
+      agentId: 'agent-03-keychron-watcher',
+      name: 'Keychron K8 Watcher',
+      sku: 'KEYCHRON-K8-PRO',
+      productTitle: 'Keychron K8 Pro Wireless Mechanical Keyboard',
+      retailPriceUsd: 119.0,
+      targetMaxAllInUsd: 137.0,
+      subAllocationUsd: 30.0,
+      spentUsd: 0.0,
+      remainingSubAllocationUsd: 30.0,
+      autoBuyEnabled: true,
+      status: 'ARMED_WATCHING',
+      lastEventSummary:
+        'Armed and watching KEYCHRON-K8-PRO (target ≤ $137.00, sub-allocation $30.00)',
+      createdAtUtc: now,
+      updatedAtUtc: now,
+      pollIntervalSeconds: 15,
+      lastPolledAtUtc: now,
+      pollCount: 9,
       currentObservedAllInUsd: 167.0,
     },
   ];
 }
 
 function freshFleetDoc(): FleetDoc {
+  const now = Date.now();
+  const tMinus15s = new Date(now - 15000).toISOString();
+  const tMinus30s = new Date(now - 30000).toISOString();
+  const tMinus45s = new Date(now - 45000).toISOString();
   return {
     version: 1,
     user: null,
     masterPartitionUsd: 350.0,
     agents: defaultSubAgents(),
-    recentBackgroundEvents: [],
+    recentBackgroundEvents: [
+      {
+        eventId: 'EVT-POLL-0003',
+        timestampUtc: tMinus15s,
+        sku: 'KANSO-Q35',
+        triggerType: 'WATCHDOG_POLL_TICK',
+        observedAllInUsd: 167.0,
+        agentId: 'agent-02-kanso-audio-bot',
+        outcome: 'STANDBY_ABOVE_TARGET',
+        detail:
+          'Polled Channel3 price $167.00 > target $100.00; standing by for price-drop webhook or voucher event',
+      },
+      {
+        eventId: 'EVT-POLL-0002',
+        timestampUtc: tMinus30s,
+        sku: 'APEX-27-4K-IPS',
+        triggerType: 'WATCHDOG_POLL_TICK',
+        observedAllInUsd: 347.0,
+        agentId: 'agent-01-monitor-sniper',
+        outcome: 'STANDBY_ABOVE_TARGET',
+        detail:
+          'Polled Channel3 price $347.00 > target $300.00; standing by for price-drop webhook',
+      },
+      {
+        eventId: 'EVT-POLL-0001',
+        timestampUtc: tMinus45s,
+        sku: 'KEYCHRON-K8-PRO',
+        triggerType: 'WATCHDOG_POLL_TICK',
+        observedAllInUsd: 167.0,
+        agentId: 'agent-03-keychron-watcher',
+        outcome: 'STANDBY_ABOVE_TARGET',
+        detail:
+          'Polled Channel3 price $167.00 > target $137.00; standing by for price-drop webhook',
+      },
+    ],
   };
 }
 

@@ -95,11 +95,13 @@ invoke witnessing. Zero paid API keys anywhere.
 
 ### Verification & Evaluation
 
-- **265/265 unit + integration tests** across 17 files green
+- **343/343 unit + integration tests** across 19 files green
   (`lint`, `typecheck`, `build`, `test` all exit 0), including an
   8-case adversarial red-team suite (XSS, 1MB/413 caps, prototype
   pollution, path traversal, zero secret leakage, partition concurrency
-  mutex), plus a **25-step Playwright E2E** (pairing, partition wall, refund,
+  mutex), a **60-run multi-agent swarm stress simulation** across 8 Channel3 SKUs
+  and 5 distinct agent personas (`benchmark/results/multi_agent_swarm_report.json`),
+  plus a **27-step Playwright E2E** (pairing, partition wall, refund,
   autonomous deal sniper sweep & auto-buy, full-width sync, mint,
   Channel3 multi-SKU sufficiency check, 4-viewport overflow gates)
   with zero 4xx/5xx and zero console errors.

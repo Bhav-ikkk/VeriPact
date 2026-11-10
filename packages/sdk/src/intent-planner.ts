@@ -285,10 +285,10 @@ export async function parseShoppingIntent(
   const targetMaxAllInUsd = extractTargetDollarCap(lower, fallbackTargetUsd);
   const condition: 'NEW' | 'REFURBISHED' =
     meta.condition === 'REFURBISHED' ||
-    lower.includes('refurb') ||
-    lower.includes('open-box') ||
-    lower.includes('open box') ||
-    lower.includes('used')
+      lower.includes('refurb') ||
+      lower.includes('open-box') ||
+      lower.includes('open box') ||
+      lower.includes('used')
       ? 'REFURBISHED'
       : 'NEW';
 

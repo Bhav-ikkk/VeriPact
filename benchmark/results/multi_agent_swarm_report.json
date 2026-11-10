@@ -1,0 +1,105 @@
+{
+  "generatedAtUtc": "2026-11-10T15:48:04.167Z",
+  "transportMode": "DETERMINISTIC_SANDBOX_REPLAY",
+  "totalRuns": 60,
+  "successfulRuns": 60,
+  "failedRuns": 0,
+  "passRatePct": 100,
+  "personas": {
+    "Catalog_Explorer_Swarm": {
+      "runs": 16,
+      "passed": 16,
+      "description": "Natural language intent extraction and SKU catalog mapping across 8 Channel3 SKUs"
+    },
+    "Background_Poller_And_Webhook_Swarm": {
+      "runs": 12,
+      "passed": 12,
+      "description": "Watchdog polling, autonomous price-drop webhooks, and sub-allocation wall enforcement"
+    },
+    "Adversarial_Merchant_RedTeam_Swarm": {
+      "runs": 12,
+      "passed": 12,
+      "description": "Prompt injections, return shrinkage, restocking fee traps, and cryptographic forgery attempts"
+    },
+    "Concurrency_And_Budget_Conservation_Swarm": {
+      "runs": 10,
+      "passed": 10,
+      "description": "Concurrent multi-agent partition operations and mathematical budget conservation"
+    },
+    "Dispute_Referee_And_Forgery_Swarm": {
+      "runs": 10,
+      "passed": 10,
+      "description": "Pure Ed25519 cryptographic dispute adjudication (drift detection vs buyer forgery)"
+    }
+  },
+  "invariantsVerified": [
+    "BUDGET_CONSERVATION_INVARIANT_HELD",
+    "THREE_RUNG_CRYPTOGRAPHIC_ISOLATION_PRESERVED",
+    "ZERO_HALLUCINATION_CATALOG_ALIGNMENT",
+    "ADVERSARIAL_TAMPERING_100_PCT_REJECTED",
+    "VP1_COMMITMENT_BINDING_VERIFIED"
+  ],
+  "status": "ALL_GREEN",
+  "runLogSample": [
+    {
+      "index": 1,
+      "persona": "Catalog_Explorer_Swarm",
+      "scenario": "Catalog intent extraction: APEX-27-4K-IPS",
+      "status": "PASSED"
+    },
+    {
+      "index": 2,
+      "persona": "Catalog_Explorer_Swarm",
+      "scenario": "Catalog intent extraction: APEX-27-4K-IPS",
+      "status": "PASSED"
+    },
+    {
+      "index": 3,
+      "persona": "Catalog_Explorer_Swarm",
+      "scenario": "Catalog intent extraction: APEX-27-4K-IPS-RB",
+      "status": "PASSED"
+    },
+    {
+      "index": 4,
+      "persona": "Catalog_Explorer_Swarm",
+      "scenario": "Catalog intent extraction: APEX-27-4K-IPS-RB",
+      "status": "PASSED"
+    },
+    {
+      "index": 5,
+      "persona": "Catalog_Explorer_Swarm",
+      "scenario": "Catalog intent extraction: KANSO-Q35",
+      "status": "PASSED"
+    },
+    {
+      "index": 6,
+      "persona": "Catalog_Explorer_Swarm",
+      "scenario": "Catalog intent extraction: KANSO-Q35",
+      "status": "PASSED"
+    },
+    {
+      "index": 7,
+      "persona": "Catalog_Explorer_Swarm",
+      "scenario": "Catalog intent extraction: KEYCHRON-K8-PRO",
+      "status": "PASSED"
+    },
+    {
+      "index": 8,
+      "persona": "Catalog_Explorer_Swarm",
+      "scenario": "Catalog intent extraction: KEYCHRON-K8-PRO",
+      "status": "PASSED"
+    },
+    {
+      "index": 9,
+      "persona": "Catalog_Explorer_Swarm",
+      "scenario": "Catalog intent extraction: NORTHLOOP-14-AIR",
+      "status": "PASSED"
+    },
+    {
+      "index": 10,
+      "persona": "Catalog_Explorer_Swarm",
+      "scenario": "Catalog intent extraction: NORTHLOOP-14-AIR",
+      "status": "PASSED"
+    }
+  ]
+}

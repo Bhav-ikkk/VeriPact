@@ -76,7 +76,10 @@ export function legacyUnwitnessedFixtures(): SyncPaymentRecord[] {
       status: 'CAPTURED',
       createdAtUtc: '2025-10-02T11:47:53.000Z',
       protectionClass: 'LEGACY_UNWITNESSED',
-      driftRiskNote: LEGACY_DRIFT_NOTE,
+      returnWindowDays: 0,
+      restockingFeePct: 20,
+      driftRiskNote:
+        'UNPROTECTED — Hidden 20% restocking fee added post-checkout ($37.99 disputed); no witness snapshot or custom_id hash recorded',
       transportMode: 'DETERMINISTIC_SANDBOX_REPLAY',
     },
     {
@@ -88,7 +91,10 @@ export function legacyUnwitnessedFixtures(): SyncPaymentRecord[] {
       status: 'REFUNDED',
       createdAtUtc: '2025-10-28T09:15:44.000Z',
       protectionClass: 'LEGACY_UNWITNESSED',
-      driftRiskNote: LEGACY_DRIFT_NOTE,
+      returnWindowDays: 0,
+      restockingFeePct: 0,
+      driftRiskNote:
+        'UNPROTECTED — Unwitnessed coupon voided return policy ($129.50 disputed); merchant claimed final sale after checkout',
       transportMode: 'DETERMINISTIC_SANDBOX_REPLAY',
     },
   ];

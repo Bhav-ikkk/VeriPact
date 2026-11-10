@@ -690,7 +690,7 @@ describe('@veripact/workbench Onboarding & Multi-Agent Fleet Routes', () => {
     const initialFleet = json<FleetStateSnapshot>(initialRes);
     expect(initialFleet.user).toBeNull();
     expect(initialFleet.masterPartitionUsd).toBe(350);
-    expect(initialFleet.agents.length).toBe(2);
+    expect(initialFleet.agents.length).toBe(3);
 
     // Complete onboarding with 3 sub-agents ($200 + $100 + $50 = $350)
     const res = await post('/api/onboarding/complete', {
