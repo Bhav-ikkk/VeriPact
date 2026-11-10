@@ -672,7 +672,9 @@ function runSniperFlow(){
   }
   var st=$('checkout-status');
   if(st)st.textContent='Autonomous sniper running for '+sku+' under $'+targetVal.toFixed(2)+'\u2026';
-  return api('/api/wallet/sniper',{method:'POST',body:JSON.stringify({sku:sku,targetMaxAllInUsd:targetVal,executionMode:'replay'})}).then(function(rep){
+  var promptEl=$('sniper-intent-prompt');
+  var promptVal=promptEl?promptEl.value.trim():'';
+  return api('/api/wallet/sniper',{method:'POST',body:JSON.stringify({sku:sku,targetMaxAllInUsd:targetVal,executionMode:'replay',prompt:promptVal||undefined})}).then(function(rep){
     if(rep.partitionAfter)paintPartition(rep.partitionAfter);
     renderSniperResults(rep);
     var banner=$('checkout-outcome-banner');
@@ -707,7 +709,27 @@ function runSniperFlow(){
     }else{
       if(typeof window.setRobotState==='function')window.setRobotState('blocked');
       if(tb)tb.textContent='✦ No Compliant Deal Under Target! All compliant merchant listings exceed $'+targetVal.toFixed(2)+' target ceiling \u00B7 $0 spent.';
-      if(banner){banner.dataset.state='blocked';banner.innerHTML=ICON_BAD+'<div><h3>No Compliant Deal Under Target</h3><p>All compliant merchant listings exceed $'+targetVal.toFixed(2)+' target ceiling \u00B7 $0 spent.</p></div>';}
+      if(banner){
+        banner.dataset.state='blocked';
+        banner.innerHTML=ICON_BAD+'<div><h3>No Compliant Deal Under Target</h3><p>All compliant merchant listings exceed $'+targetVal.toFixed(2)+' target ceiling \u00B7 <button type="button" class="btn btn-sm btn-primary" id="btn-sniper-spawn-bg" style="margin-top:6px;display:inline-flex;align-items:center;gap:4px;">⏱ Spawn Background Watchdog ($'+targetVal.toFixed(2)+')</button></p></div>';
+        var autoSpawnBtn=$('btn-sniper-spawn-bg');
+        if(autoSpawnBtn){
+          autoSpawnBtn.addEventListener('click',function(){
+            api('/api/agents/spawn',{
+              method:'POST',
+              body:JSON.stringify({
+                name:'Price-Drop Watcher ('+sku+')',
+                sku:sku,
+                targetMaxAllInUsd:targetVal,
+                subAllocationUsd:Math.max(targetVal,100)
+              })
+            }).then(function(){
+              toast('Background task armed: '+sku+' at $'+targetVal.toFixed(2));
+              refreshFleetState();
+            }).catch(function(err){toast(err.message);});
+          });
+        }
+      }
     }
     if(st)st.textContent='Sniper: '+rep.outcome+' ('+rep.trapsRejectedCount+' traps blocked)';
     toast('Sniper '+rep.outcome);
@@ -1184,7 +1206,7 @@ if(promptInp){
   promptInp.addEventListener('input',function(e){
     if(typeof window.setRobotState==='function')window.setRobotState('listening');
     var val=e.target.value;
-    var m=val.match(/(?:\$|under\s+|cap\s+)(\d+(?:\.\d+)?)/i)||val.match(/\b(\d{2,4})\b/);
+    var m=val.match(/(?:\$|under\s+|cap\s+|below\s+|at\s+|for\s+)(\d+(?:\.\d+)?)/i)||val.match(/\b(\d{2,4})\b/);
     if(m&&m[1]){
       var num=parseFloat(m[1]);
       if(num>=50&&num<=5000){
@@ -1194,6 +1216,37 @@ if(promptInp){
           updateSniperBtnLabel();
         }
       }
+    }
+    var lower=val.toLowerCase();
+    var matchedSku=null;
+    if(lower.indexOf('refurb')>=0||lower.indexOf('open-box')>=0||lower.indexOf('open box')>=0||(lower.indexOf('used')>=0&&(lower.indexOf('monitor')>=0||lower.indexOf('apex')>=0||lower.indexOf('display')>=0))){
+      matchedSku='APEX-27-4K-IPS-RB';
+    }else if(lower.indexOf('headphone')>=0||lower.indexOf('audio')>=0||lower.indexOf('kanso')>=0||lower.indexOf('earcup')>=0||lower.indexOf('anc')>=0||lower.indexOf('q35')>=0){
+      matchedSku='KANSO-Q35';
+    }else if(lower.indexOf('keyboard')>=0||lower.indexOf('keychron')>=0||lower.indexOf('mech')>=0||lower.indexOf('k8')>=0||lower.indexOf('tkl')>=0){
+      matchedSku='KEYCHRON-K8-PRO';
+    }else if(lower.indexOf('laptop')>=0||lower.indexOf('notebook')>=0||lower.indexOf('northloop')>=0||lower.indexOf('14-air')>=0||lower.indexOf('air 14')>=0){
+      matchedSku='NORTHLOOP-14-AIR';
+    }else if(lower.indexOf('ssd')>=0||lower.indexOf('nvme')>=0||lower.indexOf('terra')>=0||lower.indexOf('2tb')>=0||lower.indexOf('storage')>=0||lower.indexOf('drive')>=0){
+      matchedSku='TERRA-2TB-NVME';
+    }else if(lower.indexOf('webcam')>=0||lower.indexOf('camera')>=0||lower.indexOf('lumen')>=0||lower.indexOf('stream')>=0){
+      matchedSku='LUMEN-4K-CAM';
+    }else if(lower.indexOf('dock')>=0||lower.indexOf('thunderbolt')>=0||lower.indexOf('vela')>=0||lower.indexOf('tb4')>=0||lower.indexOf('hub')>=0){
+      matchedSku='VELA-TB4-DOCK';
+    }else if(lower.indexOf('monitor')>=0||lower.indexOf('display')>=0||lower.indexOf('27')>=0||lower.indexOf('4k')>=0||lower.indexOf('ips')>=0||lower.indexOf('apex')>=0){
+      matchedSku='APEX-27-4K-IPS';
+    }
+    if(matchedSku&&matchedSku!==state.sku){
+      state.sku=matchedSku;
+      var sel=$('channel3-sku-select');
+      if(sel)sel.value=matchedSku;
+      var scn=state.scenario||'normal';
+      var sf=$('store-frame');
+      if(sf)sf.src='/store/'+scn+'?sku='+encodeURIComponent(matchedSku);
+      var su=$('store-url');
+      if(su)su.textContent='https://store.example.com/product/'+matchedSku+(scn==='normal'?'':'/'+scn);
+      updateSpendBtnLabel();
+      runWitnessFlow().catch(function(){});
     }
   });
   promptInp.addEventListener('focus',function(e){

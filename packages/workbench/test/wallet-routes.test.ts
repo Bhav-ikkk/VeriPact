@@ -615,6 +615,48 @@ describe('POST /api/wallet/sniper', () => {
     const getRes = await get('/api/wallet/sniper');
     expect(getRes.status).toBe(405);
   });
+
+  it('resolves SKU and target ceiling automatically when prompt is passed', async () => {
+    const res = await post('/api/wallet/sniper', {
+      prompt: 'Buy wireless headphones under $120',
+    });
+    expect(res.status).toBe(200);
+    const data = json<{
+      outcome: string;
+      sku: string;
+      targetMaxAllInUsd: number;
+      winningCandidate: { voucherCode?: string; allInTotalUsd: number };
+    }>(res);
+    expect(data.sku).toBe('KANSO-Q35');
+    expect(data.targetMaxAllInUsd).toBe(120);
+    expect(data.outcome).toBe('DEAL_CAPTURED');
+    expect(data.winningCandidate.voucherCode).toBe('AUDIO67');
+    expect(data.winningCandidate.allInTotalUsd).toBe(100);
+  });
+});
+
+describe('POST /api/agents/parse-intent', () => {
+  it('parses natural-language prompts across Channel3 SKUs', async () => {
+    const res = await post('/api/agents/parse-intent', {
+      prompt: 'Keychron mechanical keyboard under $150',
+    });
+    expect(res.status).toBe(200);
+    const data = json<{
+      matchedSku: string;
+      targetMaxAllInUsd: number;
+      detectedVoucherCode: string;
+      parserEngine: string;
+    }>(res);
+    expect(data.matchedSku).toBe('KEYCHRON-K8-PRO');
+    expect(data.targetMaxAllInUsd).toBe(150);
+    expect(data.detectedVoucherCode).toBe('MECH30');
+    expect(data.parserEngine).toBe('DETERMINISTIC_SEMANTIC_CATALOG');
+  });
+
+  it('rejects GET with 405', async () => {
+    const res = await get('/api/agents/parse-intent');
+    expect(res.status).toBe(405);
+  });
 });
 
 describe('GET /embed/veripact-anywhere.js', () => {

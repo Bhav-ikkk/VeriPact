@@ -7,3 +7,4 @@ export * from './client';
 export * from './regression';
 export * from './wallet';
 export * from './sniper';
+export * from './intent-planner';

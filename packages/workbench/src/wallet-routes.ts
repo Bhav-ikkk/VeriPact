@@ -22,6 +22,7 @@ import {
 } from '@veripact/core';
 import { REPORTING_INDEXING_DELAY_DISCLOSURE } from '@veripact/paypal-client';
 import {
+  parseShoppingIntent,
   runAutonomousDealSniper,
   SCENARIO_NAMES,
   type ScenarioName,
@@ -79,6 +80,7 @@ export const WALLET_ROUTES = [
   '/api/agents/spawn',
   '/api/agents/webhook/price-drop',
   '/api/agents/poll-now',
+  '/api/agents/parse-intent',
 ];
 
 /** Safe pairing-token shape (`400` on anything else — never a lookup). */
@@ -492,6 +494,24 @@ async function handleSniper(body: Record<string, unknown>, res: WorkbenchRespons
   }
   const rawMode = body['executionMode'];
   const mode = rawMode === 'live' ? 'live' : 'replay';
+
+  const rawPrompt = body['prompt'];
+  let prompt: string | undefined;
+  if (typeof rawPrompt === 'string' && rawPrompt.trim().length > 0) {
+    prompt = rawPrompt.trim();
+  }
+
+  if (prompt !== undefined && (rawSku === undefined || rawSku === 'APEX-27-4K-IPS')) {
+    const intent = await parseShoppingIntent(prompt, sku, targetMaxAllInUsd);
+    sku = intent.matchedSku;
+    if (targetMaxAllInUsd === undefined) {
+      targetMaxAllInUsd = intent.targetMaxAllInUsd;
+    }
+    if (customVoucherCode === undefined && intent.detectedVoucherCode) {
+      customVoucherCode = intent.detectedVoucherCode;
+    }
+  }
+
   const client = demoClientFor(mode);
   const report = await runAutonomousDealSniper(client, {
     ...(sku !== undefined ? { sku } : {}),
@@ -850,6 +870,19 @@ export async function handleWalletRequest(
         | undefined;
       const result = await pollBackgroundAgents(wallet, client, simulated);
       sendJson(res, 200, result);
+      return true;
+    }
+    case '/api/agents/parse-intent': {
+      if (method !== 'POST') {
+        sendJson(res, 405, { error: 'method not allowed' });
+        return true;
+      }
+      const body = parseJsonBody(await readBody(req));
+      const rawPrompt = typeof body['prompt'] === 'string' ? body['prompt'] : '';
+      const fallbackSku = typeof body['fallbackSku'] === 'string' ? body['fallbackSku'] : undefined;
+      const fallbackTarget = typeof body['fallbackTargetUsd'] === 'number' ? body['fallbackTargetUsd'] : undefined;
+      const parsed = await parseShoppingIntent(rawPrompt, fallbackSku, fallbackTarget);
+      sendJson(res, 200, parsed);
       return true;
     }
     default: {

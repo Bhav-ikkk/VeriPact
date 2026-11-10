@@ -38,6 +38,7 @@ import {
   DEFAULT_PARTITION_MAX_PER_ORDER_USD,
   type VeriPactWallet,
 } from './wallet';
+import { SKU_VOUCHER_MAP } from './intent-planner';
 
 export type SniperCandidateVerdict =
   | 'REJECTED_ADVERSARIAL_DOM'
@@ -218,10 +219,13 @@ function buildCandidates(
   product: Channel3CatalogProduct,
   voucherCode: string,
   voucherDiscountUsd: number,
+  retailPriceUsd?: number,
+  netBasePriceUsd?: number,
+  merchantName?: string,
 ): CandidateFixture[] {
   const catalog = product.priceUsd ?? 0;
-  const retail = round2(catalog + VERIFIED_DISCOUNT_USD);
-  const net = round2(retail - voucherDiscountUsd);
+  const retail = retailPriceUsd ?? round2(catalog + VERIFIED_DISCOUNT_USD);
+  const net = netBasePriceUsd ?? round2(retail - voucherDiscountUsd);
   const condition = (product.condition ?? 'NEW').toUpperCase() === 'REFURBISHED'
     ? 'Certified Refurbished.'
     : 'Brand New in Box.';
@@ -231,7 +235,7 @@ function buildCandidates(
       candidateId: 'EC-5',
       merchantName: 'CouponKing Outlet',
       merchantUrl: 'https://couponking.example/outlet/apex',
-      retailPriceUsd: 329,
+      retailPriceUsd: retail,
       voucherDiscountUsd: 0,
       netBasePriceUsd: 199,
       shippingUsd: SHIP_USD,
@@ -261,7 +265,7 @@ function buildCandidates(
       freightProbe: false,
       verifiedCapture: false,
       html: pageHtml(
-        'Apex ProView 27 4K IPS Monitor - Certified Refurbished',
+        product.productId === 'APEX-27-4K-IPS-RB' ? title : `${title} - Certified Refurbished`,
         [
           'Certified Refurbished. Sale Price: $219.00.',
           'Free 30-day returns. No restocking fee.',
@@ -274,10 +278,10 @@ function buildCandidates(
       candidateId: 'EC-1',
       merchantName: 'FlashTech Store',
       merchantUrl: 'https://flashtech.example/clearance70',
-      retailPriceUsd: 329,
+      retailPriceUsd: retail,
       voucherCode: 'CLEARANCE70',
       voucherDiscountUsd: 70,
-      netBasePriceUsd: 259,
+      netBasePriceUsd: round2(retail - 70),
       shippingUsd: SHIP_USD,
       taxUsd: TAX_USD,
       freightProbe: false,
@@ -285,7 +289,7 @@ function buildCandidates(
       html: pageHtml(
         title,
         [
-          'Brand New in Box. Sale Price: $259.00.',
+          `Brand New in Box. Sale Price: $${money(round2(retail - 70))}.`,
           'Final Sale. 0-day returns. 25% restocking fee.',
           `Shipping: $${money(SHIP_USD)}.`,
           `Tax: $${money(TAX_USD)}.`,
@@ -296,10 +300,10 @@ function buildCandidates(
       candidateId: 'EC-2',
       merchantName: 'MetroDisplay',
       merchantUrl: 'https://metrodisplay.example/vip60',
-      retailPriceUsd: 329,
+      retailPriceUsd: retail,
       voucherCode: 'VIP60',
       voucherDiscountUsd: 0,
-      netBasePriceUsd: 329,
+      netBasePriceUsd: retail,
       shippingUsd: SHIP_USD,
       taxUsd: TAX_USD,
       freightProbe: false,
@@ -307,7 +311,7 @@ function buildCandidates(
       html: pageHtml(
         title,
         [
-          'Brand New in Box. Sale Price: $329.00.',
+          `Brand New in Box. Sale Price: $${money(retail)}.`,
           'Voucher VIP60 requires a 500 dollar minimum cart and was not applied.',
           'Free 30-day returns. No restocking fee.',
           `Shipping: $${money(SHIP_USD)}.`,
@@ -319,10 +323,10 @@ function buildCandidates(
       candidateId: 'EC-4',
       merchantName: 'FreightKing',
       merchantUrl: 'https://freightking.example/flash',
-      retailPriceUsd: 329,
+      retailPriceUsd: retail,
       voucherCode: 'FREIGHT50',
       voucherDiscountUsd: 50,
-      netBasePriceUsd: 279,
+      netBasePriceUsd: round2(retail - 50),
       shippingUsd: FREIGHT_SHIP_USD,
       taxUsd: TAX_USD,
       freightProbe: true,
@@ -330,7 +334,7 @@ function buildCandidates(
       html: pageHtml(
         title,
         [
-          'Brand New in Box. Sale Price: $279.00.',
+          `Brand New in Box. Sale Price: $${money(round2(retail - 50))}.`,
           'Promo FREIGHT50 applied.',
           'Free 30-day returns. No restocking fee.',
           'Shipping: Calculated at checkout. Tax: Calculated at checkout.',
@@ -339,8 +343,8 @@ function buildCandidates(
     },
     {
       candidateId: 'EC-6',
-      merchantName: 'Apex Display Co.',
-      merchantUrl: 'https://apexdisplay.example/verified-voucher',
+      merchantName: merchantName || (product.productId === 'APEX-27-4K-IPS' ? 'Apex Display Co.' : `${product.brand || 'Verified'} Store`),
+      merchantUrl: `https://${(product.brand || 'apex').toLowerCase()}display.example/verified-voucher`,
       retailPriceUsd: retail,
       voucherCode,
       voucherDiscountUsd,
@@ -447,12 +451,50 @@ export async function runAutonomousDealSniper(
     host.keys.buyer.privateKeyHex,
     host.keys.buyer.publicKeyHex,
   );
-  const voucherCode = input.customVoucherCode ?? VERIFIED_VOUCHER;
-  const voucherDiscountUsd = voucherCode === VERIFIED_VOUCHER ? VERIFIED_DISCOUNT_USD : 0;
+  const cfg = SKU_VOUCHER_MAP[sku];
+  let voucherCode: string;
+  let voucherDiscountUsd: number;
+  let retailBaselineUsd: number;
+  let netBasePriceUsd: number;
+  let merchantName: string;
+
+  if (sku === 'KANSO-Q35') {
+    if (input.customVoucherCode === 'AUDIO67' || targetMaxAllInUsd <= 150) {
+      voucherCode = input.customVoucherCode ?? 'AUDIO67';
+      voucherDiscountUsd = voucherCode === 'AUDIO67' ? 67 : 0;
+      retailBaselineUsd = 149;
+      netBasePriceUsd = round2(149 - voucherDiscountUsd);
+      merchantName = 'Kanso Audio Direct';
+    } else {
+      voucherCode = input.customVoucherCode ?? 'PAYPAL50';
+      voucherDiscountUsd = voucherCode === 'PAYPAL50' ? 50 : 0;
+      retailBaselineUsd = round2((product.priceUsd ?? 149) + 50);
+      netBasePriceUsd = 149;
+      merchantName = 'Apex Display Co.';
+    }
+  } else if (cfg) {
+    voucherCode = input.customVoucherCode ?? cfg.voucherCode ?? VERIFIED_VOUCHER;
+    voucherDiscountUsd =
+      cfg.voucherCode && voucherCode === cfg.voucherCode
+        ? cfg.voucherDiscountUsd
+        : voucherCode === VERIFIED_VOUCHER
+          ? VERIFIED_DISCOUNT_USD
+          : 0;
+    retailBaselineUsd = cfg.retailPriceUsd;
+    netBasePriceUsd = round2(cfg.retailPriceUsd - voucherDiscountUsd);
+    merchantName = sku === 'APEX-27-4K-IPS' ? 'Apex Display Co.' : `${product.brand ?? 'Direct'} Store`;
+  } else {
+    voucherCode = input.customVoucherCode ?? VERIFIED_VOUCHER;
+    voucherDiscountUsd = voucherCode === VERIFIED_VOUCHER ? VERIFIED_DISCOUNT_USD : 0;
+    retailBaselineUsd = round2((product.priceUsd ?? 0) + VERIFIED_DISCOUNT_USD);
+    netBasePriceUsd = round2(retailBaselineUsd - voucherDiscountUsd);
+    merchantName = 'Apex Display Co.';
+  }
+
   const wallet = host.wallet(input.stateFilePath);
   return wallet.runExclusive(async () => {
   ensureAgenticPartition(wallet);
-  const fixtures = buildCandidates(product, voucherCode, voucherDiscountUsd);
+  const fixtures = buildCandidates(product, voucherCode, voucherDiscountUsd, retailBaselineUsd, netBasePriceUsd, merchantName);
   const evaluations: SniperCandidateEvaluation[] = [];
 
   for (const fixture of fixtures) {
@@ -574,7 +616,7 @@ export async function runAutonomousDealSniper(
     sniperRunId: `SNP-${randomBytes(4).toString('hex')}`,
     sku,
     productTitle: product.title,
-    retailBaselineUsd: round2((product.priceUsd ?? 0) + VERIFIED_DISCOUNT_USD),
+    retailBaselineUsd,
     targetMaxAllInUsd,
     candidatesEvaluated: evaluations.length,
     trapsRejectedCount: evaluations.filter((e) => e.verdict.startsWith('REJECTED_')).length,

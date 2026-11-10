@@ -21,7 +21,7 @@ import {
   type Channel3CatalogCache,
   type Channel3CatalogProduct,
 } from '@veripact/witness-client';
-import { buildDemoMandate } from '@veripact/sdk';
+import { buildDemoMandate, SKU_VOUCHER_MAP } from '@veripact/sdk';
 import {
   appendLedger,
   demoClientFor,
@@ -578,8 +578,11 @@ export async function triggerBackgroundPriceDrop(
   } else if (basePriceUsd !== undefined) {
     allInUsd = Number((basePriceUsd + shippingUsd + taxUsd).toFixed(2));
   } else {
+    const cfg = SKU_VOUCHER_MAP[input.sku];
     if (input.sku === 'KANSO-Q35') {
       basePriceUsd = input.voucherCode === 'AUDIO67' || !input.voucherCode ? 82.0 : 149.0;
+    } else if (cfg) {
+      basePriceUsd = cfg.basePriceUsd;
     } else if (input.sku === 'APEX-27-4K-IPS') {
       basePriceUsd = 279.0;
     } else {
@@ -588,13 +591,15 @@ export async function triggerBackgroundPriceDrop(
     allInUsd = Number((basePriceUsd + shippingUsd + taxUsd).toFixed(2));
   }
 
+  const skuCfg = SKU_VOUCHER_MAP[input.sku];
   const voucherCode =
     input.voucherCode ??
     (input.sku === 'KANSO-Q35' && basePriceUsd <= 82
       ? 'AUDIO67'
-      : input.sku === 'APEX-27-4K-IPS'
-        ? 'PAYPAL50'
-        : undefined);
+      : skuCfg?.voucherCode ??
+        (input.sku === 'APEX-27-4K-IPS'
+          ? 'PAYPAL50'
+          : undefined));
 
   const client = demoClientFor('auto');
   let catalog: Channel3CatalogCache;
@@ -862,10 +867,13 @@ export async function pollBackgroundAgents(
       basePriceUsd = simulated[agent.sku]!.basePriceUsd;
       voucherCode = simulated[agent.sku]!.voucherCode;
     } else {
+      const cfg = SKU_VOUCHER_MAP[agent.sku];
       if (agent.sku === 'KANSO-Q35') {
         basePriceUsd = 149.0;
       } else if (agent.sku === 'APEX-27-4K-IPS') {
         basePriceUsd = 329.0;
+      } else if (cfg) {
+        basePriceUsd = cfg.retailPriceUsd;
       }
     }
 
