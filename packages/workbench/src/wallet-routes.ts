@@ -51,6 +51,7 @@ import {
   completeOnboarding,
   createSubAgent,
   getFleetSnapshot,
+  pollBackgroundAgents,
   resetFleetStore,
   triggerBackgroundPriceDrop,
   type CompleteOnboardingInput,
@@ -77,6 +78,7 @@ export const WALLET_ROUTES = [
   '/api/onboarding/complete',
   '/api/agents/spawn',
   '/api/agents/webhook/price-drop',
+  '/api/agents/poll-now',
 ];
 
 /** Safe pairing-token shape (`400` on anything else — never a lookup). */
@@ -544,32 +546,44 @@ async function handleOnboardingComplete(
   body: Record<string, unknown>,
   res: WorkbenchResponse,
 ): Promise<void> {
-  const email = body['email'];
-  if (typeof email !== 'string' || !email.includes('@')) {
-    throw new HttpError(400, 'email must be a valid email string');
-  }
-  const displayName = body['displayName'];
-  if (typeof displayName !== 'string' || displayName.trim().length === 0) {
-    throw new HttpError(400, 'displayName must be a non-empty string');
-  }
-  const authProvider = body['authProvider'];
+  const payerEmail =
+    typeof body['paypalPayerEmail'] === 'string' && body['paypalPayerEmail'].includes('@')
+      ? body['paypalPayerEmail'].trim()
+      : typeof body['email'] === 'string' && body['email'].includes('@')
+        ? body['email'].trim()
+        : 'bhavik@paypal.com';
+
+  const email =
+    typeof body['email'] === 'string' && body['email'].includes('@')
+      ? body['email'].trim()
+      : payerEmail;
+
+  const displayName =
+    typeof body['displayName'] === 'string' && body['displayName'].trim().length > 0
+      ? body['displayName'].trim()
+      : (email.split('@')[0]
+          ? email.split('@')[0]!.charAt(0).toUpperCase() + email.split('@')[0]!.slice(1)
+          : 'Bhavik');
+
+  let authProvider: 'CLERK_GOOGLE_OAUTH' | 'CLERK_SESSION' | 'DEMO_PASSKEY' | 'PAYPAL_VAULT' =
+    'PAYPAL_VAULT';
   if (
-    authProvider !== 'CLERK_GOOGLE_OAUTH' &&
-    authProvider !== 'CLERK_SESSION' &&
-    authProvider !== 'DEMO_PASSKEY'
+    body['authProvider'] === 'CLERK_GOOGLE_OAUTH' ||
+    body['authProvider'] === 'CLERK_SESSION' ||
+    body['authProvider'] === 'DEMO_PASSKEY'
   ) {
-    throw new HttpError(
-      400,
-      "authProvider must be 'CLERK_GOOGLE_OAUTH', 'CLERK_SESSION', or 'DEMO_PASSKEY'",
-    );
+    authProvider = body['authProvider'];
   }
+
   const clerkToken = typeof body['clerkToken'] === 'string' ? body['clerkToken'] : undefined;
-  const paypalPayerEmail =
-    typeof body['paypalPayerEmail'] === 'string' ? body['paypalPayerEmail'] : undefined;
+  const paypalPayerEmail = payerEmail;
+  const skipBudgetAllocation = Boolean(body['skipBudgetAllocation']);
   const masterPartitionUsd =
-    typeof body['masterPartitionUsd'] === 'number' && Number.isFinite(body['masterPartitionUsd'])
-      ? body['masterPartitionUsd']
-      : undefined;
+    skipBudgetAllocation || body['masterPartitionUsd'] === 0
+      ? 0
+      : typeof body['masterPartitionUsd'] === 'number' && Number.isFinite(body['masterPartitionUsd'])
+        ? body['masterPartitionUsd']
+        : 350;
   const initialAgents = Array.isArray(body['initialAgents'])
     ? (body['initialAgents'] as CompleteOnboardingInput['initialAgents'])
     : undefined;
@@ -582,6 +596,7 @@ async function handleOnboardingComplete(
       clerkToken,
       paypalPayerEmail,
       masterPartitionUsd,
+      skipBudgetAllocation,
       initialAgents,
     });
     appendLedger({
@@ -820,6 +835,21 @@ export async function handleWalletRequest(
         return true;
       }
       await handlePriceDropWebhook(parseJsonBody(await readBody(req)), res);
+      return true;
+    }
+    case '/api/agents/poll-now': {
+      if (method !== 'POST') {
+        sendJson(res, 405, { error: 'method not allowed' });
+        return true;
+      }
+      const client = demoClientFor('auto');
+      const wallet = client.wallet();
+      const body = parseJsonBody(await readBody(req));
+      const simulated = body['simulatedCatalogPrices'] as
+        | Record<string, { basePriceUsd: number; voucherCode?: string }>
+        | undefined;
+      const result = await pollBackgroundAgents(wallet, client, simulated);
+      sendJson(res, 200, result);
       return true;
     }
     default: {

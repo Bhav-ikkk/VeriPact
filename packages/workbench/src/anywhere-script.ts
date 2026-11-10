@@ -86,6 +86,10 @@ var input=root.getElementById("vp-intent-input");
 var runBtn=root.getElementById("vp-intent-run");
 var statusEl=root.getElementById("vp-intent-status");
 var resultsEl=root.getElementById("vp-intent-results");
+var pill=root.getElementById("vp-anywhere-pill");
+var inIframe=false;
+try{inIframe=window.self!==window.top;}catch(errIf){inIframe=true;}
+if(inIframe&&pill){pill.style.display="none";}
 function isOpen(){return modal.className.indexOf("open")>=0;}
 function openBar(target,raw){
 var next=typeof target==="number"?target:parseTarget(raw||input.value);
@@ -94,8 +98,17 @@ else if(typeof next==="number"){input.value=intentLine(next);}
 modal.className="open";
 try{input.focus();}catch(err){}
 }
-function closeBar(){modal.className="";}
-function toggleBar(){if(isOpen()){closeBar();}else{openBar(parseTarget(input.value),"");}}
+function closeBar(){
+modal.className="";
+if(inIframe&&pill){pill.style.display="none";}
+}
+function toggleBar(){
+if(isOpen()){closeBar();}
+else{
+if(inIframe&&pill){pill.style.display="inline-flex";}
+openBar(parseTarget(input.value),"");
+}
+}
 function paintReport(data){
 var rows=data&&data.evaluations?data.evaluations:[];
 var html="";

@@ -34,11 +34,12 @@ export interface OnboardingUserSession {
   email: string;
   displayName: string;
   avatarUrl?: string;
-  authProvider: 'CLERK_GOOGLE_OAUTH' | 'CLERK_SESSION' | 'DEMO_PASSKEY';
+  authProvider: 'CLERK_GOOGLE_OAUTH' | 'CLERK_SESSION' | 'DEMO_PASSKEY' | 'PAYPAL_VAULT';
   clerkSessionId?: string;
   paypalConnected: boolean;
   paypalPayerEmail?: string;
   paypalVaultTokenId?: string;
+  fetchedBalanceUsd?: number;
   masterPartitionUsd: number;
   onboardingCompletedAtUtc: string;
 }
@@ -67,6 +68,10 @@ export interface AutonomousSubAgent {
   commitment?: string;
   createdAtUtc: string;
   updatedAtUtc: string;
+  pollIntervalSeconds?: number;
+  lastPolledAtUtc?: string;
+  pollCount?: number;
+  currentObservedAllInUsd?: number;
 }
 
 export interface FleetBackgroundEvent {
@@ -101,12 +106,13 @@ export interface CreateSubAgentInput {
 }
 
 export interface CompleteOnboardingInput {
-  email: string;
-  displayName: string;
-  authProvider: 'CLERK_GOOGLE_OAUTH' | 'CLERK_SESSION' | 'DEMO_PASSKEY';
+  email?: string;
+  displayName?: string;
+  authProvider?: 'CLERK_GOOGLE_OAUTH' | 'CLERK_SESSION' | 'DEMO_PASSKEY' | 'PAYPAL_VAULT';
   clerkToken?: string;
   paypalPayerEmail?: string;
   masterPartitionUsd?: number;
+  skipBudgetAllocation?: boolean;
   initialAgents?: Array<{
     name: string;
     sku: string;
@@ -155,6 +161,10 @@ function defaultSubAgents(): AutonomousSubAgent[] {
         'Armed and watching APEX-27-4K-IPS (target ≤ $300.00, sub-allocation $220.00)',
       createdAtUtc: now,
       updatedAtUtc: now,
+      pollIntervalSeconds: 15,
+      lastPolledAtUtc: now,
+      pollCount: 0,
+      currentObservedAllInUsd: 347.0,
     },
     {
       agentId: 'agent-02-kanso-audio-bot',
@@ -172,6 +182,10 @@ function defaultSubAgents(): AutonomousSubAgent[] {
         'Armed and watching KANSO-Q35 (target ≤ $100.00, sub-allocation $100.00)',
       createdAtUtc: now,
       updatedAtUtc: now,
+      pollIntervalSeconds: 15,
+      lastPolledAtUtc: now,
+      pollCount: 0,
+      currentObservedAllInUsd: 167.0,
     },
   ];
 }
@@ -384,6 +398,10 @@ export function createSubAgent(
     lastEventSummary: `Armed and watching ${input.sku} (target ≤ $${input.targetMaxAllInUsd.toFixed(2)}, sub-allocation $${input.subAllocationUsd.toFixed(2)})`,
     createdAtUtc: now,
     updatedAtUtc: now,
+    pollIntervalSeconds: 15,
+    lastPolledAtUtc: now,
+    pollCount: 0,
+    currentObservedAllInUsd: Number((retailPriceUsd + 18).toFixed(2)),
   };
 
   doc.agents.push(newAgent);
@@ -408,10 +426,21 @@ export async function completeOnboarding(
   input: CompleteOnboardingInput,
   stateFilePath?: string,
 ): Promise<FleetStateSnapshot> {
-  const masterPartitionUsd =
-    typeof input.masterPartitionUsd === 'number' &&
-    Number.isFinite(input.masterPartitionUsd) &&
-    input.masterPartitionUsd > 0
+  const payerEmail = input.paypalPayerEmail?.trim() || input.email?.trim() || 'bhavik@paypal.com';
+  const email = input.email?.trim() || payerEmail;
+  const displayName =
+    input.displayName?.trim() ||
+    (email.split('@')[0]
+      ? email.split('@')[0]!.charAt(0).toUpperCase() + email.split('@')[0]!.slice(1)
+      : 'Bhavik');
+  const authProvider = input.authProvider ?? 'PAYPAL_VAULT';
+
+  const skipBudget = Boolean(input.skipBudgetAllocation) || input.masterPartitionUsd === 0;
+  const masterPartitionUsd = skipBudget
+    ? 0.0
+    : typeof input.masterPartitionUsd === 'number' &&
+      Number.isFinite(input.masterPartitionUsd) &&
+      input.masterPartitionUsd > 0
       ? Number(input.masterPartitionUsd.toFixed(2))
       : 350.0;
 
@@ -464,6 +493,10 @@ export async function completeOnboarding(
         lastEventSummary: `Armed and watching ${a.sku} (target ≤ $${a.targetMaxAllInUsd.toFixed(2)}, sub-allocation $${a.subAllocationUsd.toFixed(2)})`,
         createdAtUtc: now,
         updatedAtUtc: now,
+        pollIntervalSeconds: 15,
+        lastPolledAtUtc: now,
+        pollCount: 0,
+        currentObservedAllInUsd: Number((retail + 18).toFixed(2)),
       };
     });
   } else {
@@ -477,14 +510,15 @@ export async function completeOnboarding(
     userId: input.clerkToken
       ? `usr_${input.clerkToken.slice(0, 16)}`
       : `usr_demo_${randomBytes(4).toString('hex')}`,
-    email: input.email,
-    displayName: input.displayName,
-    avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(input.displayName)}&background=003087&color=fff`,
-    authProvider: input.authProvider,
+    email,
+    displayName,
+    avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=003087&color=fff`,
+    authProvider,
     clerkSessionId: input.clerkToken,
     paypalConnected: true,
-    paypalPayerEmail: input.paypalPayerEmail ?? input.email,
-    paypalVaultTokenId: `PM-VP-VAULT-${randomBytes(4).toString('hex').toUpperCase()}`,
+    paypalPayerEmail: payerEmail,
+    paypalVaultTokenId: skipBudget ? 'PM-VP-VAULT-0001' : `PM-VP-VAULT-${randomBytes(4).toString('hex').toUpperCase()}`,
+    fetchedBalanceUsd: 1250.0,
     masterPartitionUsd,
     onboardingCompletedAtUtc: now,
   };
@@ -502,12 +536,14 @@ export async function completeOnboarding(
         payerEmail: doc.user.paypalPayerEmail ?? 'demo.buyer@example.com',
       });
     }
-    wallet.createOrUpdatePartition({
-      label: 'Agentic Partition',
-      totalAllocatedUsd: masterPartitionUsd,
-      maxPerOrderUsd: masterPartitionUsd,
-      askHumanAboveUsd: masterPartitionUsd,
-    });
+    if (masterPartitionUsd > 0) {
+      wallet.createOrUpdatePartition({
+        label: 'Agentic Partition',
+        totalAllocatedUsd: masterPartitionUsd,
+        maxPerOrderUsd: masterPartitionUsd,
+        askHumanAboveUsd: masterPartitionUsd,
+      });
+    }
   } catch {
     // If wallet pairing fails in test environment, continue with local fleet doc
   }
@@ -782,4 +818,109 @@ ${lis}
   const snapshot = getFleetSnapshot(stateFilePath);
   void syncWithNeonDb(snapshot);
   return { triggeredAgents: matching, fleet: snapshot };
+}
+
+export async function pollBackgroundAgents(
+  walletOrPath?: unknown,
+  clientOrSim?: unknown,
+  simulatedCatalogPrices?: Record<string, { basePriceUsd: number; voucherCode?: string }>,
+  maybeStateFilePath?: string,
+): Promise<{
+  polledAgents: AutonomousSubAgent[];
+  capturedOrders: Array<{ agentId: string; orderId: string; amountUsd: number; commitment?: string }>;
+  fleet: FleetStateSnapshot;
+}> {
+  let stateFilePath: string | undefined = maybeStateFilePath;
+  let simulated: Record<string, { basePriceUsd: number; voucherCode?: string }> | undefined = simulatedCatalogPrices;
+  if (typeof walletOrPath === 'string') {
+    stateFilePath = walletOrPath;
+    if (clientOrSim && typeof clientOrSim === 'object' && !('wallet' in (clientOrSim as object))) {
+      simulated = clientOrSim as Record<string, { basePriceUsd: number; voucherCode?: string }>;
+    }
+  }
+
+  const doc = loadFleetDoc(stateFilePath);
+  const polledAgents: AutonomousSubAgent[] = [];
+  const capturedOrders: Array<{ agentId: string; orderId: string; amountUsd: number; commitment?: string }> = [];
+
+  const shippingUsd = 11.5;
+  const taxUsd = 6.5;
+  const now = new Date().toISOString();
+
+  for (const agent of doc.agents) {
+    if (agent.status !== 'ARMED_WATCHING') {
+      continue;
+    }
+    const nextPollCount = (agent.pollCount ?? 0) + 1;
+    agent.pollCount = nextPollCount;
+    agent.lastPolledAtUtc = now;
+
+    let basePriceUsd = agent.retailPriceUsd ? agent.retailPriceUsd - 50 : 279.0;
+    let voucherCode: string | undefined;
+
+    if (simulated && simulated[agent.sku]) {
+      basePriceUsd = simulated[agent.sku]!.basePriceUsd;
+      voucherCode = simulated[agent.sku]!.voucherCode;
+    } else {
+      if (agent.sku === 'KANSO-Q35') {
+        basePriceUsd = 149.0;
+      } else if (agent.sku === 'APEX-27-4K-IPS') {
+        basePriceUsd = 329.0;
+      }
+    }
+
+    const observedAllInUsd = Number((basePriceUsd + shippingUsd + taxUsd).toFixed(2));
+    agent.currentObservedAllInUsd = observedAllInUsd;
+
+    if (observedAllInUsd <= agent.targetMaxAllInUsd && agent.autoBuyEnabled) {
+      const res = await triggerBackgroundPriceDrop(
+        {
+          sku: agent.sku,
+          newBasePriceUsd: basePriceUsd,
+          voucherCode,
+          triggerType: 'WATCHDOG_POLL_TICK',
+          allInUsd: observedAllInUsd,
+        },
+        stateFilePath,
+      );
+      const triggered = res.triggeredAgents.find((a) => a.agentId === agent.agentId);
+      if (triggered && triggered.capturedOrderId) {
+        capturedOrders.push({
+          agentId: triggered.agentId,
+          orderId: triggered.capturedOrderId,
+          amountUsd: triggered.capturedAmountUsd ?? observedAllInUsd,
+          commitment: triggered.commitment,
+        });
+        Object.assign(agent, triggered);
+        agent.pollCount = nextPollCount;
+        agent.lastPolledAtUtc = now;
+        agent.currentObservedAllInUsd = observedAllInUsd;
+      }
+    }
+    polledAgents.push({ ...agent });
+  }
+
+  saveFleetDoc(doc, stateFilePath);
+  const snapshot = getFleetSnapshot(stateFilePath);
+  void syncWithNeonDb(snapshot);
+  return { polledAgents, capturedOrders, fleet: snapshot };
+}
+
+let pollingIntervalHandle: NodeJS.Timeout | null = null;
+
+export function startBackgroundPollingDaemon(intervalMs = 15000): void {
+  if (pollingIntervalHandle) return;
+  pollingIntervalHandle = setInterval(() => {
+    pollBackgroundAgents().catch(() => {});
+  }, intervalMs);
+  if (pollingIntervalHandle.unref) {
+    pollingIntervalHandle.unref();
+  }
+}
+
+export function stopBackgroundPollingDaemon(): void {
+  if (pollingIntervalHandle) {
+    clearInterval(pollingIntervalHandle);
+    pollingIntervalHandle = null;
+  }
 }

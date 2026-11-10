@@ -809,4 +809,41 @@ describe('@veripact/workbench Onboarding & Multi-Agent Fleet Routes', () => {
     expect(kansoAgent!.capturedOrderId).toBeUndefined();
     expect(kansoAgent!.lastEventSummary).toContain('Blocked by sub-allocation wall');
   });
+
+  it('POST /api/onboarding/complete allows 1-step direct PayPal onboarding with optional budget (skipBudgetAllocation: true)', async () => {
+    const res = await post('/api/onboarding/complete', {
+      paypalPayerEmail: 'bhavik@paypal.com',
+      skipBudgetAllocation: true,
+    });
+    expect(res.status).toBe(200);
+    const fleet = json<FleetStateSnapshot>(res);
+    expect(fleet.user).not.toBeNull();
+    expect(fleet.user?.paypalConnected).toBe(true);
+    expect(fleet.user?.paypalVaultTokenId).toBe('PM-VP-VAULT-0001');
+    expect(fleet.user?.fetchedBalanceUsd).toBe(1250.0);
+    expect(fleet.user?.masterPartitionUsd).toBe(0);
+    expect(fleet.user?.displayName).toBe('Bhavik');
+  });
+
+  it('POST /api/agents/poll-now polls background ARMED_WATCHING agents, increments pollCount, and auto-captures on price drop', async () => {
+    resetDemoState();
+    const pollRes = await post('/api/agents/poll-now', {
+      simulatedCatalogPrices: {
+        'KANSO-Q35': { basePriceUsd: 82, voucherCode: 'AUDIO67' },
+      },
+    });
+    expect(pollRes.status).toBe(200);
+    const body = json<{
+      polledAgents: AutonomousSubAgent[];
+      capturedOrders: Array<{ agentId: string; orderId: string; amountUsd: number }>;
+      fleet: FleetStateSnapshot;
+    }>(pollRes);
+    expect(body.polledAgents.length).toBeGreaterThanOrEqual(1);
+    const polledKanso = body.polledAgents.find((a) => a.sku === 'KANSO-Q35');
+    expect(polledKanso).toBeDefined();
+    expect(polledKanso!.pollCount).toBeGreaterThanOrEqual(1);
+    expect(polledKanso!.lastPolledAtUtc).toBeDefined();
+    expect(body.capturedOrders.length).toBeGreaterThanOrEqual(1);
+    expect(body.capturedOrders[0]?.amountUsd).toBe(100.0);
+  });
 });

@@ -1,10 +1,11 @@
 import {
-  connectorsRowHtml,
-  syncShellHtml,
-  WALLET_CSS,
-  walletCardHtml,
-  QR_CLIENT_JS,
-} from './wallet-template';
+  renderWorkbenchStyles,
+  renderAppBar,
+  renderWorkspace,
+  renderDeskView,
+  renderOnboardingModal,
+} from './components';
+import { QR_CLIENT_JS } from './wallet-template';
 
 export function renderIndexPage(): string {
   return `<!doctype html>
@@ -15,995 +16,20 @@ export function renderIndexPage(): string {
 <link rel="stylesheet" href="/vendor/ag-grid.min.css">
 <link rel="stylesheet" href="/vendor/ag-theme-quartz.min.css">
 <style>
-:root{
---bg-canvas:linear-gradient(135deg, #f3f1ff 0%, #edeafd 50%, #f7f6ff 100%);
---bg-surface:rgba(255, 255, 255, 0.94);
---bg-subtle:#f5f3ff;--bg-muted:#faf9ff;
---text-primary:#1e1b4b;--text-secondary:#475569;--text-muted:#64748b;
---border-subtle:rgba(124, 92, 255, 0.14);--border-strong:rgba(108, 71, 255, 0.28);
---accent-purple:#6c47ff;--accent-indigo:#8b5cf6;--accent-charcoal:#1e1b4b;--accent-charcoal-hover:#2e2a72;--accent-blue:#6c47ff;
---status-success-bg:#dcfce7;--status-success-border:#bbf7d0;--status-success-ink:#15803d;--status-success-solid:#15803d;
---status-warn-bg:#fef9c3;--status-warn-border:#fef08a;--status-warn-ink:#854d0e;
---status-danger-bg:#fee2e2;--status-danger-border:#fca5a5;--status-danger-ink:#991b1b;
---radius-card:18px;--radius-control:8px;
---shadow-card:0 10px 28px rgba(91, 63, 214, 0.07);
---font-sans:"Segoe UI",system-ui,-apple-system,sans-serif;
---font-display:"Segoe UI",system-ui,-apple-system,sans-serif;
---font-mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
-}
-*{box-sizing:border-box}
-html{overflow-x:hidden}
-body{font-family:var(--font-sans);margin:0;background:var(--bg-canvas);color:var(--text-primary);font-size:14px;line-height:1.45;font-variant-numeric:tabular-nums;overflow-x:hidden}
-.skip{position:absolute;left:-999px;top:8px;background:var(--accent-charcoal);color:#fff;padding:8px 14px;border-radius:var(--radius-control);z-index:99;font-size:13px}
-.skip:focus{left:8px;color:#fff}
-.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-:focus-visible{outline:2px solid var(--accent-purple);outline-offset:2px;border-radius:4px}
-h1{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0;color:#1e1b4b}
-h2{font-size:15px;font-weight:750;letter-spacing:-.01em;margin:0 0 8px;color:#1e1b4b}
-h3{font-size:13px;margin:12px 0 6px;color:var(--text-secondary);font-weight:700}
-.num,.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
-
-/* Shell Layout: Left Sidebar + Main Content */
-.app-layout{display:flex;min-height:100vh;background:var(--bg-canvas)}
-.sidebar{width:220px;flex-shrink:0;background:rgba(255,255,255,0.88);backdrop-filter:blur(12px);border-right:1px solid var(--border-subtle);display:flex;flex-direction:column;justify-content:space-between;padding:18px 14px;position:sticky;top:0;height:100vh;overflow-y:auto;box-shadow:2px 0 16px rgba(91,63,214,0.03);z-index:25}
-.sidebar-top{display:flex;flex-direction:column;gap:12px}
-.sidebar-brand{display:flex;align-items:center;gap:10px;padding:2px 6px 14px;border-bottom:1px solid var(--border-subtle)}
-.sidebar-brand-name{font-size:18px;font-weight:800;color:#1e1b4b;letter-spacing:-.02em}
-.sidebar-nav{display:flex;flex-direction:column;gap:4px;margin-top:8px;position:relative}
-.sidebar-nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;border:0;background:transparent;color:#4b5563;font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit;transition:all .15s ease;width:100%;text-decoration:none}
-.sidebar-nav-item:hover{background:rgba(124,92,255,0.08);color:var(--accent-purple)}
-.sidebar-nav-item.active{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);color:#fff;box-shadow:0 4px 14px rgba(108,71,255,0.35)}
-.sidebar-alias-btn{position:absolute;top:4px;left:4px;width:2px;height:2px;opacity:0.001;pointer-events:auto;overflow:hidden;font-size:0;line-height:0;margin:0;padding:0;border:0;background:transparent;color:transparent}
-.sidebar-bottom{margin-top:16px}
-.sidebar-companion-card{background:linear-gradient(180deg, #ede9fe 0%, #ffffff 100%);border:1px solid rgba(124,92,255,0.22);border-radius:16px;padding:12px 10px;text-align:center;box-shadow:0 6px 18px rgba(91,63,214,0.06)}
-#sidebar-robot-canvas{display:inline-block;width:28px;height:24px;border-radius:6px;vertical-align:middle}
-.companion-title{font-size:12px;font-weight:750;color:#1e1b4b;line-height:1.3;margin:4px 0 8px}
-.companion-badges{display:grid;grid-template-columns:1fr 1fr;gap:4px}
-.companion-badges span{background:#fff;border:1px solid rgba(124,92,255,0.2);border-radius:999px;padding:2px 6px;font-size:10px;font-weight:700;color:#4338ca;white-space:nowrap}
-
-/* Main Workspace */
-.app-main{flex:1;min-width:0;padding:20px 24px 32px;display:flex;flex-direction:column;gap:16px;overflow-x:hidden}
-.topbar{display:flex;flex-direction:column;gap:12px;position:relative}
-.top-row{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px}
-.main-title{font-size:24px;font-weight:800;color:#1e1b4b;margin:0;letter-spacing:-.02em;line-height:1.2}
-.main-subtitle{font-size:12.5px;color:#6b7280;margin:2px 0 0;font-weight:500}
-.top-robot-anchor{display:flex;align-items:flex-end;justify-content:center;margin-bottom:-18px;position:relative;z-index:3;pointer-events:none}
-#agent-robot-3d-canvas{display:block;width:148px;height:112px;cursor:pointer;pointer-events:auto}
-.top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap}
-.status-pill .dot{width:7px;height:7px;border-radius:50%;background:#22c55e}
-.status-pill-live{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}
-.wallet-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;font-size:11.5px;font-weight:700;background:#fff;border:1px solid rgba(124,92,255,0.22);color:#1e1b4b;white-space:nowrap}
-.mode-pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:4px 11px;border-radius:999px;white-space:nowrap;border:1px solid;cursor:pointer}
-.mode-pill::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
-.mode-live{background:var(--status-success-bg);border-color:var(--status-success-border);color:var(--status-success-ink)}
-.mode-replay{background:var(--status-warn-bg);border-color:var(--status-warn-border);color:var(--status-warn-ink)}
-.btn-icon{width:32px;height:32px;border-radius:50%;border:1px solid var(--border-subtle);background:#fff;display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer}
-.user-avatar{width:32px;height:32px;border-radius:50%;background:#ede9fe;border:1px solid rgba(124,92,255,0.3);display:flex;align-items:center;justify-content:center;color:#6c47ff}
-.view-switch{position:absolute;top:4px;left:4px;width:8px;height:8px;opacity:0.001;pointer-events:auto;overflow:hidden;z-index:1}
-.view-switch button{width:2px;height:2px;overflow:hidden;font-size:0;line-height:0;padding:0;margin:0;border:0;background:transparent;color:transparent}
-
-/* Prompt Bar */
-.prompt-bar-wrap{display:flex;flex-direction:column;align-items:center;width:100%}
-.prompt-bar-wrap[hidden],#prompt-bar-wrap[hidden]{display:none!important}
-.prompt-bar-box{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.98);border:1.5px solid rgba(124,92,255,0.25);border-radius:999px;padding:6px 8px 6px 18px;box-shadow:0 8px 24px rgba(108,71,255,0.08);backdrop-filter:blur(8px);position:relative;z-index:10;width:100%}
-.prompt-target-icon{display:flex;align-items:center;justify-content:center;color:#8b5cf6;flex-shrink:0}
-.prompt-intent-input{flex:1;min-width:0;border:0;background:transparent;font-size:13.5px;font-weight:500;color:#1e1b4b;outline:none;font-family:inherit}
-.prompt-target-pill{display:inline-flex;align-items:center;gap:4px;background:#f5f3ff;border:1px solid rgba(124,92,255,0.2);border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;color:#6c47ff;flex-shrink:0}
-.prompt-target-pill input{border:0;background:transparent;width:50px;font:inherit;font-size:12px;font-weight:700;color:#1e1b4b;outline:none;text-align:center}
-.btn-filter-toggle{width:36px;height:36px;border-radius:50%;border:1px solid var(--border-subtle);background:#fff;color:#6b7280;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s ease}
-.btn-filter-toggle:hover{background:#f5f3ff;color:var(--accent-purple);border-color:var(--accent-purple)}
-.btn-run-agent{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);color:#fff;border:0;border-radius:999px;padding:10px 22px;font-size:13.5px;font-weight:750;cursor:pointer;box-shadow:0 4px 14px rgba(108,71,255,0.4);display:inline-flex;align-items:center;gap:8px;white-space:nowrap;flex-shrink:0;transition:all .15s ease}
-.btn-run-agent:hover{box-shadow:0 6px 20px rgba(108,71,255,0.5)}
-
-/* Workflow & Ribbon */
-.workflow-bar{display:none!important}
-#workflow-guide-bar{display:none!important}
-.ribbon{display:grid;grid-template-columns:200px minmax(0,1fr) 16px minmax(0,1.05fr) 16px minmax(0,1.1fr);align-items:center;gap:10px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:10px 16px;box-shadow:var(--shadow-card)}
-.rb-title{border-right:1px solid var(--border-subtle);padding-right:12px;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
-.rb-title b{display:block;font-size:13.5px;font-weight:750;color:var(--text-primary)}
-.rb-title span{font-size:11px;color:var(--text-muted)}
-#rb-partition{font-size:11px;padding:2px 8px;margin-top:3px;align-self:flex-start}
-.ribbon-step{display:flex;gap:8px;align-items:center;min-width:0;background:transparent;border:0;padding:2px 0}
-.ribbon-step.on{color:var(--text-primary)}
-.ribbon-step.bad{color:var(--status-danger-ink)}
-.rb-num{font-family:var(--font-mono);font-weight:700;font-size:12px;background:#fff;color:var(--text-muted);border:1px solid var(--border-strong);border-radius:50%;min-width:24px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ribbon-step.on .rb-num{background:var(--status-success-solid);border-color:var(--status-success-solid);color:#fff;font-size:0}
-.ribbon-step.on .rb-num::after{content:'✓';font-size:13px;font-weight:700}
-.ribbon-step.bad .rb-num{background:var(--status-danger-ink);border-color:var(--status-danger-ink);color:#fff}
-.ribbon-step b{font-size:12px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rb-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px}
-.ribbon-step .badge{font-family:var(--font-mono);font-size:10.5px;color:var(--text-secondary);background:#fff;border:1px solid var(--border-subtle);border-radius:4px;padding:1px 5px;white-space:nowrap}
-#rb-ch3{color:var(--status-success-ink);font-weight:600}
-.rb-connector{height:2px;background:var(--border-strong);border-radius:2px;align-self:center}
-.rb-connector.done{background:var(--status-success-solid)}
-
-/* 3-Column Studio Stage */
-.studio-stage-3col{display:grid;grid-template-columns:290px minmax(0, 1fr) 320px;gap:16px;align-items:stretch}
-.card{background:var(--bg-surface);border:1px solid rgba(124, 92, 255, 0.12);border-radius:16px;padding:18px 20px;min-width:0;box-shadow:var(--shadow-card)}
-.card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
-.card-head h2{margin:0;font-size:14.5px;font-weight:750;display:flex;align-items:center;gap:8px}
-
-/* Scenario Segmented Pills inside Browser Card Head */
-.scn-segmented{display:inline-flex;gap:4px;background:#f5f3ff;border:1px solid rgba(124,92,255,0.18);border-radius:999px;padding:2px}
-.scn-pill{font-family:inherit;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;border:0;background:transparent;color:#475569;cursor:pointer;white-space:nowrap;transition:all .15s ease}
-.scn-pill:hover{color:#6c47ff;background:rgba(124,92,255,0.08)}
-.scn-pill[aria-pressed="true"]{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);color:#fff;box-shadow:0 2px 6px rgba(108,71,255,0.35)}
-
-/* Browser Frame & Chrome */
-.browser{border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 4px 14px rgba(108,71,255,0.04)}
-.browser-chrome{background:#f1f5f9;height:34px;padding:0 8px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border-subtle)}
-.browser-sku-select{max-width:130px;flex-shrink:0;border:1px solid var(--border-subtle);border-radius:6px;background:#fff;font-size:11px;font-weight:600;color:var(--text-primary);padding:2px 6px;cursor:pointer;outline:none}
-.btn-open-anywhere{padding:2px 7px;font-size:11px;display:inline-flex;align-items:center;gap:4px;border-radius:6px;color:#6c47ff;font-weight:600;flex-shrink:0}
-.btn-open-anywhere:hover{background:#ede9fe}
-.dots{display:flex;gap:4px;flex-shrink:0}
-.dots i{width:8px;height:8px;border-radius:50%;display:inline-block}
-.dots i.dot-red{background:#ef4444}
-.dots i.dot-yellow{background:#f59e0b}
-.dots i.dot-green{background:#10b981}
-.urlbar{background:#fff;border:1px solid var(--border-subtle);border-radius:6px;padding:2px 8px;font-family:var(--font-mono);font-size:11px;color:#334155;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
-.urlbar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.store-frame{width:100%;height:310px;border:0;background:#fff;display:block;overflow:hidden}
-.agent-thinking-bar{background:linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);color:#fff;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:550;display:flex;align-items:center;gap:8px;margin-top:10px;box-shadow:0 4px 14px rgba(30,27,75,0.2)}
-
-/* Stepper Column 1 */
-.mission-subtitle{font-size:12px;color:var(--text-muted);margin:0 0 12px;font-weight:600}
-.progress-ring-wrap{width:44px;height:44px;flex-shrink:0}
-.progress-ring{transform:rotate(-90deg)}
-.mission-stepper{display:flex;flex-direction:column;gap:0;position:relative;margin:10px 0}
-.step-item{display:flex;gap:10px;align-items:flex-start;position:relative;padding-bottom:14px}
-.step-item:last-child{padding-bottom:4px}
-.step-item::after{content:'';position:absolute;left:11px;top:24px;bottom:0;width:2px;background:#e2e8f0;z-index:1}
-.step-item:last-child::after{display:none}
-.step-item.done::after{background:#86efac}
-.step-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;z-index:2;background:#f1f5f9;color:#64748b;border:1.5px solid #cbd5e1}
-.step-item.done .step-icon{background:#dcfce7;color:#15803d;border-color:#86efac}
-.step-item.active .step-icon{background:#ede9fe;color:#6c47ff;border-color:#8b5cf6}
-.step-content b{display:block;font-size:12px;font-weight:700;color:#1e1b4b;line-height:1.2}
-.step-content span{display:block;font-size:11px;color:#64748b;line-height:1.35;margin-top:2px}
-.mission-metrics-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--border-subtle);padding-top:12px;margin-top:8px}
-.mission-metric{text-align:center;background:#faf8ff;border:1px solid var(--border-subtle);border-radius:10px;padding:6px 2px}
-.mission-metric b{display:block;font-size:17px;font-weight:800;color:#6c47ff}
-.mission-metric span{font-size:10.5px;color:#64748b;white-space:nowrap}
-
-/* Column 3: Deal Analysis & Approval */
-.deal-price-strip{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;background:#faf8ff;border:1px solid var(--border-subtle);border-radius:12px;padding:10px 8px;text-align:center;margin:10px 0}
-.price-col b{display:block;font-size:18px;font-weight:800;color:#1e1b4b}
-.price-col b.discount{color:#6c47ff}
-.price-col span.savings-badge{display:inline-block;background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:800}
-.price-col .price-lbl{font-size:11px;color:#64748b;margin-top:2px;display:block}
-.deal-verification-box{border:1px solid var(--border-subtle);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:#fff}
-.deal-verif-title{font-size:12px;font-weight:750;color:#1e1b4b;margin-bottom:6px}
-.deal-verif-rows{display:flex;flex-direction:column;gap:5px}
-.deal-verif-row{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11.5px;color:#334155}
-.deal-verif-name{display:inline-flex;align-items:center;gap:5px;font-weight:600}
-.check-dot{color:#15803d;font-weight:800}
-.deal-verif-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;padding-top:6px;border-top:1px solid var(--border-subtle)}
-.price-trend-box{border:1px solid var(--border-subtle);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:#fff}
-.trend-head{font-size:11.5px;font-weight:750;color:#1e1b4b;margin-bottom:4px}
-.trend-content{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.trend-sparkline{flex-shrink:0}
-.trend-stats{display:flex;flex-direction:column;gap:2px;text-align:right;font-size:10.5px;color:#64748b}
-.trend-stats b{font-size:12px;color:#1e1b4b}
-.trend-stats b.stat-cur{color:#6c47ff;font-weight:800}
-.btn-checkout-main{width:100%;background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);color:#fff;border:0;border-radius:12px;padding:12px 16px;font-size:13.5px;font-weight:750;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(108,71,255,0.35);transition:all .15s ease}
-.btn-checkout-main:hover{box-shadow:0 6px 18px rgba(108,71,255,0.48)}
-.checkout-toggles{display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:11.5px;color:#475569}
-.checkout-toggles label{display:flex;align-items:center;gap:6px;cursor:pointer}
-.checkout-toggles input{width:14px;height:14px;accent-color:#6c47ff}
-
-/* Bottom 3-Card Trust Strip */
-.trust-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:8px}
-.trust-card{display:flex;align-items:center;gap:12px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:14px;padding:12px 16px;box-shadow:var(--shadow-card)}
-.trust-icon{width:36px;height:36px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.trust-content b{display:block;font-size:12.5px;font-weight:750;color:#1e1b4b}
-.trust-content span{display:block;font-size:11px;color:#64748b}
-
-/* Common Components */
-.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap;flex-shrink:0;border:1px solid transparent}
-.pill-ok{background:var(--status-success-bg);color:var(--status-success-ink);border-color:var(--status-success-border)}
-.pill-warn{background:var(--status-warn-bg);color:var(--status-warn-ink);border-color:var(--status-warn-border)}
-.pill-bad{background:var(--status-danger-bg);color:var(--status-danger-ink);border-color:var(--status-danger-border)}
-.pill-info{background:var(--bg-subtle);color:var(--text-secondary);border-color:var(--border-subtle)}
-.hash-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;font-family:var(--font-mono);font-size:11.5px;background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:var(--radius-control);padding:3px 7px;cursor:pointer;min-width:0;color:var(--text-primary)}
-.hash-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.hash-chip.mid span{direction:rtl;text-align:left}
-.fallback-table .hash-chip{max-width:260px}
-.mono-scroll{overflow-x:auto;white-space:pre;font-family:var(--font-mono);font-size:11.5px;background:#101828;color:#e8eef6;border-radius:var(--radius-control);padding:8px 10px;max-width:100%}
-.btn{font-family:inherit;font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:var(--radius-control);border:1px solid var(--border-strong);background:#fff;color:var(--text-primary);cursor:pointer;display:inline-flex;align-items:center;gap:6px;justify-content:center;transition:all .15s ease}
-.btn:hover{border-color:var(--accent-purple);background:#faf8ff}
-.btn-primary{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);border-color:var(--accent-purple);color:#fff}
-.btn-primary:hover{box-shadow:0 4px 12px rgba(108,71,255,0.35)}
-.btn-ghost{border-color:transparent;color:#4b5563;background:transparent}
-.btn-ghost:hover{background:var(--bg-subtle);border-color:transparent}
-.btn-sm{padding:4px 9px;font-size:11px}
-.btn:disabled{opacity:.55;cursor:wait}
-.status-line{font-size:12px;color:var(--text-secondary);margin:4px 0}
-.mandate-strip{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;border-top:1px solid var(--border-subtle);padding-top:8px;margin-top:4px}
-.mandate-strip>div{padding:0 8px;text-align:center;min-width:0}
-.mandate-strip>div:first-child{padding-left:0;text-align:left}
-.mandate-strip>div:last-child{padding-right:0}
-.mandate-strip>div+div{border-left:1px solid var(--border-subtle)}
-.mandate-strip b{display:block;color:var(--text-primary)}
-.mandate-strip .big{font-size:22px;font-weight:750}
-.mandate-strip .mid{font-size:14px;font-weight:700}
-.mandate-strip span{font-size:11px;color:var(--text-muted)}
-.mandate-editor{border-top:1px solid var(--border-subtle);margin-top:10px;padding-top:10px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-.mandate-editor label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--text-secondary);font-weight:600}
-.mandate-editor input,.mandate-editor select{font:inherit;font-size:12px;padding:5px 8px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:#fff;color:var(--text-primary)}
-.mandate-editor .row-end{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-#mandate-editor[hidden]{display:none}
-.suff-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin:8px 0 0;padding-top:8px;border-top:1px solid var(--border-subtle)}
-.suff{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;color:var(--text-secondary)}
-.suff b{font-weight:600;white-space:nowrap}
-.suff .pill{font-size:10.5px;padding:1px 6px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.outcome-banner{border-radius:var(--radius-card);padding:12px 14px;display:flex;align-items:center;gap:12px;border:1px solid;min-width:0;box-shadow:var(--shadow-card);margin-bottom:10px}
-.outcome-banner[data-state="idle"]{background:var(--bg-surface);border-color:var(--border-subtle)}
-.outcome-banner[data-state="captured"]{background:var(--status-success-bg);border-color:var(--status-success-border)}
-.outcome-banner[data-state="voided"],.outcome-banner[data-state="blocked"]{background:var(--status-danger-bg);border-color:var(--status-danger-border)}
-.outcome-banner h3{margin:0;font-size:15px;font-weight:800;color:var(--text-primary)}
-.outcome-banner p{margin:2px 0 0;font-size:11.5px;color:var(--text-secondary)}
-.outcome-icon{width:36px;height:36px;flex-shrink:0;display:block}
-.record-kv{display:grid;grid-template-columns:95px minmax(0,1fr);row-gap:5px;column-gap:8px;font-size:12px;margin:0;align-items:baseline}
-.record-kv dt{color:var(--text-secondary)}
-.record-kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
-.post-purchase{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;border-top:1px solid var(--border-subtle);padding-top:10px}
-details.drawer{border:1px solid var(--border-subtle);border-radius:10px;margin-top:10px;background:var(--bg-muted)}
-details.drawer summary{cursor:pointer;padding:10px 12px;font-weight:600;font-size:12px;list-style:none;display:flex;gap:6px;align-items:center}
-details.drawer summary::-webkit-details-marker{display:none}
-details.drawer summary::before{content:"+";font-weight:700;color:var(--accent-purple);flex-shrink:0}
-details.drawer[open] summary::before{content:"–"}
-details.drawer .drawer-body{padding:0 12px 12px}
-.audit-rows{display:flex;flex-direction:column;gap:5px;margin:6px 0;font-size:11.5px}
-.audit-row{display:flex;justify-content:space-between;align-items:center;gap:6px}
-.audit-banner{background:var(--status-success-bg);border:1px solid var(--status-success-border);border-radius:8px;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:4px}
-.audit-banner.bad{background:var(--status-danger-bg);border-color:var(--status-danger-border)}
-.audit-banner .left{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#065f46}
-.audit-banner.bad .left{color:var(--status-danger-ink)}
-.audit-banner .right{font-size:11.5px;color:var(--status-success-ink);font-weight:700}
-.check-row{display:flex;gap:6px;align-items:flex-start;margin:6px 0;font-size:12px}
-.diff-pill{display:inline-block;font-family:var(--font-mono);font-size:15px;font-weight:700;background:var(--status-danger-bg);color:var(--status-danger-ink);border:2px solid var(--status-danger-ink);border-radius:10px;padding:6px 14px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
-.wit-pill{display:inline-block;font-family:var(--font-mono);font-size:13px;font-weight:700;background:var(--status-success-bg);color:var(--status-success-ink);border:2px solid var(--status-success-ink);border-radius:10px;padding:5px 12px;margin:3px 8px 3px 0;max-width:100%;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
-
-/* AG Grid & View 2 Desk */
-#ag-live-disputes-grid.ag-theme-quartz,#ag-regression-benchmark-grid.ag-theme-quartz{--ag-font-family:var(--font-sans);--ag-font-size:13px;--ag-row-height:40px;--ag-header-height:42px;--ag-header-background-color:var(--bg-muted);--ag-odd-row-background-color:#fff;--ag-selected-row-background-color:#e0eaff;--ag-border-color:var(--border-subtle);--ag-header-foreground-color:var(--text-muted)}
-#ag-live-disputes-grid,#ag-regression-benchmark-grid{height:560px;width:100%}
-#ag-live-disputes-grid,#ag-regression-benchmark-grid{overflow-x:auto;max-width:100%}
-.fallback-table{width:100%;border-collapse:collapse;font-size:12.5px}
-.fallback-table th,.fallback-table td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border-subtle);vertical-align:top;white-space:nowrap}
-.fallback-table th{font-size:11px;color:var(--text-muted);font-weight:600;background:var(--bg-muted)}
-.fallback-table tbody tr{cursor:pointer}
-.fallback-table tbody tr:hover{background:var(--bg-muted)}
-.fallback-table tbody tr[aria-selected="true"]{background:#ede9fe}
-.desk-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-.seg{display:inline-flex;gap:3px;background:var(--bg-subtle);padding:2px;border-radius:8px}
-.seg .btn{border:0;background:transparent;padding:5px 12px;font-size:12px;font-weight:600;color:var(--text-secondary);border-radius:6px}
-.seg .btn[aria-pressed="true"]{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);color:#fff}
-.ag-shell{border:1px solid var(--border-subtle);border-radius:var(--radius-card);background:#fff;overflow:hidden}
-.inspector{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr);gap:12px;margin-top:12px;align-items:start}
-.insp-col{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:12px 14px;box-shadow:var(--shadow-card)}
-.desk-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:12px;align-items:start}
-#view-desk[data-dataset="sync"] .desk-grid{grid-template-columns:minmax(0,1fr)}
-.prompt-bar{display:flex;gap:6px;margin:8px 0}
-.prompt-bar input{flex:1;min-width:0;font:inherit;font-size:12.5px;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;color:var(--text-primary)}
-.preset-list{display:flex;flex-direction:column;gap:5px;margin:6px 0}
-.preset-list .btn{text-align:left;justify-content:flex-start;font-size:11.5px;white-space:normal}
-canvas.chart{width:100%;height:220px;border:1px solid var(--border-subtle);border-radius:10px;background:#fff}
-#chart-table{overflow-x:auto;max-width:100%}
-.matrix{border-collapse:collapse;font-size:11.5px;margin-top:6px;width:100%}
-.matrix th,.matrix td{border:1px solid var(--border-subtle);padding:5px 8px;text-align:center}
-.matrix th{background:var(--bg-muted);font-weight:600}
-.cell-good{background:var(--status-success-bg);font-weight:700}
-.cell-bad{background:var(--status-danger-bg);color:var(--status-danger-ink);font-weight:700}
-.match{display:inline-block;font-family:var(--font-mono);font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px}
-.match.yes{background:var(--status-success-bg);color:var(--status-success-ink)}
-.match.no{background:var(--status-danger-bg);color:var(--status-danger-ink)}
-.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;font-size:12px;margin:6px 0}
-.kv dt{color:var(--text-secondary)}
-.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
-
-/* Modals & Tour */
-.modal-back{position:fixed;inset:0;background:rgba(10,16,26,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
-.modal{background:#fff;border-radius:var(--radius-card);max-width:640px;width:100%;max-height:85vh;overflow:auto;padding:20px;color:var(--text-primary)}
-#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--accent-charcoal);color:#fff;font-size:12.5px;padding:8px 16px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .2s ease-out;z-index:60}
-#toast.show{opacity:1}
-@keyframes tour-pulse{0%,100%{outline-color:#6c47ff}50%{outline-color:#c4b5fd}}
-.tour-highlight{outline:3px solid #6c47ff!important;outline-offset:3px;animation:tour-pulse 1.1s ease-in-out infinite}
-#demo-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent-charcoal);color:#fff;border-radius:12px;padding:9px 14px;display:flex;align-items:center;gap:10px;z-index:70;box-shadow:0 8px 24px rgba(16,24,40,.25);max-width:min(680px,92vw)}
-#demo-toast[hidden]{display:none}
-#demo-step{font-family:var(--font-mono);font-size:11px;font-weight:700;background:var(--accent-purple);border-radius:6px;padding:2px 7px;white-space:nowrap;flex-shrink:0}
-#demo-text{font-size:12.5px;font-weight:500;min-width:0}
-#demo-progress{width:80px;height:6px;background:#344054;border-radius:3px;overflow:hidden;flex-shrink:0}
-#demo-bar{display:block;height:100%;width:0;background:#22c55e}
-#demo-stop{background:transparent;border:1px solid #475467;color:#fff;border-radius:8px;padding:4px 10px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
-#tour-status{font-size:11px;color:var(--text-muted);font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
-#tour-status:empty{display:none}
-footer.app{max-width:1560px;margin:0 auto;padding:12px 20px 24px;color:var(--text-muted);font-size:11.5px;text-align:center}
-
-/* Responsive Breakpoints */
-@media (max-width:1440px){
-.studio-stage-3col{grid-template-columns:280px minmax(0,1fr) 310px;gap:12px}
-.sidebar{width:200px}
-.app-main{padding:14px 16px 28px}
-}
-@media (max-width:1180px){
-.app-layout{flex-direction:column}
-.sidebar{width:100%;height:auto;position:relative;border-right:0;border-bottom:1px solid var(--border-subtle);padding:10px 16px}
-.sidebar-top{flex-direction:row;align-items:center;justify-content:space-between}
-.sidebar-brand{border-bottom:0;padding:0}
-.sidebar-nav{flex-direction:row;margin:0;overflow-x:auto}
-.sidebar-nav-item{white-space:nowrap;padding:7px 10px}
-.sidebar-bottom{display:none}
-.studio-stage-3col{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-.approval-card{grid-column:1/-1}
-}
-@media (max-width:960px){
-.studio-stage-3col,.desk-grid,.inspector,.trust-strip,.ribbon{grid-template-columns:minmax(0,1fr)}
-.top-row{flex-wrap:wrap}
-.top-robot-anchor{display:none}
-.prompt-bar-box{flex-wrap:wrap;border-radius:18px;padding:10px}
-.prompt-intent-input{width:100%}
-.mandate-strip{grid-template-columns:1fr 1fr}
-.mandate-editor{grid-template-columns:1fr 1fr}
-}
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
-@media print{body{background:#fff}.sidebar,.topbar,footer.app,#toast,.no-print{display:none!important}}
-
-/* Onboarding Wizard & Multi-Agent Fleet Styles */
-.onb-modal{max-width:580px;width:100%;backdrop-filter:blur(16px);background:rgba(255,255,255,0.98);border:1px solid var(--border-strong);box-shadow:0 20px 50px rgba(108,71,255,0.18)}
-.onb-tabs{display:flex;gap:6px;background:var(--bg-subtle);padding:4px;border-radius:10px;margin-bottom:16px}
-.onb-tab-btn{flex:1;padding:7px 10px;border:0;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;background:transparent;color:var(--text-secondary);transition:all .15s ease;font-family:inherit;text-align:center}
-.onb-tab-btn.active{background:#fff;color:var(--text-primary);box-shadow:0 1px 4px rgba(0,0,0,0.08);font-weight:750}
-.onb-pane{display:flex;flex-direction:column;gap:12px}
-.onb-pane[hidden]{display:none!important}
-.form-input{width:100%;font:inherit;font-size:12.5px;padding:7px 10px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;color:var(--text-primary)}
-.form-input:focus{outline:2px solid var(--accent-purple);border-color:var(--accent-purple)}
-.fleet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:12px;min-width:0;max-width:100%}
-.fleet-card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:8px;min-width:0;overflow:hidden;transition:border-color .15s ease}
-.fleet-card:hover{border-color:var(--accent-purple)}
-.fleet-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap}
-.fleet-card-title{font-size:13.5px;font-weight:750;color:var(--text-primary);margin:0}
-.fleet-card-sku{font-size:11px;font-family:var(--font-mono);color:var(--text-muted)}
-.fleet-card-body{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text-secondary)}
-.fleet-card-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px;padding-top:8px;border-top:1px solid var(--border-subtle);flex-wrap:wrap}
-@media (max-width:768px){
-.fleet-grid{grid-template-columns:minmax(0,1fr)}
-.onb-tabs{flex-direction:column}
-}
-${WALLET_CSS}
-</style></head>
+${renderWorkbenchStyles()}
+</style>
+</head>
 <body>
-<a class="skip" href="#main">Skip to workspace</a>
-<div class="app-layout">
-  <!-- Left Sidebar Navigation -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-top">
-      <div class="sidebar-brand">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-          <rect width="28" height="28" rx="8" fill="#6c47ff"/>
-          <path d="M14 5l7 3v6c0 4.5-3 8-7 9.5-4-1.5-7-5-7-9.5v-6l7-3z" fill="#fff" fill-opacity="0.18" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
-          <path d="M10.5 14l2.5 2.5 5-5.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span class="sidebar-brand-name">VeriPact</span>
-      </div>
-      <nav class="sidebar-nav" aria-label="Main Navigation">
-        <button type="button" class="sidebar-nav-item active" id="nav-studio">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg>
-          <span>Agent Studio</span>
-        </button>
-        <button type="button" class="sidebar-nav-item" id="nav-payments">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-          <span>Wallet &amp; Rules</span>
-        </button>
-        <button type="button" class="sidebar-nav-item" id="nav-purchases">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-          <span>My Purchases</span>
-        </button>
-        <button type="button" class="sidebar-nav-item" id="nav-activity">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span>Dispute Center</span>
-        </button>
+<a href="#sniper-intent-prompt" class="skip">Skip to task prompt</a>
 
-        <!-- Hidden alias hooks for E2E programmatic tests -->
-        <button type="button" class="sidebar-alias-btn sidebar-nav-item" id="nav-home">Home</button>
-        <button type="button" class="sidebar-alias-btn sidebar-nav-item" id="nav-watchlist">Watchlist</button>
-        <button type="button" class="sidebar-alias-btn sidebar-nav-item" id="nav-policies">Rules &amp; Policies</button>
-      </nav>
-    </div>
-    <div class="sidebar-bottom">
-      <div class="sidebar-companion-card" id="sidebar-companion-card">
-        <div class="wallet-badge-row" style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:6px">
-          <canvas id="sidebar-robot-canvas" width="28" height="24" style="width:28px;height:24px;border-radius:6px;display:inline-block;vertical-align:middle" aria-label="Autonomous Shopping Agent Mascot"></canvas>
-          <div style="text-align:left;line-height:1.2">
-            <div class="companion-title" style="margin:0;font-size:11.5px;font-weight:750">PayPal Partition</div>
-            <div style="font-size:10.5px;font-weight:700;color:var(--accent-purple)">$350.00 Cap</div>
-          </div>
-        </div>
-        <div class="companion-badges">
-          <span>✓ Track</span>
-          <span>✓ Monitor</span>
-          <span>✓ Verify</span>
-          <span>Buy</span>
-        </div>
-      </div>
-    </div>
-  </aside>
+${renderAppBar()}
 
-  <!-- Main View Area -->
-  <div class="app-main">
-    <header class="topbar">
-      <div class="top-row">
-        <div>
-          <h1 class="main-title">Autonomous Shopping Agent</h1>
-          <p class="main-subtitle">Track &bull; Verify &bull; Buy at the Best Deal &mdash; Automatically</p>
-        </div>
-        <div class="top-actions">
-          <span class="status-pill status-pill-live"><span class="dot"></span> Agent Live</span>
-          <span class="wallet-pill" id="rb-partition" title="PayPal Wallet Partition"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> <span id="hdr-part-text">$53.00 Available</span></span>
-          <button type="button" id="mode-pill" class="mode-pill mode-replay" title="PayPal Sandbox connection &amp; audit ledger">Detecting mode…</button>
-          <button type="button" class="btn btn-ghost" id="btn-open-onboarding" title="Connect Clerk Identity &amp; PayPal Vault"><span id="onb-pill-label">👤 Connect Clerk &amp; PayPal</span></button>
-          <p id="tour-status" role="status" aria-live="polite"></p>
-          <button type="button" class="btn btn-ghost" id="btn-reset" title="Re-seed replay disputes and orders"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 1.8v2.6h-2.6"/></svg>Reset Demo</button>
-          <button type="button" class="btn btn-primary" id="btn-tour" title="Run 60s Guided Demo Tour">▶ Guided Tour<span class="sr-only">Run 60s Guided Demo Tour</span></button>
-          <div class="view-switch" role="group" aria-label="View switcher">
-            <button type="button" id="tab-checkout" aria-pressed="true">Buyer Checkout</button>
-            <button type="button" id="tab-desk" aria-pressed="false">Dispute Desk</button>
-          </div>
-          <button type="button" class="btn-icon" aria-label="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
-          <div class="user-avatar" title="Buyer Vault User"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-        </div>
-      </div>
+<main id="main" class="app-main">
+  ${renderWorkspace()}
+  ${renderDeskView()}
+</main>
 
-      <!-- Full-Width Prompt & Target Bar with Cute Peeking 3D Robot Companion -->
-      <div class="prompt-bar-wrap" id="prompt-bar-wrap">
-        <div class="top-robot-anchor">
-          <canvas id="agent-robot-3d-canvas" width="148" height="112" aria-label="Interactive 3D Robot Mascot" title="VeriPact 3D AI Robot Companion"></canvas>
-        </div>
-        <div class="prompt-bar-box">
-          <div class="prompt-target-icon" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
-            </svg>
-          </div>
-          <input type="text" id="sniper-intent-prompt" class="prompt-intent-input" value="Buy a 27&quot; 4K IPS monitor under $300 with at least 15% discount &amp; 30-day free returns" placeholder="Describe what you want to buy, budget, return policy &amp; conditions..." aria-label="Autonomous shopping prompt">
-          <div class="prompt-target-pill">
-            <label for="sniper-target-input">Cap $</label>
-            <input id="sniper-target-input" type="number" min="1" max="10000" step="1" value="300" aria-label="Target max all-in price in USD">
-          </div>
-          <button type="button" class="btn-filter-toggle" id="btn-mandate-filter-toggle" title="Filter rules &amp; Buyer Mandate" aria-label="Open filter settings">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
-              <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
-              <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
-              <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
-            </svg>
-          </button>
-          <button type="button" class="btn btn-primary btn-run-agent" id="btn-sniper-run">
-            <span>Run Agent &#9655;</span>
-            <span class="skip">Hunt Vouchers &amp; Auto-Buy Under $300</span>
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <main id="main">
-      <nav id="workflow-guide-bar" class="workflow-bar" style="display:none" aria-label="Workbench workflow quick guide">
-        <div class="wf-lead"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#6c47ff" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3.5l2.5 1.5"/></svg><span>4-Step Flow:</span></div>
-        <div class="wf-pills">
-          <button type="button" class="wf-btn" id="wf-step-1"><span><b>Step 1:</b> Pair Wallet &amp; Set $350 Partition</span></button>
-          <button type="button" class="wf-btn" id="wf-step-2"><span><b>Step 2:</b> Shop Storefront or Run @veripact Deal Sniper</span></button>
-          <button type="button" class="wf-btn" id="wf-step-3"><span><b>Step 3:</b> Verify Receipt Hash in Browser</span></button>
-          <button type="button" class="wf-btn" id="wf-step-4"><span><b>Step 4:</b> Resolve Disputes &amp; Sync History</span></button>
-        </div>
-      </nav>
-
-      <!-- View 1: 3-Column Studio Stage -->
-      <section id="view-checkout" aria-label="Buyer checkout and live receipt verifier">
-        <div class="studio-stage-3col">
-          <!-- Column 1: Active Mission -->
-          <div class="card mission-card" id="mission-card">
-            <div class="card-head">
-              <div style="display:flex;align-items:center;gap:8px">
-                <h2>Active Mission</h2>
-                <span class="status-pill status-pill-live"><span class="dot"></span> Running</span>
-              </div>
-              <div class="progress-ring-wrap" id="progress-ring-wrap">
-                <svg id="mission-progress-ring" class="progress-ring" width="44" height="44" viewBox="0 0 44 44">
-                  <circle cx="22" cy="22" r="18" fill="none" stroke="#ede9fe" stroke-width="3.5"/>
-                  <circle id="mission-progress-circle" cx="22" cy="22" r="18" fill="none" stroke="#8b5cf6" stroke-width="3.5" stroke-dasharray="113.1" stroke-dashoffset="24.88"/>
-                  <text id="mission-progress-text" x="22" y="26" text-anchor="middle" font-size="11" font-weight="700" fill="#6c47ff" transform="rotate(90 22 22)">78%</text>
-                </svg>
-              </div>
-            </div>
-            <p class="mission-subtitle">Monitor Purchase &mdash; 27&quot; 4K IPS</p>
-
-            <div class="mission-stepper" id="mission-stepper">
-              <div class="step-item done" id="step-1">
-                <div class="step-icon">✓</div>
-                <div class="step-content">
-                  <b>Understanding Request</b>
-                  <span>$300 Cap &bull; NEW</span>
-                </div>
-              </div>
-              <div class="step-item done" id="step-2">
-                <div class="step-icon">✓</div>
-                <div class="step-content">
-                  <b>Discovering Products</b>
-                  <span>6 Stores &bull; Channel3</span>
-                </div>
-              </div>
-              <div class="step-item done" id="step-3">
-                <div class="step-icon">✓</div>
-                <div class="step-content">
-                  <b>Comparing &amp; Verifying</b>
-                  <span>13 DOM Checks</span>
-                </div>
-              </div>
-              <div class="step-item active" id="step-4">
-                <div class="step-icon">🎯</div>
-                <div class="step-content">
-                  <b>Found Best Match</b>
-                  <span>$297 &bull; Save $50</span>
-                </div>
-              </div>
-              <div class="step-item" id="step-5">
-                <div class="step-icon">○</div>
-                <div class="step-content">
-                  <b>Awaiting Approval</b>
-                  <span>Verified Ready</span>
-                </div>
-              </div>
-              <div class="step-item" id="step-6">
-                <div class="step-icon">🛒</div>
-                <div class="step-content">
-                  <b>Complete Purchase</b>
-                  <span>PayPal VP1</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="mission-metrics-strip">
-              <div class="mission-metric"><b>6</b><span>Stores Scanned</span></div>
-              <div class="mission-metric"><b>14</b><span>Variants Checked</span></div>
-              <div class="mission-metric"><b>1</b><span>Best Match</span></div>
-            </div>
-
-            <!-- Expandable Sniper Trap Log -->
-            <div id="sniper-box" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-subtle)">
-              <div class="sniper-head">
-                <h3 style="margin:0 0 2px;font-size:13px">Autonomous Deal &amp; Voucher Sniper (@veripact)</h3>
-                <p style="margin:0;font-size:11px;color:var(--text-muted)">Evaluates candidate merchant listings and coupon codes against your $350.00 Partition.</p>
-              </div>
-              <div id="sniper-results" class="sniper-results" aria-live="polite">
-                <div style="padding:10px;background:var(--bg-muted);border:1px dashed var(--border-subtle);border-radius:8px;text-align:center;color:var(--text-muted);font-size:11.5px">
-                  <p style="margin:0">Click <b>Run Agent ▷</b> to evaluate 6 competing merchant listings and coupons against your $350.00 PayPal Partition.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Column 2: Live Agent Browser -->
-          <div class="card browser-card">
-            <div class="card-head" style="min-height:32px;margin-bottom:8px">
-              <div style="display:flex;align-items:center;gap:8px">
-                <h2>Live Agent Browser</h2>
-                <span class="status-pill status-pill-live"><span class="dot"></span> Live</span>
-              </div>
-              <div class="scn-segmented" role="group" aria-label="Scenario selector">
-                <button type="button" class="scn scn-pill" data-scn="normal" aria-pressed="true">Normal<span class="sr-only"> (Scenario 1)</span></button>
-                <button type="button" class="scn scn-pill" data-scn="surcharge_void" aria-pressed="false">Surcharge<span class="sr-only"> (Scenario 2)</span></button>
-                <button type="button" class="scn scn-pill" data-scn="adversarial_hidden_dom" aria-pressed="false">Injection<span class="sr-only"> (Scenario 3)</span></button>
-              </div>
-            </div>
-
-            <div class="browser">
-              <div class="browser-chrome">
-                <span class="dots" aria-hidden="true"><i class="dot-red"></i><i class="dot-yellow"></i><i class="dot-green"></i></span>
-                <span class="urlbar">
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#15803d" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg>
-                  <span id="store-url">https://store.example.com/product/APEX-27-4K-IPS</span>
-                </span>
-                <select id="channel3-sku-select" class="browser-sku-select" aria-label="Channel3 catalog SKU selector">
-                  <option value="APEX-27-4K-IPS">APEX-27-4K-IPS ($279)</option>
-                </select>
-                <button type="button" class="btn btn-ghost btn-sm btn-open-anywhere" id="btn-open-anywhere" title="Toggle @veripact Overlay in Store (Alt+V)" aria-label="Toggle @veripact overlay">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                  <span>@veripact</span>
-                </button>
-              </div>
-              <iframe id="store-frame" class="store-frame" title="Synthetic merchant storefront" src="/store/normal" scrolling="no"></iframe>
-            </div>
-
-            <div id="agent-thinking-bar" class="agent-thinking-bar" aria-live="polite">
-              ✦ Agent Thinking... Verifying seller reputation, PAYPAL50 voucher validity, and 30-day return policy...
-            </div>
-          </div>
-
-          <!-- Column 3: Deal Analysis & Approval -->
-          <div class="card approval-card" id="approval-card">
-            <div class="card-head">
-              <h2>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-                Deal Analysis &amp; Approval
-              </h2>
-              <span id="gate-badge" class="pill pill-info">✓ Policy Verified<span class="sr-only">SUFFICIENT Awaiting witness…</span></span>
-            </div>
-
-            <div class="outcome-banner" id="checkout-outcome-banner" data-state="idle">
-              <svg class="outcome-icon" viewBox="0 0 46 46" fill="none" aria-hidden="true"><circle cx="23" cy="23" r="21" stroke="#d0d5dd" stroke-width="2.5"/><path d="M15 23.5l5.5 5.5L31 18" stroke="#98a2b3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <div>
-                <h3>Recommended Purchase</h3>
-                <p>Meets all your conditions and safety checks.</p>
-              </div>
-            </div>
-
-            <div class="deal-price-strip">
-              <div class="price-col">
-                <b class="price-val" id="price-final-display">$297.00</b>
-                <span class="price-lbl">Final Price</span>
-              </div>
-              <div class="price-col">
-                <b class="price-val discount" id="price-discount-display">15% Off</b>
-                <span class="price-lbl">vs $347.00</span>
-              </div>
-              <div class="price-col">
-                <span class="savings-badge" id="price-savings-display">$50.00</span>
-                <span class="price-lbl">You Save</span>
-              </div>
-            </div>
-
-            <div class="deal-verification-box">
-              <div class="deal-verif-title">Verification (WIT &bull; SIGN &bull; SELF)</div>
-              <div class="deal-verif-rows">
-                <div class="deal-verif-row">
-                  <span class="deal-verif-name" id="rung-self"><span class="check-dot">✓</span> SELF &bull; Mandate<span class="sr-only"> — Price &amp; Policy Check</span></span>
-                  <span class="deal-verif-status pill-ok">✓ Passed</span>
-                </div>
-                <div class="deal-verif-row">
-                  <span class="deal-verif-name" id="rung-wit"><span class="check-dot">✓</span> WIT &bull; Channel3<span class="sr-only"> — Seller &amp; Channel3 Verified</span></span>
-                  <span class="deal-verif-status pill-ok">✓ Passed</span>
-                </div>
-                <div class="deal-verif-row">
-                  <span class="deal-verif-name" id="rung-sign"><span class="check-dot">✓</span> SIGN &bull; PayPal<span class="sr-only"> — Deal Integrity &amp; Offer Validity</span></span>
-                  <span class="deal-verif-status pill-ok">✓ Passed</span>
-                </div>
-              </div>
-              <div class="deal-verif-meta">
-                <span id="oracle-line" class="pill pill-info">Channel3 oracle: not queried yet.</span>
-                <button type="button" class="btn btn-sm btn-ghost" id="btn-witness">Witness Page</button>
-              </div>
-              <div class="suff-grid" id="suff-pills">
-                <div class="suff"><b>Brand / Model</b><span class="pill pill-info">Awaiting witness…</span></div>
-                <div class="suff"><b>Base Price</b><span class="pill pill-info">Awaiting witness…</span></div>
-                <div class="suff"><b>Shipping &amp; Tax</b><span class="pill pill-info">Awaiting witness…</span></div>
-                <div class="suff"><b>Return Policy</b><span class="pill pill-info">Awaiting witness…</span></div>
-              </div>
-            </div>
-
-            <div class="price-trend-box">
-              <div class="trend-head">Price Trend (30 Days)</div>
-              <div class="trend-content">
-                <svg class="trend-sparkline" width="160" height="50" viewBox="0 0 160 50" aria-label="30-day price trend sparkline">
-                  <defs>
-                    <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.28"/>
-                      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.02"/>
-                    </linearGradient>
-                  </defs>
-                  <path d="M 0,20 Q 30,14 60,26 T 110,36 T 160,22 L 160,50 L 0,50 Z" fill="url(#trend-fill)"/>
-                  <path d="M 0,20 Q 30,14 60,26 T 110,36 T 160,22" fill="none" stroke="#6c47ff" stroke-width="2.2" stroke-linecap="round"/>
-                  <circle cx="160" cy="22" r="3.5" fill="#6c47ff"/>
-                </svg>
-                <div class="trend-stats">
-                  <div><b class="stat-cur">$297.00</b> <span>Current</span></div>
-                  <div><b>$347.00</b> <span>Highest</span></div>
-                  <div><b>$297.00</b> <span>Lowest</span></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="deal-actions-box">
-              <button type="button" class="btn btn-primary btn-checkout-main" id="btn-checkout">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-                <span id="btn-checkout-label">🛒 Approve &amp; Buy Now &mdash; $297.00</span>
-                <span>&rarr;</span>
-              </button>
-              <div class="checkout-toggles">
-                <label><input type="checkbox" id="reviewed-toggle" checked><span>I've reviewed the merchant terms</span></label>
-                <label><input type="checkbox" id="twostep-toggle"><span id="twostep-label"><b>Two-step approval</b> (recommended)</span></label>
-              </div>
-              <p id="checkout-status" class="status-line" aria-live="polite"></p>
-              <div id="awaiting-card" hidden></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Collapsible Drawers & Tools (Pipeline, Record, Auditor, Wallet, Mandate, Custom HTML) -->
-        <details class="drawer tech-drawer" id="pipeline-drawer" style="margin-top:14px">
-          <summary><b>Evidence Pipeline</b> &mdash; Verifiable &bull; Tamper-proof &bull; PayPal-anchored</summary>
-          <div class="drawer-body">
-            <nav id="pipeline-ribbon" class="ribbon" aria-label="Cryptographic evidence pipeline">
-              <div class="rb-title"><b>Evidence Pipeline</b><span>Verifiable · Tamper-proof · PayPal-anchored</span></div>
-              <div class="ribbon-step" id="rb-1"><span class="rb-num" aria-hidden="true">1</span><div style="min-width:0"><b>1. SELF — Buyer mandate locked</b><div class="rb-badges"><span class="badge" id="rb-buyer-fp" title="Ed25519 buyer key fingerprint">buyer key fp …</span><span class="badge" id="rb-ceiling">ceiling: $320.00</span></div></div></div>
-              <div class="rb-connector" id="rb-conn-1" aria-hidden="true"></div>
-              <div class="ribbon-step" id="rb-2"><span class="rb-num" aria-hidden="true">2</span><div style="min-width:0"><b>2. WIT — Independent HTTPS witness</b><div class="rb-badges"><span class="badge" id="rb-tsa">RFC 3161 …</span><span class="badge" id="rb-dom">DOM scan …</span><span class="badge" id="rb-ch3">Channel3 …</span></div></div></div>
-              <div class="rb-connector" id="rb-conn-2" aria-hidden="true"></div>
-              <div class="ribbon-step" id="rb-3"><span class="rb-num" aria-hidden="true">3</span><div style="min-width:0"><b>3. SIGN — PayPal custom_id anchor</b><div class="rb-badges"><span class="badge" id="rb-commit">VP1: …</span><span class="badge" id="rb-regate">re-gate …</span></div></div></div>
-            </nav>
-          </div>
-        </details>
-
-        <!-- Collapsible Drawers & Tools (Record, Auditor, Wallet, Mandate, Custom HTML) -->
-        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:14px">
-          <div class="card" id="checkout-result">
-            <div class="card-head"><h2><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.5 4.2L8 14.2 2.5 6 8 1.8z"/><path d="M2.5 6h11M8 1.8L5.5 6 8 14.2 10.5 6 8 1.8z" stroke-width="1.2"/></svg>Transaction Record</h2></div>
-            <dl class="record-kv">
-              <dt>Order ID</dt><dd class="mono">— (awaiting checkout)</dd>
-              <dt>Authorization</dt><dd class="mono">—</dd>
-              <dt>Capture</dt><dd class="mono">—</dd>
-              <dt>Commitment</dt><dd class="mono">—</dd>
-              <dt>PayPal Mode</dt><dd class="mono">Sandbox (Deterministic)</dd>
-            </dl>
-            <div class="post-purchase"><button type="button" class="btn" disabled>Verify it yourself ↓</button><button type="button" class="btn" disabled>Simulate Merchant Drift → File Dispute</button><button type="button" class="btn" disabled>Simulate Buyer Forgery → File Dispute</button></div>
-          </div>
-
-          <div class="card auditor-card">
-            <div class="card-head"><h2><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#1a2332" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7.5a4 4 0 0 1 8 0v4"/><path d="M2.5 7.5a5.5 5.5 0 0 1 11 0v5"/><path d="M8 5.5v6"/><path d="M6 9.5v3M10 9.5v3"/></svg>Verify-It-Yourself (Auditor)</h2></div>
-            <p class="status-line" style="margin-top:0">Your browser recomputes the receipt hash and compares it with the PayPal order record. Nothing here trusts the server.</p>
-            <details class="drawer" id="auditor"><summary>Open the client-side auditor</summary><div class="drawer-body" id="auditor-body">
-              <p class="status-line">Run a checkout first — the auditor needs a witnessed receipt and a PayPal order.</p>
-            </div></details>
-          </div>
-        </div>
-
-        <div style="margin-top:14px">
-          ${walletCardHtml()}
-        </div>
-
-        <div class="card" id="fleet-panel" style="margin-top:14px">
-          <div class="card-head" style="flex-wrap:wrap;gap:8px">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <h2>Background Sub-Agents (Armed 24/7)</h2>
-              <span class="pill pill-ok" id="fleet-live-badge"><span class="dot"></span> Neon DB + Channel3 Webhook Active</span>
-            </div>
-            <button type="button" class="btn btn-sm btn-primary" id="btn-toggle-spawn-agent">+ New Sub-Agent</button>
-          </div>
-          <div id="form-spawn-agent" class="spawn-form-box" hidden style="margin:10px 0;padding:12px;border:1px solid var(--border-strong);border-radius:12px;background:var(--bg-subtle)">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;align-items:end">
-              <label style="font-size:11.5px;font-weight:600">Agent Name<input type="text" id="spawn-agent-name" placeholder="e.g. GPU Tracker" class="form-input" style="padding:4px 6px;font-size:11.5px"></label>
-              <label style="font-size:11.5px;font-weight:600">Product SKU<input type="text" id="spawn-agent-sku" placeholder="e.g. RTX-5080" class="form-input" style="padding:4px 6px;font-size:11.5px"></label>
-              <label style="font-size:11.5px;font-weight:600">Target Max $<input type="number" id="spawn-agent-target" placeholder="799" min="1" step="0.01" class="form-input" style="padding:4px 6px;font-size:11.5px"></label>
-              <label style="font-size:11.5px;font-weight:600">Sub-Alloc $<input type="number" id="spawn-agent-suballoc" placeholder="800" min="1" step="0.01" class="form-input" style="padding:4px 6px;font-size:11.5px"></label>
-              <div style="display:flex;gap:6px">
-                <button type="button" class="btn btn-sm btn-primary" id="btn-spawn-agent">Spawn</button>
-                <button type="button" class="btn btn-sm btn-ghost" id="btn-cancel-spawn-agent">Cancel</button>
-              </div>
-            </div>
-            <p class="status-line" id="spawn-agent-status" aria-live="polite" style="margin:4px 0 0"></p>
-          </div>
-          <div id="fleet-agents-list" class="fleet-grid">
-            <!-- Dynamically populated by initFleetUi / renderFleetAgents -->
-          </div>
-        </div>
-
-        <div class="card" id="mandate-card" style="margin-top:14px">
-          <div class="card-head">
-            <h2>Buyer Mandate &amp; Sufficiency</h2>
-            <button type="button" class="btn btn-sm" id="btn-mandate-edit">Edit Mandate</button>
-          </div>
-          <div class="mandate-strip">
-            <div><b class="big" id="m-cap">$320.00</b><span>Cap (all-in)</span></div>
-            <div><b class="mid" id="m-cond">NEW</b><span>Condition</span></div>
-            <div><b class="mid" id="m-days">≥ 30 days</b><span>Return window</span></div>
-            <div><b class="mid" id="m-fee">0%</b><span>Restocking fee</span></div>
-          </div>
-          <div class="mandate-editor" id="mandate-editor" hidden>
-            <label>Cap, all-in (USD)<input id="m-in-cap" type="number" min="1" max="1000000" step="0.01" value="320"></label>
-            <label>Condition<select id="m-in-cond"><option value="NEW">NEW</option><option value="REFURBISHED">REFURBISHED</option></select></label>
-            <label>Return window (days)<select id="m-in-days"><option value="14">14</option><option value="30" selected>30</option><option value="45">45</option><option value="60">60</option></select></label>
-            <label>Restocking fee (%)<select id="m-in-fee"><option value="0" selected>0%</option><option value="10">10%</option><option value="15">15%</option><option value="25">25%</option></select></label>
-            <div class="row-end"><button type="button" class="btn btn-primary" id="btn-mandate-save">Sign &amp; Lock Mandate (SELF)</button><span class="status-line" id="mandate-status" aria-live="polite"></span></div>
-          </div>
-          <details class="drawer tech-drawer" id="scanner-drawer" style="margin-top:10px"><summary>Inspect extracted DOM quote blocks &amp; live HTML scanner</summary><div class="drawer-body">
-            <div id="quote-badges" class="badges" aria-live="polite"><span class="badge">Witness a scenario to pin quotes…</span></div>
-            <div class="custom-lab" id="custom-lab"><h3>Test Custom Merchant HTML / Inject Trap</h3>
-              <div class="preset-row" role="group" aria-label="Custom HTML presets"><button type="button" class="btn" id="cx-preset-apex">Apex flagship</button><button type="button" class="btn" id="cx-preset-laptop">Northloop 14 ($899)</button><button type="button" class="btn" id="cx-preset-opacity">Hidden opacity trap</button><button type="button" class="btn" id="cx-preset-inject">Prompt-injection trap</button></div>
-              <label class="skip" for="custom-html">Custom merchant HTML</label><textarea id="custom-html" spellcheck="false" placeholder="Paste merchant listing HTML here, or pick a preset…"></textarea>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" class="btn btn-primary" id="btn-custom-scan">Scan &amp; Witness Custom HTML</button><span class="status-line" id="custom-status" aria-live="polite"></span></div>
-              <div id="custom-result" aria-live="polite"></div>
-            </div>
-            <label class="mutate"><input type="checkbox" id="mutate-toggle"><span><b>Post-purchase policy mutation preview.</b> Shows what a drifted policy (14-day returns, 25% restocking fee) would look like next to the witnessed terms.</span></label>
-            <div id="mutate-panel" hidden><dl class="kv">
-              <dt>Witnessed</dt><dd><span class="pill pill-ok">30-day free returns · 0% fee</span></dd>
-              <dt>Mutated listing</dt><dd><span class="pill pill-bad">14-day returns · 25% fee</span></dd>
-              <dt>Effect</dt><dd>Receipt hash would no longer match the PayPal order custom_id → MERCHANT_DRIFT_CONFIRMED.</dd>
-            </dl></div>
-          </div></details>
-        </div>
-
-        <!-- Bottom 3-Card Trust Strip -->
-        <div class="trust-strip">
-          <div class="trust-card">
-            <div class="trust-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
-            <div class="trust-content"><b>Secure Purchase</b><span>Your money, your control</span></div>
-          </div>
-          <div class="trust-card">
-            <div class="trust-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
-            <div class="trust-content"><b>Best Deal Guarantee</b><span>Buys only when conditions match</span></div>
-          </div>
-          <div class="trust-card">
-            <div class="trust-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
-            <div class="trust-content"><b>Auto Records</b><span>Invoice, warranty &amp; proof saved</span></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- View 2: Dispute Desk -->
-      <section id="view-desk" hidden data-dataset="live" aria-label="Contested dispute verifier desk">
-        <div class="desk-grid">
-          <div>
-            <div class="card">
-              <h2>Contested dispute verifier desk</h2>
-              <div class="desk-tools" role="group" aria-label="Dataset toggle">
-                <span class="seg"><button type="button" class="btn" id="ds-live" aria-pressed="true">Live contested disputes (Case B &amp; Case A)</button><button type="button" class="btn" id="ds-regression" aria-pressed="false">24-scenario regression suite (72 runs, Wilson 95% CIs)</button><button type="button" class="btn" id="ds-sync" aria-pressed="false">Payment Sync (Legacy vs Protected)</button></span>
-                <span id="grid-engine" class="pill pill-info">Grid engine: detecting…</span>
-                <button type="button" class="btn" id="grid-csv" title="Export the visible grid to CSV (AG Grid engine)">Export CSV</button>
-              </div>
-              <div class="ag-shell"><div id="ag-live-disputes-grid" class="ag-theme-quartz" role="grid" aria-label="Live contested disputes grid"></div></div>
-              <div class="ag-shell" id="regression-shell" hidden><div id="ag-regression-benchmark-grid" class="ag-theme-quartz" role="grid" aria-label="Regression benchmark grid"></div></div>
-              ${syncShellHtml()}
-              <div id="matrix-wrap"></div>
-            </div>
-            <div class="inspector" id="inspector" data-widget="ContestedClaimInspectorWidget" aria-label="Contested claim inspector">
-              <div class="insp-col" id="insp-buyer"><h2>Column 1 — Buyer claim &amp; submitted receipt</h2><p class="status-line">Loading dispute data…</p></div>
-              <div class="insp-col" id="insp-witness"><h2>Column 2 — Witness provenance &amp; order anchor</h2><p class="status-line">Loading dispute data…</p></div>
-              <div class="insp-col" id="insp-seller"><h2>Column 3 — Seller counter-claim &amp; PayPal actions</h2><p class="status-line">Loading dispute data…</p></div>
-            </div>
-          </div>
-          <div class="card" id="studio-card">
-            <h2>Deterministic studio agent</h2>
-            <p class="status-line">One prompt → one filter → one chart. Same output every run; no generative calls.</p>
-            <div class="prompt-bar"><label class="skip" for="prompt-input">Analytical query</label><input id="prompt-input" name="prompt" autocomplete="off" spellcheck="false" placeholder="Ask about disputes or the regression suite…"><button type="button" class="btn btn-primary" id="prompt-run">Run</button></div>
-            <div class="preset-list" id="preset-list"></div>
-            <canvas class="chart" id="agent-chart" width="520" height="220" role="img" aria-label="Analytical chart"></canvas>
-            <div id="chart-table"></div>
-          </div>
-        </div>
-        ${connectorsRowHtml()}
-      </section>
-    </main>
-
-    <footer class="app">VeriPact Workbench · Every number on this page renders from live API data · Timestamps prove hash existence at time T plus witness observation — never content truth.</footer>
-  </div>
-</div>
-
-<div id="sheet-modal" hidden><div class="modal-back"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-<h2 id="sheet-title">Printable evidence sheet</h2>
-<div id="sheet-body"></div>
-<div class="no-print" style="display:flex;gap:8px;margin-top:14px"><button type="button" class="btn btn-primary" id="sheet-print">Print</button><button type="button" class="btn" id="sheet-close">Close</button></div>
-</div></div></div>
-
-<div id="creds-modal" hidden><div class="modal-back"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="creds-title">
-<h2 id="creds-title">PayPal Sandbox Connection &amp; Audit Ledger</h2>
-<p class="status-line" style="margin-top:0">Paste sandbox REST credentials to go live (saved to <span class="mono">.env</span>, OAuth-verified immediately). Invalid or unreachable credentials fall back to deterministic replay — never a dead page.</p>
-<div class="creds-form" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0">
-<label style="display:flex;flex-direction:column;gap:3px;font-size:12px">Sandbox Client ID<input id="pp-client-id" type="password" autocomplete="off" spellcheck="false" placeholder="Paste sandbox client ID" style="padding:6px;border:1px solid #ccc;border-radius:6px"></label>
-<label style="display:flex;flex-direction:column;gap:3px;font-size:12px">Sandbox Client Secret<input id="pp-client-secret" type="password" autocomplete="off" spellcheck="false" placeholder="Paste sandbox client secret" style="padding:6px;border:1px solid #ccc;border-radius:6px"></label>
-</div>
-<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" class="btn btn-primary" id="btn-creds-save">Save &amp; Verify Live</button><button type="button" class="btn" id="btn-creds-replay">Use Replay Instead</button><button type="button" class="btn btn-ghost" id="btn-creds-close">Close</button><span class="status-line" id="creds-status" aria-live="polite"></span></div>
-<h3>Cryptographic clearing ledger (this session)</h3>
-<ul class="ledger-list" id="ledger-list" style="list-style:none;margin:10px 0;padding:0;max-height:220px;overflow:auto;border:1px solid var(--border-subtle);border-radius:10px;font-size:12px"><li><span class="sum">Loading ledger…</span></li></ul>
-<div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="btn" id="btn-ledger-download">Download Signed Ledger (.json)</button></div>
-</div></div></div>
-
-<div id="onboarding-modal" hidden><div class="modal-back"><div class="modal onb-modal" role="dialog" aria-modal="true" aria-labelledby="onb-title">
-<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-  <div>
-    <h2 id="onb-title" style="margin:0 0 2px">VeriPact Onboarding: Connect Clerk &amp; PayPal Vault</h2>
-    <p class="status-line" style="margin:0">Autonomous Multi-Agent Fleet Setup · 3 Guided Steps</p>
-  </div>
-  <button type="button" class="btn btn-ghost btn-sm" id="btn-onb-close" aria-label="Close onboarding modal">✕</button>
-</div>
-
-<div class="onb-tabs" role="tablist" aria-label="Onboarding Steps">
-  <button type="button" class="onb-tab-btn active" id="onb-tab-1" role="tab" aria-selected="true">1. Identity (Clerk)</button>
-  <button type="button" class="onb-tab-btn" id="onb-tab-2" role="tab" aria-selected="false">2. PayPal Vault</button>
-  <button type="button" class="onb-tab-btn" id="onb-tab-3" role="tab" aria-selected="false">3. Sub-Allocations</button>
-</div>
-
-<div id="onb-pane-1" class="onb-pane">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-    <span style="font-weight:700;font-size:13px">Clerk + Google OAuth Session</span>
-    <span class="pill pill-ok" id="onb-clerk-badge">Clerk Session + Neon DB Sync Ready</span>
-  </div>
-  <button type="button" class="btn btn-primary" id="btn-clerk-google" style="width:100%;padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">
-    <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/></svg>
-    Continue with Google (via Clerk)
-  </button>
-  <div style="text-align:center;color:var(--text-muted);font-size:11px;margin:2px 0">OR VERIFY IDENTITY DETAILS</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-    <label style="display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:600">Email Address<input type="email" id="onb-email" value="bhavik@veripact.ai" class="form-input"></label>
-    <label style="display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:600">Full Name<input type="text" id="onb-name" value="Bhavik" class="form-input"></label>
-  </div>
-  <div style="display:flex;justify-content:flex-end;margin-top:12px">
-    <button type="button" class="btn btn-primary" id="btn-onb-next-1">Next: Link PayPal Vault →</button>
-  </div>
-</div>
-
-<div id="onb-pane-2" class="onb-pane" hidden>
-  <div style="margin-bottom:4px">
-    <span style="font-weight:700;font-size:13px">PayPal Vault Connect &amp; Master Budget</span>
-    <p class="status-line" style="margin:2px 0 6px">Pair your consumer PayPal account once. The agent operates within your defined master partition.</p>
-  </div>
-  <button type="button" class="btn btn-primary" id="btn-onb-paypal-connect" style="width:100%;padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-    <span id="onb-paypal-btn-label">1-Click PayPal OAuth / QR Pair</span>
-  </button>
-  <div id="onb-paypal-status-badge" style="margin:6px 0"><span class="pill pill-ok">🟢 PayPal Sandbox Vault Connected</span></div>
-  <div style="margin-top:8px;border-top:1px solid var(--border-subtle);padding-top:8px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-      <label for="onb-master-cap" style="font-size:12px;font-weight:700">Master Agentic Budget Partition</label>
-      <span id="onb-master-disp" style="font-weight:800;font-family:var(--font-mono);color:var(--accent-purple)">$350.00</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px">
-      <input type="range" id="onb-master-slider" min="100" max="1000" step="25" value="350" style="flex:1">
-      <input type="number" id="onb-master-cap" min="50" max="5000" step="10" value="350" class="form-input" style="width:85px;padding:4px 6px">
-    </div>
-    <p class="status-line" style="font-size:11px;margin:4px 0 0">The master partition limits total fleet spending. Sub-agents cannot exceed this total.</p>
-  </div>
-  <details class="drawer" style="margin-top:8px"><summary>Developer: Use custom PayPal Sandbox API keys</summary><div class="drawer-body" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px"><label style="font-size:11.5px">Client ID<input type="password" id="onb-custom-client-id" placeholder="Optional sandbox client ID" class="form-input" style="padding:4px 6px;font-size:11px"></label><label style="font-size:11.5px">Client Secret<input type="password" id="onb-custom-client-secret" placeholder="Optional sandbox secret" class="form-input" style="padding:4px 6px;font-size:11px"></label></div></details>
-  <div style="display:flex;justify-content:space-between;margin-top:14px">
-    <button type="button" class="btn btn-ghost" id="btn-onb-back-2">← Back</button>
-    <button type="button" class="btn btn-primary" id="btn-onb-next-2">Next: Allocate Sub-Agents →</button>
-  </div>
-</div>
-
-<div id="onb-pane-3" class="onb-pane" hidden>
-  <div style="margin-bottom:6px">
-    <span style="font-weight:700;font-size:13px">Allocate Sub-Agent Slices (Multi-Agent Fleet)</span>
-    <p class="status-line" style="margin:2px 0 6px">Distribute your <b id="onb-split-master-val">$350.00</b> master partition across autonomous background agents:</p>
-  </div>
-  <div style="height:10px;border-radius:5px;background:#e2e8f0;display:flex;overflow:hidden;margin-bottom:10px">
-    <div id="onb-bar-monitor" style="width:62.8%;background:#6c47ff" title="Monitor Sniper: $220.00"></div>
-    <div id="onb-bar-audio" style="width:28.6%;background:#10b981" title="Audio Deal Bot: $100.00"></div>
-    <div id="onb-bar-reserve" style="width:8.6%;background:#94a3b8" title="Reserve: $30.00"></div>
-  </div>
-  <div style="display:flex;flex-direction:column;gap:6px">
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;background:var(--bg-muted)">
-      <div>
-        <b style="font-size:12px">Monitor Sniper (APEX-27-4K-IPS)</b>
-        <div style="font-size:11px;color:var(--text-secondary)">Target: &le; $300.00 all-in · 4K IPS Deals</div>
-      </div>
-      <div style="text-align:right">
-        <span class="pill pill-ok" style="font-family:var(--font-mono)">$220.00 Allocated</span>
-      </div>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;background:var(--bg-muted)">
-      <div>
-        <b style="font-size:12px">Audio Deal Bot (KANSO-Q35)</b>
-        <div style="font-size:11px;color:var(--text-secondary)">Target: &le; $100.00 all-in ($149 Retail) · Auto-Buy Armed</div>
-      </div>
-      <div style="text-align:right">
-        <span class="pill pill-ok" style="font-family:var(--font-mono)">$100.00 Allocated</span>
-      </div>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;background:#f8fafc">
-      <div>
-        <b style="font-size:12px;color:var(--text-muted)">Unallocated Safety Reserve</b>
-        <div style="font-size:11px;color:var(--text-muted)">Uncommitted buffer (master cap safety cushion)</div>
-      </div>
-      <div style="text-align:right">
-        <span class="pill pill-info" id="onb-reserve-pill" style="font-family:var(--font-mono)">$30.00 Reserve</span>
-      </div>
-    </div>
-  </div>
-  <div id="onb-alloc-status" class="status-line" style="margin-top:6px;color:#15803d;font-weight:600">✓ $320.00 allocated of $350.00 master partition ($30.00 reserve safety cushion)</div>
-  <div style="display:flex;justify-content:space-between;margin-top:14px">
-    <button type="button" class="btn btn-ghost" id="btn-onb-back-3">← Back</button>
-    <button type="button" class="btn btn-primary" id="btn-onb-finish">✓ Complete Onboarding &amp; Arm Background Agents</button>
-  </div>
-</div>
-</div></div></div>
+${renderOnboardingModal()}
 
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="demo-toast" hidden role="status" aria-live="polite"><span id="demo-step">STEP 1 / 7</span><span id="demo-text">Starting the guided tour…</span><span id="demo-progress" aria-hidden="true"><i id="demo-bar"></i></span><button type="button" id="demo-stop">Stop Tour</button></div>
@@ -1829,7 +855,7 @@ function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
   if(!ctx||typeof ctx.arc!=='function'||typeof ctx.createRadialGradient!=='function')return;
   var dpr=(typeof window!=='undefined'&&window.devicePixelRatio)||1;
   var w=canvas.width,h=canvas.height;
-  if(!w||!h)return;
+  if(!w||!h||w<4||h<4)return;
   if(ctx.save)ctx.save();
   ctx.clearRect(0,0,w,h);
 
@@ -2266,6 +1292,52 @@ function wireSidebar(){
       window.scrollTo({top:0,behavior:'smooth'});
     });
   }
+  var btnInfoModal = $('btn-info-modal');
+  var btnOpenDetailsCard = $('btn-open-details-card');
+  function scrollToDetails(tab) {
+    showView('checkout');
+    var det = $('details-modal');
+    if (det) {
+      det.hidden = false;
+      var targetId = 'sniper-box';
+      if (tab === 'auditor') targetId = 'checkout-result';
+      else if (tab === 'rules') targetId = 'mandate-card';
+      var targetEl = $(targetId);
+      if (targetEl) {
+        tourScroll(targetEl);
+        tourRing(targetEl);
+        setTimeout(tourUnring, 1800);
+      }
+    }
+  }
+  if (btnInfoModal) {
+    btnInfoModal.addEventListener('click', function(e) {
+      scrollToDetails('sniper');
+    });
+  }
+  if (btnOpenDetailsCard) {
+    btnOpenDetailsCard.addEventListener('click', function(e) {
+      scrollToDetails('auditor');
+    });
+  }
+  var tabDetSniper = $('tab-det-sniper');
+  if (tabDetSniper) {
+    tabDetSniper.addEventListener('click', function(e) {
+      scrollToDetails('sniper');
+    });
+  }
+  var tabDetAuditor = $('tab-det-auditor');
+  if (tabDetAuditor) {
+    tabDetAuditor.addEventListener('click', function(e) {
+      scrollToDetails('auditor');
+    });
+  }
+  var tabDetRules = $('tab-det-rules');
+  if (tabDetRules) {
+    tabDetRules.addEventListener('click', function(e) {
+      scrollToDetails('rules');
+    });
+  }
 }
 wireSidebar();
 
@@ -2495,6 +1567,61 @@ function handleSpawnAgent(e) {
 }
 
 function wireOnboardingAndFleet() {
+  var btnCloseVisible = $('btn-onb-close-visible');
+  if (btnCloseVisible) {
+    btnCloseVisible.addEventListener('click', function(e) {
+      closeOnboardingModal();
+    });
+  }
+
+  var btnSkipBudget = $('btn-onb-skip-budget');
+  if (btnSkipBudget) {
+    btnSkipBudget.addEventListener('click', function(e) {
+      var emailEl = $('onb-email');
+      var nameEl = $('onb-name');
+      var email = emailEl ? emailEl.value.trim() : 'bhavik@paypal.com';
+      var displayName = nameEl ? nameEl.value.trim() : 'Bhavik';
+      api('/api/onboarding/complete', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: email,
+          displayName: displayName,
+          skipBudgetAllocation: true,
+          authProvider: 'PAYPAL_VAULT'
+        })
+      }).then(function(res) {
+        closeOnboardingModal();
+        var pillLabel = $('onb-pill-label');
+        if (pillLabel) {
+          pillLabel.textContent = '🟢 ' + displayName + ' · PayPal Vault (Set Budget Later)';
+        }
+        toast('✓ PayPal Vault connected! Budget allocation skipped (set anytime on dashboard).');
+        refreshFleetState();
+      }).catch(function(err) {
+        toast('Connection failed: ' + err.message);
+      });
+    });
+  }
+
+  var btnPollNow = $('btn-poll-now');
+  if (btnPollNow) {
+    btnPollNow.addEventListener('click', function(e) {
+      btnPollNow.disabled = true;
+      btnPollNow.textContent = '↻ Polling...';
+      api('/api/agents/poll-now', { method: 'POST', body: '{}' }).then(function(res) {
+        var count = res.polledCount || 0;
+        var captured = res.autoCapturedCount || 0;
+        toast('Poll complete: ' + count + ' tasks checked' + (captured > 0 ? (', ' + captured + ' captured!') : ''));
+        refreshFleetState();
+      }).catch(function(err) {
+        toast('Poll failed: ' + err.message);
+      }).finally(function() {
+        btnPollNow.disabled = false;
+        btnPollNow.textContent = '↻ Poll Now';
+      });
+    });
+  }
+
   var btnOpen = $('btn-open-onboarding');
   if (btnOpen) {
     btnOpen.addEventListener('click', function(e) {

@@ -654,7 +654,7 @@ export function syncShellHtml(): string {
   return [
     '<div class="ag-shell" id="sync-shell" hidden>',
     '<div style="padding:14px 16px"><p class="sync-note">PayPal Transaction Search has up to a 3-hour indexing delay; real-time partition balance is enforced by the VeriPact Clearing Ledger.</p>',
-    '<div id="ag-sync-payments-grid" class="ag-theme-quartz" style="height: 280px; width: 100%; margin-bottom: 12px;"></div>',
+    '<div id="ag-sync-payments-grid" class="ag-theme-quartz" style="display:none;height:0;width:100%;"></div>',
     '<div id="sync-table-wrap"><div id="sync-body"><p class="status-line">Loading synced payments…</p></div></div></div>',
     '</div>',
   ].join('');
