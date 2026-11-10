@@ -234,6 +234,60 @@ async function fullFlow(browser: Browser): Promise<void> {
   await waitBanner(page, 'captured', 'Purchase Captured');
   await assertNoOverflow(page, 'view1@1600');
 
+  step('Autonomous Shopping Agent Studio & 3D robot canvas rendered');
+  const studioBox = await page.evaluate(() => {
+    const rob = document.getElementById('agent-robot-3d-canvas')?.getBoundingClientRect();
+    const ring = document.getElementById('mission-progress-ring')?.getBoundingClientRect();
+    const tb = document.getElementById('agent-thinking-bar')?.getBoundingClientRect();
+    const prompt = document.getElementById('sniper-intent-prompt')?.getBoundingClientRect();
+    const sideRob = document.getElementById('sidebar-robot-canvas')?.getBoundingClientRect();
+    return {
+      robot: rob ? { w: rob.width, h: rob.height } : null,
+      ring: ring ? { w: ring.width, h: ring.height } : null,
+      thinking: tb ? { w: tb.width, h: tb.height } : null,
+      prompt: prompt ? { w: prompt.width, h: prompt.height } : null,
+      sideRobot: sideRob ? { w: sideRob.width, h: sideRob.height } : null,
+    };
+  });
+  assert(studioBox.robot !== null && studioBox.robot.w > 0 && studioBox.robot.h > 0, 'robot-canvas-box', 'top robot canvas not rendered');
+  assert(studioBox.ring !== null && studioBox.ring.w > 0 && studioBox.ring.h > 0, 'mission-ring-box', 'mission progress ring not rendered');
+  assert(studioBox.thinking !== null && studioBox.thinking.w > 0 && studioBox.thinking.h > 0, 'thinking-bar-box', 'agent thinking bar not rendered');
+  assert(studioBox.prompt !== null && studioBox.prompt.w > 0 && studioBox.prompt.h > 0, 'prompt-bar-box', 'sniper prompt not rendered');
+  assert(studioBox.sideRobot !== null && studioBox.sideRobot.w > 0 && studioBox.sideRobot.h > 0, 'side-robot-box', 'sidebar robot canvas not rendered');
+
+  // Verify sidebar navigation interactivity & active pill state
+  await page.click('#nav-purchases');
+  await page.waitForFunction(
+    () => !document.getElementById('view-desk')?.hidden &&
+          document.getElementById('nav-purchases')?.classList.contains('active') === true &&
+          document.getElementById('sync-shell')?.hidden === false,
+  );
+  await page.click('#nav-activity');
+  await page.waitForFunction(
+    () => !document.getElementById('view-desk')?.hidden &&
+          document.getElementById('nav-activity')?.classList.contains('active') === true &&
+          document.getElementById('sync-shell')?.hidden === true,
+  );
+  await page.click('#nav-studio');
+  await page.waitForFunction(
+    () => !document.getElementById('view-checkout')?.hidden &&
+          document.getElementById('nav-studio')?.classList.contains('active') === true,
+  );
+  await page.click('#nav-policies');
+  await page.waitForFunction(
+    () => !document.getElementById('view-checkout')?.hidden &&
+          document.getElementById('nav-policies')?.classList.contains('active') === true &&
+          document.getElementById('mandate-editor')?.hidden === false,
+  );
+  await page.evaluate(() => {
+    const ed = document.getElementById('mandate-editor');
+    if (ed) ed.hidden = true;
+  });
+  await page.click('#nav-studio');
+  await page.waitForFunction(
+    () => document.getElementById('nav-studio')?.classList.contains('active') === true,
+  );
+
   step('favicon routes serve SVG');
   const iconLink = await page.$('link[rel="icon"][href="/favicon.ico"]');
   assert(iconLink !== null, 'favicon-link', 'missing <link rel="icon" href="/favicon.ico">');

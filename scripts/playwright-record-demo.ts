@@ -163,9 +163,11 @@ async function main(): Promise<void> {
     watchPage(page);
     page.setDefaultTimeout(30000);
 
-    console.log('demo: beat 1 — QR pair + $350 partition');
+    console.log('demo: beat 1 — Autonomous Shopping Agent Studio + QR pair & partition');
     await page.goto(`${ORIGIN}/`, { waitUntil: 'domcontentloaded' });
     await waitBanner(page, 'captured');
+    await hold(page, 1200);
+    await shot(page, 'live-00-agent-studio.png');
     await page.evaluate(() => {
       document.getElementById('wallet-card')?.scrollIntoView({ block: 'start' });
     });
@@ -368,7 +370,7 @@ async function main(): Promise<void> {
     }
     process.exitCode = 1;
   } else {
-    console.log('demo: DONE — 15 PNGs + .webm, zero page problems');
+    console.log('demo: DONE — 16 PNGs + .webm, zero page problems');
   }
 }
 

@@ -766,7 +766,7 @@ ${WALLET_CSS}
             <label>Restocking fee (%)<select id="m-in-fee"><option value="0" selected>0%</option><option value="10">10%</option><option value="15">15%</option><option value="25">25%</option></select></label>
             <div class="row-end"><button type="button" class="btn btn-primary" id="btn-mandate-save">Sign &amp; Lock Mandate (SELF)</button><span class="status-line" id="mandate-status" aria-live="polite"></span></div>
           </div>
-          <details class="drawer tech-drawer" style="margin-top:10px"><summary>Inspect extracted DOM quote blocks &amp; live HTML scanner</summary><div class="drawer-body">
+          <details class="drawer tech-drawer" id="scanner-drawer" style="margin-top:10px"><summary>Inspect extracted DOM quote blocks &amp; live HTML scanner</summary><div class="drawer-body">
             <div id="quote-badges" class="badges" aria-live="polite"><span class="badge">Witness a scenario to pin quotes…</span></div>
             <div class="custom-lab" id="custom-lab"><h3>Test Custom Merchant HTML / Inject Trap</h3>
               <div class="preset-row" role="group" aria-label="Custom HTML presets"><button type="button" class="btn" id="cx-preset-apex">Apex flagship</button><button type="button" class="btn" id="cx-preset-laptop">Northloop 14 ($899)</button><button type="button" class="btn" id="cx-preset-opacity">Hidden opacity trap</button><button type="button" class="btn" id="cx-preset-inject">Prompt-injection trap</button></div>
@@ -912,9 +912,10 @@ var o=s.oracleResult||{};$('rb-ch3').textContent=(o.matched?'✓ ':'✗ ')+(o.pr
 function ribbonFillCheckout(r){var box=$('rb-3');if(r.outcome==='BLOCKED_PRE_CHECKOUT'){ribbonTo(2,true);$('rb-regate').textContent='re-gate BLOCKED pre-checkout';if(box)box.dataset.state='blocked';return;}
 ribbonTo(3,false);var c=r.snapshot.commitment;$('rb-commit').textContent=c.slice(0,16)+'…';$('rb-commit').title='PayPal purchase_units[0].custom_id = '+c;
 $('rb-regate').textContent='$'+Number(r.finalTotalUsd).toFixed(2)+' '+(r.outcome==='CAPTURED'?'CAPTURED':'AUTO-VOIDED');if(box)box.dataset.state=r.outcome==='CAPTURED'?'captured':'voided';}
-function showView(which){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');var navStudio=$('nav-studio'),navActivity=$('nav-activity');if(c&&navStudio){var all=document.querySelectorAll('.sidebar-nav-item');for(var i=0;i<all.length;i++)all[i].classList.remove('active');navStudio.classList.add('active');}else if(!c&&navActivity){var all2=document.querySelectorAll('.sidebar-nav-item');for(var j=0;j<all2.length;j++)all2[j].classList.remove('active');navActivity.classList.add('active');}if(!c){ensureDesk().catch(function(){});}}
+function setActiveNav(btn){var all=document.querySelectorAll('.sidebar-nav-item');for(var i=0;i<all.length;i++)all[i].classList.remove('active');if(btn)btn.classList.add('active');}
+function showView(which,targetNavBtn){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');if(targetNavBtn){setActiveNav(targetNavBtn);}else{var cur=document.querySelector('.sidebar-nav-item.active');if(c){if(!cur||cur.id==='nav-purchases'||cur.id==='nav-activity'){setActiveNav($('nav-studio'));}}else{if(!cur||cur.id!=='nav-purchases'){setActiveNav($('nav-activity'));}}}if(!c){ensureDesk().catch(function(){});}}
 function setView(which){showView(which);}
-function resetDemo(){return api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;state.mandate=null;state.sku='APEX-27-4K-IPS';var sel=$('channel3-sku-select');if(sel)sel.value='APEX-27-4K-IPS';updateSpendBtnLabel();resetWalletUi();resetSniperUi();resetOutcomeBanner();resetTransactionRecord();refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);throw e;});}
+function resetDemo(){return api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;state.mandate=null;state.sku='APEX-27-4K-IPS';var sel=$('channel3-sku-select');if(sel)sel.value='APEX-27-4K-IPS';updateSpendBtnLabel();resetWalletUi();resetSniperUi();resetOutcomeBanner();resetTransactionRecord();var ed=$('mandate-editor');if(ed)ed.hidden=true;setDataset('live');refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);throw e;});}
 $('tab-checkout').addEventListener('click',function(){showView('checkout');});
 $('tab-desk').addEventListener('click',function(){showView('desk');});
 $('btn-reset').addEventListener('click',function(){resetDemo().catch(function(){});});
@@ -1138,6 +1139,7 @@ $('ds-live').setAttribute('aria-pressed',live?'true':'false');$('ds-regression')
 $('ag-live-disputes-grid').parentElement.hidden=!live;$('regression-shell').hidden=!reg;$('matrix-wrap').style.display=reg?'':'none';$('sync-shell').hidden=!sync;
 var sc=$('studio-card');if(sc)sc.hidden=sync;
 var ins=$('inspector');if(ins)ins.hidden=!live;
+if(sync){setActiveNav($('nav-purchases'));}else{setActiveNav($('nav-activity'));}
 if(live){destroyGrid('ag-regression-benchmark-grid');destroyGrid('ag-sync-payments-grid');mountLive();drawOutcome();}else if(reg){destroyGrid('ag-live-disputes-grid');destroyGrid('ag-sync-payments-grid');if(!state.benchmark){api('/api/benchmark').then(function(b){state.benchmark=b;mountRegression();drawAccuracy();}).catch(function(e){toast(e.message);});}else{mountRegression();drawAccuracy();}}else{destroyGrid('ag-live-disputes-grid');destroyGrid('ag-regression-benchmark-grid');loadSync();}}
 $('ds-live').addEventListener('click',function(){setDataset('live');});
 $('ds-regression').addEventListener('click',function(){setDataset('regression');});
@@ -1482,6 +1484,13 @@ function runSniperFlow(){
   var inp=$('sniper-target-input');
   var targetVal=inp?(Number(inp.value)||300):300;
   var sku=state.sku||'APEX-27-4K-IPS';
+  if(typeof window.setRobotState==='function')window.setRobotState('hunting');
+  var ring=$('mission-progress-circle');
+  if(ring)ring.setAttribute('stroke-dashoffset','24.88');
+  var ringTxt=$('mission-progress-text');
+  if(ringTxt)ringTxt.textContent='78%';
+  var tb=$('agent-thinking-bar');
+  if(tb)tb.textContent='✦ Agent Hunting... Scanning 6 competitor storefronts & Channel3 catalog for verified vouchers...';
   if(btn){btn.disabled=true;btn.textContent='Hunting Vouchers across stores\u2026';}
   var resBox=$('sniper-results');
   if(resBox){
@@ -1495,6 +1504,16 @@ function runSniperFlow(){
     var banner=$('checkout-outcome-banner');
     var win=rep.winningCandidate||null;
     if(rep.outcome==='DEAL_CAPTURED'&&win){
+      if(typeof window.setRobotState==='function')window.setRobotState('celebrate');
+      if(ring)ring.setAttribute('stroke-dashoffset','0');
+      if(ringTxt)ringTxt.textContent='100%';
+      if(tb)tb.textContent='✦ Deal Verified! Apex 27" 4K IPS — Saved $50 with PAYPAL50 ($297.00 all-in). VP1 commitment locked & PayPal Partition captured.';
+      var pf=$('price-final-display');if(pf)pf.textContent='$'+Number(win.allInTotalUsd).toFixed(2);
+      var pd=$('price-discount-display');if(pd)pd.textContent=(rep.totalSavedUsd>0?(Math.round((rep.totalSavedUsd/win.retailPriceUsd)*100)+'% Off'):'0% Off');
+      var ps=$('price-savings-display');if(ps)ps.textContent='$'+Number(rep.totalSavedUsd).toFixed(2);
+      var statCur=document.querySelector('.stat-cur');if(statCur)statCur.textContent='$'+Number(win.allInTotalUsd).toFixed(2);
+      var btnLbl=$('btn-checkout-label');if(btnLbl)btnLbl.textContent='Approve & Buy Now — $'+Number(win.allInTotalUsd).toFixed(2)+' (Save $'+Number(rep.totalSavedUsd).toFixed(0)+')';
+      var commitBadge=$('rb-commit');if(commitBadge&&win.commitment){commitBadge.textContent=win.commitment.slice(0,16)+'…';commitBadge.title='PayPal purchase_units[0].custom_id = '+win.commitment;}
       if(banner){banner.dataset.state='captured';banner.innerHTML=ICON_OK+'<div><h3>Deal Captured via Partition</h3><p>Captured $'+Number(win.allInTotalUsd).toFixed(2)+' at '+esc(win.merchantName)+' (Saved $'+Number(rep.totalSavedUsd).toFixed(2)+' with '+esc(win.voucherCode||'PAYPAL50')+') \u00B7 Partition balance protected.</p></div>';}
       var box=$('checkout-result');
       if(box&&win.captureId){
@@ -1508,14 +1527,19 @@ function runSniperFlow(){
         box.hidden=false;
       }
     }else if(rep.outcome==='BLOCKED_BY_PARTITION_WALL'){
+      if(typeof window.setRobotState==='function')window.setRobotState('blocked');
+      if(tb)tb.textContent='✦ Deal Blocked by Partition Wall! $297.00 exceeds remaining $53.00 partition balance. 0 PayPal calls made.';
       if(banner){banner.dataset.state='blocked';banner.innerHTML=ICON_BAD+'<div><h3>Blocked by Partition Wall</h3><p>Verified deal found ($'+(win?Number(win.allInTotalUsd).toFixed(2):'297.00')+'), but spending exceeds remaining partition cap \u00B7 0 PayPal capture calls.</p></div>';}
     }else{
+      if(typeof window.setRobotState==='function')window.setRobotState('blocked');
+      if(tb)tb.textContent='✦ No Compliant Deal Under Target! All compliant merchant listings exceed $'+targetVal.toFixed(2)+' target ceiling \u00B7 $0 spent.';
       if(banner){banner.dataset.state='blocked';banner.innerHTML=ICON_BAD+'<div><h3>No Compliant Deal Under Target</h3><p>All compliant merchant listings exceed $'+targetVal.toFixed(2)+' target ceiling \u00B7 $0 spent.</p></div>';}
     }
     if(st)st.textContent='Sniper: '+rep.outcome+' ('+rep.trapsRejectedCount+' traps blocked)';
     toast('Sniper '+rep.outcome);
     return rep;
   },function(e){
+    if(typeof window.setRobotState==='function')window.setRobotState('idle');
     if(st)st.textContent=e.message;
     toast(e.message);
     if(resBox)resBox.innerHTML='<div class="sniper-empty"><p style="color:var(--status-danger-ink)">Sniper failed: '+esc(e.message)+'</p></div>';
@@ -1978,469 +2002,75 @@ function wireSidebar(){
   var navPayments=$('nav-payments');
   var navActivity=$('nav-activity');
 
-  function setActiveNav(btn){
-    var all=document.querySelectorAll('.sidebar-nav-item');
-    for(var i=0;i<all.length;i++)all[i].classList.remove('active');
-    if(btn)btn.classList.add('active');
-  }
-
   if(navHome){
     navHome.addEventListener('click',function(e){
-      showView('checkout');
-      setActiveNav(navStudio);
+      showView('checkout',navHome);
       window.scrollTo({top:0,behavior:'smooth'});
     });
   }
   if(navStudio){
     navStudio.addEventListener('click',function(e){
-      showView('checkout');
-      setActiveNav(navStudio);
-    });
-  }
-  if(navPurchases){
-    navPurchases.addEventListener('click',function(e){
-      showView('desk');
-      setDataset('sync');
-      setActiveNav(navPurchases);
-    });
-  }
-  if(navWatchlist){
-    navWatchlist.addEventListener('click',function(e){
-      showView('checkout');
-      setActiveNav(navStudio);
-      var el=$('channel3-sku-select');
-      if(el){tourScroll(el);tourRing(el);setTimeout(tourUnring,1800);}
-    });
-  }
-  if(navPolicies){
-    navPolicies.addEventListener('click',function(e){
-      showView('checkout');
-      setActiveNav(navStudio);
-      var ed=$('mandate-editor');
-      if(ed)ed.hidden=false;
-      var el=ed||$('mandate-strip');
-      if(el){tourScroll(el);tourRing(el);setTimeout(tourUnring,1800);}
-    });
-  }
-  if(navPayments){
-    navPayments.addEventListener('click',function(e){
-      showView('checkout');
-      setActiveNav(navStudio);
-      var el=$('wallet-card');
-      if(el){tourScroll(el);tourRing(el);setTimeout(tourUnring,1800);}
-    });
-  }
-  if(navActivity){
-    navActivity.addEventListener('click',function(e){
-      showView('desk');
-      setDataset('live');
-      setActiveNav(navActivity);
-    });
-  }
-}
-wireSidebar();
-
-/* ---------- 3D Animated AI Robot Mascot Companion ---------- */
-var robotState='idle';
-var robotStateTimer=null;
-window.setRobotState=function(st){
-  robotState=st;
-  if(robotStateTimer){clearTimeout(robotStateTimer);robotStateTimer=null;}
-  if(st==='celebrate'||st==='blocked'){
-    robotStateTimer=setTimeout(function(){robotState='idle';},4500);
-  }
-};
-var mouseLookX=0,mouseLookY=0;
-window.addEventListener('mousemove',function(e){
-  var ww=window.innerWidth||1200;
-  var wh=window.innerHeight||800;
-  mouseLookX=((e.clientX/ww)-0.5)*2;
-  mouseLookY=((e.clientY/wh)-0.5)*2;
-});
-
-function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
-  if(!canvas||!canvas.getContext)return;
-  var ctx=canvas.getContext('2d');
-  if(!ctx||typeof ctx.arc!=='function'||typeof ctx.createRadialGradient!=='function')return;
-  var dpr=(typeof window!=='undefined'&&window.devicePixelRatio)||1;
-  var w=canvas.width,h=canvas.height;
-  if(!w||!h)return;
-  if(ctx.save)ctx.save();
-  ctx.clearRect(0,0,w,h);
-
-  var cx=w*0.5;
-  var baseCy=h*0.52;
-  var r=Math.min(w,h)*0.31*(scaleRatio||1.0);
-
-  var bobY=Math.sin(time*2.2)*(3*dpr);
-  var tilt=0;
-  var leanX=0;
-  if(state==='listening'){
-    tilt=0.10;
-    bobY=1*dpr;
-    leanX=2*dpr;
-  }else if(state==='hunting'){
-    bobY=Math.sin(time*5)*(1.5*dpr);
-  }else if(state==='blocked'){
-    bobY=Math.sin(time*12)*(1.5*dpr);
-    tilt=Math.sin(time*10)*0.04;
-  }else if(state==='celebrate'){
-    bobY=-Math.abs(Math.sin(time*7))*(9*dpr);
-    tilt=Math.sin(time*7)*0.08;
-  }
-
-  var cy=baseCy+bobY;
-  cx=cx+leanX;
-
-  // 1. Ambient drop shadow under robot
-  var shadowGrad=ctx.createRadialGradient(cx,baseCy+r*1.04,r*0.2,cx,baseCy+r*1.04,r*0.95);
-  shadowGrad.addColorStop(0,'rgba(108, 71, 255, 0.22)');
-  shadowGrad.addColorStop(0.6,'rgba(139, 92, 246, 0.08)');
-  shadowGrad.addColorStop(1,'rgba(139, 92, 246, 0)');
-  ctx.fillStyle=shadowGrad;
-  ctx.beginPath();
-  if(ctx.ellipse){
-    ctx.ellipse(cx,baseCy+r*1.04,r*0.85,r*0.22,0,0,Math.PI*2);
-  }else{
-    ctx.arc(cx,baseCy+r*1.04,r*0.5,0,Math.PI*2);
-  }
-  ctx.fill();
-
-  if(ctx.translate&&ctx.rotate){
-    ctx.translate(cx,cy);
-    ctx.rotate(tilt);
-    ctx.translate(-cx,-cy);
-  }
-
-  // 2. Rounded Shoulders (torso support)
-  var torsoY=cy+r*0.65;
-  var torsoW=r*1.38;
-  var torsoH=r*0.42;
-  var torsoGrad=ctx.createLinearGradient(cx-torsoW*0.5,torsoY,cx+torsoW*0.5,torsoY+torsoH);
-  torsoGrad.addColorStop(0,'#f8f6ff');
-  torsoGrad.addColorStop(0.5,'#ede9fe');
-  torsoGrad.addColorStop(1,'#c4b5fd');
-  ctx.fillStyle=torsoGrad;
-  ctx.beginPath();
-  if(ctx.roundRect){
-    ctx.roundRect(cx-torsoW*0.5,torsoY,torsoW,torsoH,r*0.2);
-  }else{
-    ctx.rect(cx-torsoW*0.5,torsoY,torsoW,torsoH);
-  }
-  ctx.fill();
-
-  // 3. Floating Side Ear-Pods
-  var epR=r*0.24;
-  var epDist=r*1.08;
-  [-1, 1].forEach(function(side){
-    var epX=cx+side*epDist;
-    var epY=cy;
-    if(state==='listening'){
-      for(var pulse=0;pulse<2;pulse++){
-        var ringDist=((time*40+pulse*14)%24)*dpr;
-        var alpha=Math.max(0,1-(ringDist/(24*dpr)));
-        ctx.strokeStyle='rgba(139, 92, 246, '+(alpha*0.55).toFixed(2)+')';
-        ctx.lineWidth=1.8*dpr;
-        ctx.beginPath();
-        ctx.arc(epX,epY,epR+ringDist,0,Math.PI*2);
-        ctx.stroke();
-      }
-    }
-    var epGrad=ctx.createRadialGradient(epX-epR*0.3*side,epY-epR*0.3,epR*0.1,epX,epY,epR);
-    epGrad.addColorStop(0,'#ffffff');
-    epGrad.addColorStop(0.4,'#f5f3ff');
-    epGrad.addColorStop(0.8,'#ddd6fe');
-    epGrad.addColorStop(1,'#a78bfa');
-    ctx.fillStyle=epGrad;
-    ctx.beginPath();
-    ctx.arc(epX,epY,epR,0,Math.PI*2);
-    ctx.fill();
-
-    ctx.fillStyle=(state==='blocked'?'#ef4444':(state==='hunting'?'#00f0ff':'#8b5cf6'));
-    ctx.beginPath();
-    ctx.arc(epX,epY,epR*0.28,0,Math.PI*2);
-    ctx.fill();
-  });
-
-  // 4. Glossy Spherical 3D Robot Head
-  var headGrad=ctx.createRadialGradient(cx-r*0.28,cy-r*0.32,r*0.1,cx,cy,r);
-  headGrad.addColorStop(0,'#ffffff');
-  headGrad.addColorStop(0.35,'#faf8ff');
-  headGrad.addColorStop(0.7,'#ede9fe');
-  headGrad.addColorStop(0.92,'#ddd6fe');
-  headGrad.addColorStop(1,'#b4a0f8');
-  ctx.fillStyle=headGrad;
-  ctx.beginPath();
-  ctx.arc(cx,cy,r,0,Math.PI*2);
-  ctx.fill();
-
-  var specGrad=ctx.createRadialGradient(cx-r*0.32,cy-r*0.34,1,cx-r*0.32,cy-r*0.34,r*0.45);
-  specGrad.addColorStop(0,'rgba(255, 255, 255, 0.9)');
-  specGrad.addColorStop(0.5,'rgba(255, 255, 255, 0.3)');
-  specGrad.addColorStop(1,'rgba(255, 255, 255, 0)');
-  ctx.fillStyle=specGrad;
-  ctx.beginPath();
-  ctx.arc(cx-r*0.32,cy-r*0.34,r*0.45,0,Math.PI*2);
-  ctx.fill();
-
-  // 5. Visor (Curved dark glass)
-  var vW=r*1.34;
-  var vH=r*0.68;
-  var vX=cx-vW*0.5;
-  var vY=cy-r*0.18;
-  var vCorner=vH*0.45;
-
-  if(state==='blocked'){
-    ctx.strokeStyle='rgba(239, 68, 68, '+(0.45+0.35*Math.sin(time*8)).toFixed(2)+')';
-    ctx.lineWidth=3.5*dpr;
-    ctx.beginPath();
-    if(ctx.roundRect)ctx.roundRect(vX-3,vY-3,vW+6,vH+6,vCorner+2);
-    ctx.stroke();
-  }
-
-  var visorGrad=ctx.createLinearGradient(vX,vY,vX,vY+vH);
-  if(state==='blocked'){
-    visorGrad.addColorStop(0,'#2d0a14');
-    visorGrad.addColorStop(1,'#15050a');
-  }else{
-    visorGrad.addColorStop(0,'#0f1123');
-    visorGrad.addColorStop(1,'#1b1d38');
-  }
-  ctx.fillStyle=visorGrad;
-  ctx.beginPath();
-  if(ctx.roundRect){
-    ctx.roundRect(vX,vY,vW,vH,vCorner);
-  }else{
-    ctx.rect(vX,vY,vW,vH);
-  }
-  ctx.fill();
-
-  ctx.fillStyle='rgba(255, 255, 255, 0.12)';
-  ctx.beginPath();
-  if(ctx.roundRect){
-    ctx.roundRect(vX+vW*0.08,vY+vH*0.08,vW*0.84,vH*0.3,vCorner*0.6);
-  }
-  ctx.fill();
-
-  ctx.strokeStyle=(state==='blocked'?'rgba(239, 68, 68, 0.6)':'rgba(167, 139, 250, 0.45)');
-  ctx.lineWidth=1.2*dpr;
-  ctx.beginPath();
-  if(ctx.roundRect){
-    ctx.roundRect(vX,vY,vW,vH,vCorner);
-  }
-  ctx.stroke();
-
-  // 6. Glowing LED Expressive Eyes
-  var eyeSpacing=r*0.36;
-  var eyeCenterY=vY+vH*0.52+(lookY||0)*(3.5*dpr);
-  var eyeL=cx-eyeSpacing+(lookX||0)*(5.5*dpr);
-  var eyeR=cx+eyeSpacing+(lookX||0)*(5.5*dpr);
-
-  var eyeColor='#00f0ff';
-  var glowColor='#00f0ff';
-  if(state==='blocked'){
-    eyeColor='#f59e0b';
-    glowColor='#f59e0b';
-  }
-
-  var isBlinking=false;
-  var blinkScale=1.0;
-  if(state==='idle'){
-    var blinkCycle=(time%3.6);
-    if(blinkCycle<0.18){
-      isBlinking=true;
-      blinkScale=Math.sin((blinkCycle/0.18)*Math.PI)*0.1;
-    }
-  }
-
-  ctx.shadowColor=glowColor;
-  ctx.shadowBlur=10*dpr;
-
-  if(state==='celebrate'){
-    ctx.strokeStyle='#00f0ff';
-    ctx.lineWidth=3.2*dpr;
-    ctx.lineCap='round';
-    [eyeL,eyeR].forEach(function(ex){
-      ctx.beginPath();
-      ctx.arc(ex,eyeCenterY+4*dpr,r*0.14,Math.PI*1.15,Math.PI*1.85);
-      ctx.stroke();
-    });
-    for(var sp=0;sp<5;sp++){
-      var spAngle=time*2.5+sp*(Math.PI*2/5);
-      var spDist=r*(1.1+0.15*Math.sin(time*3+sp));
-      var spX=cx+Math.cos(spAngle)*spDist;
-      var spY=cy+Math.sin(spAngle)*(spDist*0.7);
-      ctx.fillStyle='#fef08a';
-      ctx.beginPath();
-      ctx.arc(spX,spY,2.2*dpr,0,Math.PI*2);
-      ctx.fill();
-    }
-  }else if(state==='hunting'){
-    ctx.fillStyle=eyeColor;
-    var eyeW=r*0.18;
-    var eyeH=r*0.08;
-    [eyeL,eyeR].forEach(function(ex){
-      ctx.beginPath();
-      if(ctx.roundRect)ctx.roundRect(ex-eyeW*0.5,eyeCenterY-eyeH*0.5,eyeW,eyeH,eyeH*0.5);
-      else ctx.rect(ex-eyeW*0.5,eyeCenterY-eyeH*0.5,eyeW,eyeH);
-      ctx.fill();
-    });
-    var laserX=cx+Math.sin(time*5.5)*(vW*0.42);
-    var laserGrad=ctx.createLinearGradient(laserX,vY,laserX,vY+vH);
-    laserGrad.addColorStop(0,'rgba(0, 240, 255, 0)');
-    laserGrad.addColorStop(0.5,'rgba(0, 240, 255, 0.9)');
-    laserGrad.addColorStop(1,'rgba(0, 240, 255, 0)');
-    ctx.strokeStyle=laserGrad;
-    ctx.lineWidth=2.5*dpr;
-    ctx.beginPath();
-    ctx.moveTo(laserX,vY+4);
-    ctx.lineTo(laserX,vY+vH-4);
-    ctx.stroke();
-  }else{
-    ctx.fillStyle=eyeColor;
-    var defW=r*0.18;
-    var defH=r*0.22*(isBlinking?blinkScale:1.0);
-    [eyeL,eyeR].forEach(function(ex){
-      ctx.beginPath();
-      if(ctx.ellipse){
-        ctx.ellipse(ex,eyeCenterY,defW*0.5,Math.max(1,defH*0.5),0,0,Math.PI*2);
-      }else{
-        ctx.arc(ex,eyeCenterY,defW*0.5,0,Math.PI*2);
-      }
-      ctx.fill();
-      if(!isBlinking){
-        ctx.fillStyle='#ffffff';
-        ctx.beginPath();
-        ctx.arc(ex+defW*0.15,eyeCenterY-defH*0.2,defW*0.14,0,Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle=eyeColor;
-      }
-    });
-  }
-
-  ctx.shadowBlur=0;
-  if(ctx.restore)ctx.restore();
-}
-
-function robotAnimLoop(now){
-  var t=(now||0)*0.001;
-  var topCanvas=$('agent-robot-3d-canvas');
-  if(topCanvas&&topCanvas.getContext){
-    drawRobot(topCanvas,robotState,t,mouseLookX,mouseLookY,1.0);
-  }
-  var sideCanvas=$('sidebar-robot-canvas');
-  if(sideCanvas&&sideCanvas.getContext){
-    drawRobot(sideCanvas,robotState,t,mouseLookX*0.6,mouseLookY*0.6,0.76);
-  }
-  if(typeof window!=='undefined'&&typeof window.requestAnimationFrame==='function'){
-    window.requestAnimationFrame(robotAnimLoop);
-  }
-}
-if(typeof window!=='undefined'&&typeof window.requestAnimationFrame==='function'){
-  window.requestAnimationFrame(robotAnimLoop);
-}
-
-/* Prompt sync & natural language parser */
-var promptInp=$('sniper-intent-prompt');
-if(promptInp){
-  promptInp.addEventListener('input',function(e){
-    if(typeof window.setRobotState==='function')window.setRobotState('listening');
-    var val=e.target.value;
-    var m=val.match(/(?:\$|under\s+|cap\s+)(\d+(?:\.\d+)?)/i)||val.match(/\b(\d{2,4})\b/);
-    if(m&&m[1]){
-      var num=parseFloat(m[1]);
-      if(num>=50&&num<=5000){
-        var targetInp=$('sniper-target-input');
-        if(targetInp){
-          targetInp.value=String(Math.round(num));
-          updateSniperBtnLabel();
-        }
-      }
-    }
-  });
-  promptInp.addEventListener('focus',function(e){
-    if(typeof window.setRobotState==='function')window.setRobotState('listening');
-  });
-  promptInp.addEventListener('blur',function(e){
-    if(typeof window.setRobotState==='function')window.setRobotState('idle');
-  });
-}
-
-var btnFilter=$('btn-mandate-filter-toggle');
-if(btnFilter){
-  btnFilter.addEventListener('click',function(e){
-    var ed=$('mandate-editor');
-    if(ed)ed.hidden=!ed.hidden;
-  });
-}
-
-/* Sidebar navigation wiring */
-function wireSidebar(){
-  var navHome=$('nav-home');
-  var navStudio=$('nav-studio');
-  var navPurchases=$('nav-purchases');
-  var navWatchlist=$('nav-watchlist');
-  var navPolicies=$('nav-policies');
-  var navPayments=$('nav-payments');
-  var navActivity=$('nav-activity');
-
-  function setActiveNav(btn){
-    var all=document.querySelectorAll('.sidebar-nav-item');
-    for(var i=0;i<all.length;i++)all[i].classList.remove('active');
-    if(btn)btn.classList.add('active');
-  }
-
-  if(navHome){
-    navHome.addEventListener('click',function(e){
-      showView('checkout');
-      setActiveNav(navStudio);
+      showView('checkout',navStudio);
       window.scrollTo({top:0,behavior:'smooth'});
     });
   }
-  if(navStudio){
-    navStudio.addEventListener('click',function(e){
-      showView('checkout');
-      setActiveNav(navStudio);
-    });
-  }
   if(navPurchases){
     navPurchases.addEventListener('click',function(e){
-      showView('desk');
+      showView('desk',navPurchases);
       setDataset('sync');
-      setActiveNav(navPurchases);
+      window.scrollTo({top:0,behavior:'smooth'});
     });
   }
   if(navWatchlist){
     navWatchlist.addEventListener('click',function(e){
-      showView('checkout');
-      setActiveNav(navStudio);
-      var el=$('channel3-sku-select');
-      if(el){tourScroll(el);tourRing(el);setTimeout(tourUnring,1800);}
+      showView('checkout',navWatchlist);
+      var sel=$('channel3-sku-select');
+      var trend=document.querySelector('.price-trend-box')||$('live-browser-card');
+      if(sel){
+        sel.focus();
+        tourScroll(sel);
+        tourRing(sel);
+        setTimeout(tourUnring,1800);
+      }
+      if(trend){
+        tourRing(trend);
+        setTimeout(tourUnring,2000);
+      }
     });
   }
   if(navPolicies){
     navPolicies.addEventListener('click',function(e){
-      showView('checkout');
-      setActiveNav(navStudio);
+      showView('checkout',navPolicies);
       var ed=$('mandate-editor');
       if(ed)ed.hidden=false;
-      var el=ed||$('mandate-strip');
-      if(el){tourScroll(el);tourRing(el);setTimeout(tourUnring,1800);}
+      var sc=$('scanner-drawer');
+      if(sc)sc.open=true;
+      var el=ed||$('mandate-card')||$('mandate-strip');
+      if(el){
+        tourScroll(el);
+        tourRing(el);
+        setTimeout(tourUnring,1800);
+      }
     });
   }
   if(navPayments){
     navPayments.addEventListener('click',function(e){
-      showView('checkout');
-      setActiveNav(navStudio);
+      showView('checkout',navPayments);
       var el=$('wallet-card');
-      if(el){tourScroll(el);tourRing(el);setTimeout(tourUnring,1800);}
+      if(el){
+        var d=el.closest('details');
+        if(d)d.open=true;
+        tourScroll(el);
+        tourRing(el);
+        setTimeout(tourUnring,2000);
+      }
     });
   }
   if(navActivity){
     navActivity.addEventListener('click',function(e){
-      showView('desk');
+      showView('desk',navActivity);
       setDataset('live');
-      setActiveNav(navActivity);
+      window.scrollTo({top:0,behavior:'smooth'});
     });
   }
 }
