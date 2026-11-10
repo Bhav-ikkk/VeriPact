@@ -754,6 +754,59 @@ async function fullFlow(browser: Browser): Promise<void> {
   await page.click('#btn-reset');
   await page.waitForFunction(() => document.getElementById('part-available')?.textContent === '$350.00');
 
+  step('onboarding wizard, sub-agent spawn & background $100 price-drop auto-buy');
+  const modalInitiallyHidden = await page.$eval('#onboarding-modal', (el) => el.hasAttribute('hidden'));
+  assert(modalInitiallyHidden, 'onb-modal-init-hidden', 'expected #onboarding-modal to have hidden attribute initially');
+
+  await page.click('#btn-open-onboarding');
+  await page.waitForFunction(() => {
+    const modal = document.getElementById('onboarding-modal');
+    return modal !== null && !modal.hidden;
+  });
+
+  await page.click('#btn-clerk-google');
+  await page.waitForFunction(() => {
+    const p2 = document.getElementById('onb-pane-2');
+    return p2 !== null && !p2.hidden;
+  });
+
+  await page.click('#btn-onb-paypal-connect');
+  await page.click('#btn-onb-next-2');
+  await page.waitForFunction(() => {
+    const p3 = document.getElementById('onb-pane-3');
+    return p3 !== null && !p3.hidden;
+  });
+
+  await page.click('#btn-onb-finish');
+  await page.waitForFunction(() => {
+    const modal = document.getElementById('onboarding-modal');
+    return modal !== null && modal.hidden;
+  });
+
+  const pillLabel = await page.textContent('#onb-pill-label');
+  assert(pillLabel?.includes('Bhavik') === true, 'onb-pill-label-bhavik', `expected Bhavik in pill, got ${pillLabel}`);
+
+  const fleetVisible = await page.isVisible('#fleet-panel');
+  assert(fleetVisible, 'fleet-panel-visible', 'expected #fleet-panel to be visible');
+
+  await page.click('#btn-sim-pricedrop');
+  await page.waitForFunction(() => {
+    const txt = document.getElementById('fleet-agents-list')?.textContent ?? '';
+    return txt.includes('GOAL CAPTURED') && txt.includes('VP1:');
+  });
+
+  const fleetText = (await page.textContent('#fleet-agents-list')) ?? '';
+  assert(fleetText.includes('GOAL CAPTURED'), 'fleet-captured', fleetText.slice(0, 100));
+  assert(fleetText.includes('$100.00 Allocated · $0.00 Left'), 'fleet-spent-zero-left', fleetText.slice(0, 100));
+
+  // 9. Verify thinking bar streamed the background webhook event
+  const thinkingText = (await page.textContent('#agent-thinking-bar')) ?? '';
+  assert(thinkingText.includes('Background Webhook Received: KANSO-Q35'), 'thinking-webhook-stream', thinkingText.slice(0, 100));
+
+  // 10. Clean reset demo state for subsequent viewport sweeps
+  await page.click('#btn-reset');
+  await page.waitForFunction(() => document.getElementById('part-available')?.textContent === '$350.00');
+
   await context.close();
 }
 

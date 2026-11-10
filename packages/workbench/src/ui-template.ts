@@ -348,6 +348,28 @@ footer.app{max-width:1560px;margin:0 auto;padding:12px 20px 24px;color:var(--tex
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 @media print{body{background:#fff}.sidebar,.topbar,footer.app,#toast,.no-print{display:none!important}}
+
+/* Onboarding Wizard & Multi-Agent Fleet Styles */
+.onb-modal{max-width:580px;width:100%;backdrop-filter:blur(16px);background:rgba(255,255,255,0.98);border:1px solid var(--border-strong);box-shadow:0 20px 50px rgba(108,71,255,0.18)}
+.onb-tabs{display:flex;gap:6px;background:var(--bg-subtle);padding:4px;border-radius:10px;margin-bottom:16px}
+.onb-tab-btn{flex:1;padding:7px 10px;border:0;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;background:transparent;color:var(--text-secondary);transition:all .15s ease;font-family:inherit;text-align:center}
+.onb-tab-btn.active{background:#fff;color:var(--text-primary);box-shadow:0 1px 4px rgba(0,0,0,0.08);font-weight:750}
+.onb-pane{display:flex;flex-direction:column;gap:12px}
+.onb-pane[hidden]{display:none!important}
+.form-input{width:100%;font:inherit;font-size:12.5px;padding:7px 10px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;color:var(--text-primary)}
+.form-input:focus{outline:2px solid var(--accent-purple);border-color:var(--accent-purple)}
+.fleet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:12px;min-width:0;max-width:100%}
+.fleet-card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:8px;min-width:0;overflow:hidden;transition:border-color .15s ease}
+.fleet-card:hover{border-color:var(--accent-purple)}
+.fleet-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap}
+.fleet-card-title{font-size:13.5px;font-weight:750;color:var(--text-primary);margin:0}
+.fleet-card-sku{font-size:11px;font-family:var(--font-mono);color:var(--text-muted)}
+.fleet-card-body{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text-secondary)}
+.fleet-card-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px;padding-top:8px;border-top:1px solid var(--border-subtle);flex-wrap:wrap}
+@media (max-width:768px){
+.fleet-grid{grid-template-columns:minmax(0,1fr)}
+.onb-tabs{flex-direction:column}
+}
 ${WALLET_CSS}
 </style></head>
 <body>
@@ -419,6 +441,7 @@ ${WALLET_CSS}
           <span class="status-pill status-pill-live"><span class="dot"></span> Agent Live</span>
           <span class="wallet-pill" id="rb-partition" title="PayPal Wallet Partition"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> <span id="hdr-part-text">$53.00 Available</span></span>
           <button type="button" id="mode-pill" class="mode-pill mode-replay" title="PayPal Sandbox connection &amp; audit ledger">Detecting mode…</button>
+          <button type="button" class="btn btn-ghost" id="btn-open-onboarding" title="Connect Clerk Identity &amp; PayPal Vault"><span id="onb-pill-label">👤 Connect Clerk &amp; PayPal</span></button>
           <p id="tour-status" role="status" aria-live="polite"></p>
           <button type="button" class="btn btn-ghost" id="btn-reset" title="Re-seed replay disputes and orders"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 1.8v2.6h-2.6"/></svg>Reset Demo</button>
           <button type="button" class="btn btn-primary" id="btn-tour" title="Run 60s Guided Demo Tour">▶ Guided Tour<span class="sr-only">Run 60s Guided Demo Tour</span></button>
@@ -737,6 +760,32 @@ ${WALLET_CSS}
           ${walletCardHtml()}
         </div>
 
+        <div class="card" id="fleet-panel" style="margin-top:14px">
+          <div class="card-head" style="flex-wrap:wrap;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <h2>Background Sub-Agents (Armed 24/7)</h2>
+              <span class="pill pill-ok" id="fleet-live-badge"><span class="dot"></span> Neon DB + Channel3 Webhook Active</span>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary" id="btn-toggle-spawn-agent">+ New Sub-Agent</button>
+          </div>
+          <div id="form-spawn-agent" class="spawn-form-box" hidden style="margin:10px 0;padding:12px;border:1px solid var(--border-strong);border-radius:12px;background:var(--bg-subtle)">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;align-items:end">
+              <label style="font-size:11.5px;font-weight:600">Agent Name<input type="text" id="spawn-agent-name" placeholder="e.g. GPU Tracker" class="form-input" style="padding:4px 6px;font-size:11.5px"></label>
+              <label style="font-size:11.5px;font-weight:600">Product SKU<input type="text" id="spawn-agent-sku" placeholder="e.g. RTX-5080" class="form-input" style="padding:4px 6px;font-size:11.5px"></label>
+              <label style="font-size:11.5px;font-weight:600">Target Max $<input type="number" id="spawn-agent-target" placeholder="799" min="1" step="0.01" class="form-input" style="padding:4px 6px;font-size:11.5px"></label>
+              <label style="font-size:11.5px;font-weight:600">Sub-Alloc $<input type="number" id="spawn-agent-suballoc" placeholder="800" min="1" step="0.01" class="form-input" style="padding:4px 6px;font-size:11.5px"></label>
+              <div style="display:flex;gap:6px">
+                <button type="button" class="btn btn-sm btn-primary" id="btn-spawn-agent">Spawn</button>
+                <button type="button" class="btn btn-sm btn-ghost" id="btn-cancel-spawn-agent">Cancel</button>
+              </div>
+            </div>
+            <p class="status-line" id="spawn-agent-status" aria-live="polite" style="margin:4px 0 0"></p>
+          </div>
+          <div id="fleet-agents-list" class="fleet-grid">
+            <!-- Dynamically populated by initFleetUi / renderFleetAgents -->
+          </div>
+        </div>
+
         <div class="card" id="mandate-card" style="margin-top:14px">
           <div class="card-head">
             <h2>Buyer Mandate &amp; Sufficiency</h2>
@@ -847,6 +896,115 @@ ${WALLET_CSS}
 <div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="btn" id="btn-ledger-download">Download Signed Ledger (.json)</button></div>
 </div></div></div>
 
+<div id="onboarding-modal" hidden><div class="modal-back"><div class="modal onb-modal" role="dialog" aria-modal="true" aria-labelledby="onb-title">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+  <div>
+    <h2 id="onb-title" style="margin:0 0 2px">VeriPact Onboarding: Connect Clerk &amp; PayPal Vault</h2>
+    <p class="status-line" style="margin:0">Autonomous Multi-Agent Fleet Setup · 3 Guided Steps</p>
+  </div>
+  <button type="button" class="btn btn-ghost btn-sm" id="btn-onb-close" aria-label="Close onboarding modal">✕</button>
+</div>
+
+<div class="onb-tabs" role="tablist" aria-label="Onboarding Steps">
+  <button type="button" class="onb-tab-btn active" id="onb-tab-1" role="tab" aria-selected="true">1. Identity (Clerk)</button>
+  <button type="button" class="onb-tab-btn" id="onb-tab-2" role="tab" aria-selected="false">2. PayPal Vault</button>
+  <button type="button" class="onb-tab-btn" id="onb-tab-3" role="tab" aria-selected="false">3. Sub-Allocations</button>
+</div>
+
+<div id="onb-pane-1" class="onb-pane">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <span style="font-weight:700;font-size:13px">Clerk + Google OAuth Session</span>
+    <span class="pill pill-ok" id="onb-clerk-badge">Clerk Session + Neon DB Sync Ready</span>
+  </div>
+  <button type="button" class="btn btn-primary" id="btn-clerk-google" style="width:100%;padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">
+    <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/></svg>
+    Continue with Google (via Clerk)
+  </button>
+  <div style="text-align:center;color:var(--text-muted);font-size:11px;margin:2px 0">OR VERIFY IDENTITY DETAILS</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <label style="display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:600">Email Address<input type="email" id="onb-email" value="bhavik@veripact.ai" class="form-input"></label>
+    <label style="display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:600">Full Name<input type="text" id="onb-name" value="Bhavik" class="form-input"></label>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-top:12px">
+    <button type="button" class="btn btn-primary" id="btn-onb-next-1">Next: Link PayPal Vault →</button>
+  </div>
+</div>
+
+<div id="onb-pane-2" class="onb-pane" hidden>
+  <div style="margin-bottom:4px">
+    <span style="font-weight:700;font-size:13px">PayPal Vault Connect &amp; Master Budget</span>
+    <p class="status-line" style="margin:2px 0 6px">Pair your consumer PayPal account once. The agent operates within your defined master partition.</p>
+  </div>
+  <button type="button" class="btn btn-primary" id="btn-onb-paypal-connect" style="width:100%;padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+    <span id="onb-paypal-btn-label">1-Click PayPal OAuth / QR Pair</span>
+  </button>
+  <div id="onb-paypal-status-badge" style="margin:6px 0"><span class="pill pill-ok">🟢 PayPal Sandbox Vault Connected</span></div>
+  <div style="margin-top:8px;border-top:1px solid var(--border-subtle);padding-top:8px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <label for="onb-master-cap" style="font-size:12px;font-weight:700">Master Agentic Budget Partition</label>
+      <span id="onb-master-disp" style="font-weight:800;font-family:var(--font-mono);color:var(--accent-purple)">$350.00</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <input type="range" id="onb-master-slider" min="100" max="1000" step="25" value="350" style="flex:1">
+      <input type="number" id="onb-master-cap" min="50" max="5000" step="10" value="350" class="form-input" style="width:85px;padding:4px 6px">
+    </div>
+    <p class="status-line" style="font-size:11px;margin:4px 0 0">The master partition limits total fleet spending. Sub-agents cannot exceed this total.</p>
+  </div>
+  <details class="drawer" style="margin-top:8px"><summary>Developer: Use custom PayPal Sandbox API keys</summary><div class="drawer-body" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px"><label style="font-size:11.5px">Client ID<input type="password" id="onb-custom-client-id" placeholder="Optional sandbox client ID" class="form-input" style="padding:4px 6px;font-size:11px"></label><label style="font-size:11.5px">Client Secret<input type="password" id="onb-custom-client-secret" placeholder="Optional sandbox secret" class="form-input" style="padding:4px 6px;font-size:11px"></label></div></details>
+  <div style="display:flex;justify-content:space-between;margin-top:14px">
+    <button type="button" class="btn btn-ghost" id="btn-onb-back-2">← Back</button>
+    <button type="button" class="btn btn-primary" id="btn-onb-next-2">Next: Allocate Sub-Agents →</button>
+  </div>
+</div>
+
+<div id="onb-pane-3" class="onb-pane" hidden>
+  <div style="margin-bottom:6px">
+    <span style="font-weight:700;font-size:13px">Allocate Sub-Agent Slices (Multi-Agent Fleet)</span>
+    <p class="status-line" style="margin:2px 0 6px">Distribute your <b id="onb-split-master-val">$350.00</b> master partition across autonomous background agents:</p>
+  </div>
+  <div style="height:10px;border-radius:5px;background:#e2e8f0;display:flex;overflow:hidden;margin-bottom:10px">
+    <div id="onb-bar-monitor" style="width:62.8%;background:#6c47ff" title="Monitor Sniper: $220.00"></div>
+    <div id="onb-bar-audio" style="width:28.6%;background:#10b981" title="Audio Deal Bot: $100.00"></div>
+    <div id="onb-bar-reserve" style="width:8.6%;background:#94a3b8" title="Reserve: $30.00"></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;background:var(--bg-muted)">
+      <div>
+        <b style="font-size:12px">Monitor Sniper (APEX-27-4K-IPS)</b>
+        <div style="font-size:11px;color:var(--text-secondary)">Target: &le; $300.00 all-in · 4K IPS Deals</div>
+      </div>
+      <div style="text-align:right">
+        <span class="pill pill-ok" style="font-family:var(--font-mono)">$220.00 Allocated</span>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;background:var(--bg-muted)">
+      <div>
+        <b style="font-size:12px">Audio Deal Bot (KANSO-Q35)</b>
+        <div style="font-size:11px;color:var(--text-secondary)">Target: &le; $100.00 all-in ($149 Retail) · Auto-Buy Armed</div>
+      </div>
+      <div style="text-align:right">
+        <span class="pill pill-ok" style="font-family:var(--font-mono)">$100.00 Allocated</span>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;background:#f8fafc">
+      <div>
+        <b style="font-size:12px;color:var(--text-muted)">Unallocated Safety Reserve</b>
+        <div style="font-size:11px;color:var(--text-muted)">Uncommitted buffer (master cap safety cushion)</div>
+      </div>
+      <div style="text-align:right">
+        <span class="pill pill-info" id="onb-reserve-pill" style="font-family:var(--font-mono)">$30.00 Reserve</span>
+      </div>
+    </div>
+  </div>
+  <div id="onb-alloc-status" class="status-line" style="margin-top:6px;color:#15803d;font-weight:600">✓ $320.00 allocated of $350.00 master partition ($30.00 reserve safety cushion)</div>
+  <div style="display:flex;justify-content:space-between;margin-top:14px">
+    <button type="button" class="btn btn-ghost" id="btn-onb-back-3">← Back</button>
+    <button type="button" class="btn btn-primary" id="btn-onb-finish">✓ Complete Onboarding &amp; Arm Background Agents</button>
+  </div>
+</div>
+</div></div></div>
+
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="demo-toast" hidden role="status" aria-live="polite"><span id="demo-step">STEP 1 / 7</span><span id="demo-text">Starting the guided tour…</span><span id="demo-progress" aria-hidden="true"><i id="demo-bar"></i></span><button type="button" id="demo-stop">Stop Tour</button></div>
 <script src="/vendor/ag-grid-community.min.js" defer></script>
@@ -904,7 +1062,7 @@ $('rb-regate').textContent='$'+Number(r.finalTotalUsd).toFixed(2)+' '+(r.outcome
 function setActiveNav(btn){var all=document.querySelectorAll('.sidebar-nav-item');for(var i=0;i<all.length;i++)all[i].classList.remove('active');if(btn)btn.classList.add('active');}
 function showView(which,targetNavBtn){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;var pb=$('prompt-bar-wrap');if(pb){pb.hidden=!c;pb.style.display=c?'':'none';}$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');if(targetNavBtn){setActiveNav(targetNavBtn);}else{var cur=document.querySelector('.sidebar-nav-item.active');if(c){if(!cur||cur.id==='nav-purchases'||cur.id==='nav-activity'){setActiveNav($('nav-studio'));}}else{if(!cur||cur.id!=='nav-purchases'){setActiveNav($('nav-activity'));}}}if(!c){ensureDesk().catch(function(){});}}
 function setView(which){showView(which);}
-function resetDemo(){return api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;state.mandate=null;state.sku='APEX-27-4K-IPS';var sel=$('channel3-sku-select');if(sel)sel.value='APEX-27-4K-IPS';updateSpendBtnLabel();resetWalletUi();resetSniperUi();resetOutcomeBanner();resetTransactionRecord();var ed=$('mandate-editor');if(ed)ed.hidden=true;setDataset('live');refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);throw e;});}
+function resetDemo(){return api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;state.mandate=null;state.sku='APEX-27-4K-IPS';var sel=$('channel3-sku-select');if(sel)sel.value='APEX-27-4K-IPS';updateSpendBtnLabel();resetWalletUi();resetSniperUi();resetOutcomeBanner();resetTransactionRecord();resetFleetUi();var ed=$('mandate-editor');if(ed)ed.hidden=true;setDataset('live');refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);throw e;});}
 $('tab-checkout').addEventListener('click',function(){showView('checkout');});
 $('tab-desk').addEventListener('click',function(){showView('desk');});
 $('btn-reset').addEventListener('click',function(){resetDemo().catch(function(){});});
@@ -2110,6 +2268,398 @@ function wireSidebar(){
   }
 }
 wireSidebar();
+
+/* ---------- Onboarding Wizard & Multi-Agent Fleet ---------- */
+var fleetState = {
+  user: null,
+  masterPartitionUsd: 350,
+  agents: []
+};
+
+function openOnboardingModal(step) {
+  var m = $('onboarding-modal');
+  if (!m) return;
+  m.hidden = false;
+  switchOnbStep(step || 1);
+}
+
+function closeOnboardingModal() {
+  var m = $('onboarding-modal');
+  if (m) m.hidden = true;
+}
+
+function switchOnbStep(step) {
+  for (var i = 1; i <= 3; i++) {
+    var tab = $('onb-tab-' + i);
+    var pane = $('onb-pane-' + i);
+    if (tab) {
+      tab.classList.toggle('active', i === step);
+      tab.setAttribute('aria-selected', i === step ? 'true' : 'false');
+    }
+    if (pane) {
+      pane.hidden = (i !== step);
+    }
+  }
+}
+
+function syncMasterCap(val) {
+  var num = Math.max(50, Math.min(5000, Number(val) || 350));
+  var s = $('onb-master-slider'); if (s) s.value = String(num);
+  var c = $('onb-master-cap'); if (c) c.value = String(num);
+  var d = $('onb-master-disp'); if (d) d.textContent = '$' + num.toFixed(2);
+  var v = $('onb-split-master-val'); if (v) v.textContent = '$' + num.toFixed(2);
+  var reserve = Math.max(0, num - 320);
+  var rPill = $('onb-reserve-pill'); if (rPill) rPill.textContent = '$' + reserve.toFixed(2) + ' Reserve';
+  var mPct = Math.min(100, (220 / num) * 100);
+  var aPct = Math.min(100 - mPct, (100 / num) * 100);
+  var rPct = Math.max(0, 100 - mPct - aPct);
+  var b1 = $('onb-bar-monitor'); if (b1) b1.style.width = mPct.toFixed(1) + '%';
+  var b2 = $('onb-bar-audio'); if (b2) b2.style.width = aPct.toFixed(1) + '%';
+  var b3 = $('onb-bar-reserve'); if (b3) b3.style.width = rPct.toFixed(1) + '%';
+  var st = $('onb-alloc-status');
+  if (st) {
+    if (num < 320) {
+      st.style.color = '#991b1b';
+      st.textContent = '⚠ Warning: $320.00 sub-allocations exceed $' + num.toFixed(2) + ' master partition';
+    } else {
+      st.style.color = '#15803d';
+      st.textContent = '✓ $320.00 allocated of $' + num.toFixed(2) + ' master partition ($' + reserve.toFixed(2) + ' reserve safety cushion)';
+    }
+  }
+}
+
+function renderFleetAgents(agents) {
+  var list = $('fleet-agents-list');
+  if (!list) return;
+  if (!agents || !agents.length) {
+    list.innerHTML = '<div style="padding:14px;color:var(--text-muted);font-size:12px;text-align:center">No autonomous sub-agents spawned yet.</div>';
+    return;
+  }
+  var html = agents.map(function(a) {
+    var isCaptured = a.status === 'GOAL_CAPTURED';
+    var isBlocked = a.status === 'BLOCKED_SUB_ALLOCATION_WALL';
+    var statusClass = isCaptured ? 'pill-ok' : (isBlocked ? 'pill-bad' : 'pill-warn');
+    var statusLabel = isCaptured
+      ? ('🟢 GOAL CAPTURED ($' + Number(a.capturedAmountUsd || a.targetMaxAllInUsd).toFixed(2) + (a.commitment ? ' · ' + esc(a.commitment.slice(0, 16)) + '…' : '') + ')')
+      : (isBlocked ? '🛑 BLOCKED · SUB-ALLOCATION WALL' : '🟣 ARMED · WATCHING 24/7');
+
+    var actionHtml = '';
+    if (a.sku === 'KANSO-Q35') {
+      if (isCaptured) {
+        actionHtml = '<button type="button" class="btn btn-sm btn-ghost" id="btn-sim-pricedrop" disabled style="opacity:0.75">✓ Goal Captured ($' + Number(a.capturedAmountUsd || 100).toFixed(2) + ')</button>';
+      } else {
+        actionHtml = '<button type="button" class="btn btn-sm btn-primary" id="btn-sim-pricedrop" title="Simulate incoming Channel3 price drop webhook to $100 all-in">⚡ Simulate $100 Price-Drop Webhook</button>';
+      }
+    }
+
+    return '<div class="fleet-card" id="agent-card-' + esc(a.agentId) + '">' +
+      '<div class="fleet-card-head">' +
+        '<div><h3 class="fleet-card-title">' + esc(a.name) + '</h3><div class="fleet-card-sku">' + esc(a.sku) + ' · ' + esc(a.productTitle || a.sku) + '</div></div>' +
+        '<span class="pill ' + statusClass + '">' + statusLabel + '</span>' +
+      '</div>' +
+      '<div class="fleet-card-body">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">' +
+          '<span class="pill pill-info" style="font-family:var(--font-mono)">$' + Number(a.subAllocationUsd).toFixed(2) + ' Allocated · $' + Number(a.remainingSubAllocationUsd).toFixed(2) + ' Left</span>' +
+          '<span style="font-size:11px;color:var(--text-muted)">Retail: $' + Number(a.retailPriceUsd).toFixed(2) + '</span>' +
+        '</div>' +
+        '<div style="font-size:11.5px;color:var(--text-secondary)">Target: Buy automatically when all-in &le; $' + Number(a.targetMaxAllInUsd).toFixed(2) + '</div>' +
+      '</div>' +
+      (actionHtml ? ('<div class="fleet-card-footer">' + actionHtml + '</div>') : '') +
+    '</div>';
+  }).join('');
+
+  list.innerHTML = html;
+
+  var dropBtn = $('btn-sim-pricedrop');
+  if (dropBtn && !dropBtn.disabled) {
+    dropBtn.addEventListener('click', function(e) {
+      handleSimulatePriceDrop(e);
+    });
+  }
+}
+
+function handleSimulatePriceDrop(e) {
+  var btn = $('btn-sim-pricedrop');
+  if (btn) btn.disabled = true;
+  if (typeof window.setRobotState === 'function') window.setRobotState('hunting');
+  var tb = $('agent-thinking-bar');
+  if (tb) tb.textContent = '⚡ Background Webhook Received: KANSO-Q35 dropped to $100.00 all-in (AUDIO67) -> 3-Rung WIT Verified -> Auto-Captured $100.00 from Agent Sub-Allocation!';
+
+  api('/api/agents/webhook/price-drop', {
+    method: 'POST',
+    body: JSON.stringify({
+      sku: 'KANSO-Q35',
+      newBasePriceUsd: 82,
+      voucherCode: 'AUDIO67'
+    })
+  }).then(function(res) {
+    if (typeof window.setRobotState === 'function') {
+      setTimeout(function() {
+        window.setRobotState('celebrate');
+      }, 300);
+    }
+    var fleet = res.fleet || res.state || res;
+    var agents = fleet.agents || res.triggeredAgents || [];
+    if (agents && agents.length) {
+      fleetState.agents = agents;
+      renderFleetAgents(agents);
+      var totalSpent = agents.reduce(function(acc, a) {
+        return acc + (Number(a.spentUsd) || 0);
+      }, 0);
+      var masterCap = fleet.masterPartitionUsd || 350;
+      var avail = Math.max(0, masterCap - totalSpent);
+      var partHeader = $('hdr-part-text'); if (partHeader) partHeader.textContent = '$' + avail.toFixed(2) + ' Available';
+      var partAvail = $('part-available'); if (partAvail) partAvail.textContent = '$' + avail.toFixed(2);
+      var partCap = $('part-captured'); if (partCap) partCap.textContent = '$' + totalSpent.toFixed(2);
+    }
+    toast('⚡ KANSO-Q35 auto-captured at $100.00 via Background Deal Watcher!');
+  }).catch(function(err) {
+    if (typeof window.setRobotState === 'function') window.setRobotState('blocked');
+    toast('Price drop webhook failed: ' + err.message);
+    if (btn) btn.disabled = false;
+  });
+}
+
+function refreshFleetState() {
+  return api('/api/onboarding/state').then(function(res) {
+    var fleet = res.fleet || res;
+    fleetState.user = fleet.user || null;
+    fleetState.masterPartitionUsd = fleet.masterPartitionUsd || 350;
+    fleetState.agents = fleet.agents || [];
+
+    var pillLabel = $('onb-pill-label');
+    var openBtn = $('btn-open-onboarding');
+    if (pillLabel && openBtn) {
+      if (fleet.user) {
+        pillLabel.textContent = '🟢 ' + fleet.user.displayName + ' · PayPal Vault ($' + Number(fleet.user.masterPartitionUsd).toFixed(0) + ')';
+        openBtn.title = 'Connected: ' + fleet.user.displayName + ' (' + fleet.user.email + ')';
+      } else {
+        pillLabel.textContent = '👤 Connect Clerk & PayPal';
+        openBtn.title = 'Connect Clerk Identity & PayPal Vault';
+      }
+    }
+
+    renderFleetAgents(fleet.agents || []);
+    return fleet;
+  }).catch(function() {
+    renderFleetAgents([]);
+  });
+}
+
+function resetFleetUi() {
+  var pillLabel = $('onb-pill-label');
+  if (pillLabel) pillLabel.textContent = '👤 Connect Clerk & PayPal';
+  refreshFleetState().catch(function() {});
+}
+
+function handleSpawnAgent(e) {
+  var nameEl = $('spawn-agent-name');
+  var skuEl = $('spawn-agent-sku');
+  var tgtEl = $('spawn-agent-target');
+  var subEl = $('spawn-agent-suballoc');
+  var st = $('spawn-agent-status');
+
+  var name = nameEl ? nameEl.value.trim() : '';
+  var sku = skuEl ? skuEl.value.trim() : '';
+  var target = tgtEl ? Number(tgtEl.value) : 0;
+  var subAlloc = subEl ? Number(subEl.value) : 0;
+
+  if (!name || !sku || target <= 0 || subAlloc <= 0) {
+    if (st) st.textContent = 'Please fill out all fields with valid amounts > 0.';
+    return;
+  }
+
+  if (st) st.textContent = 'Spawning sub-agent…';
+
+  api('/api/agents/spawn', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: name,
+      sku: sku,
+      targetMaxAllInUsd: target,
+      subAllocationUsd: subAlloc
+    })
+  }).then(function(res) {
+    if (st) st.textContent = '✓ Sub-agent armed!';
+    var f = $('form-spawn-agent'); if (f) f.hidden = true;
+    if (nameEl) nameEl.value = '';
+    if (skuEl) skuEl.value = '';
+    if (tgtEl) tgtEl.value = '';
+    if (subEl) subEl.value = '';
+    toast('Sub-agent armed: ' + name);
+    refreshFleetState();
+  }).catch(function(err) {
+    if (st) st.textContent = err.message;
+    toast(err.message);
+  });
+}
+
+function wireOnboardingAndFleet() {
+  var btnOpen = $('btn-open-onboarding');
+  if (btnOpen) {
+    btnOpen.addEventListener('click', function(e) {
+      openOnboardingModal();
+    });
+  }
+
+  var btnWalletOpen = $('btn-wallet-open-onboarding');
+  if (btnWalletOpen) {
+    btnWalletOpen.addEventListener('click', function(e) {
+      openOnboardingModal();
+    });
+  }
+
+  var btnClose = $('btn-onb-close');
+  if (btnClose) {
+    btnClose.addEventListener('click', function(e) {
+      closeOnboardingModal();
+    });
+  }
+
+  var modal = $('onboarding-modal');
+  if (modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target && e.target.classList && e.target.classList.contains('modal-back')) {
+        closeOnboardingModal();
+      }
+    });
+  }
+
+  var tab1 = $('onb-tab-1'); if (tab1) tab1.addEventListener('click', function(e) { switchOnbStep(1); });
+  var tab2 = $('onb-tab-2'); if (tab2) tab2.addEventListener('click', function(e) { switchOnbStep(2); });
+  var tab3 = $('onb-tab-3'); if (tab3) tab3.addEventListener('click', function(e) { switchOnbStep(3); });
+
+  var btnGoogle = $('btn-clerk-google');
+  if (btnGoogle) {
+    btnGoogle.addEventListener('click', function(e) {
+      var emailEl = $('onb-email');
+      var nameEl = $('onb-name');
+      var badge = $('onb-clerk-badge');
+      if (badge && emailEl) {
+        badge.textContent = '🟢 Clerk Session Active · ' + emailEl.value;
+      }
+      toast('Clerk Google OAuth session verified');
+      switchOnbStep(2);
+    });
+  }
+
+  var btnNext1 = $('btn-onb-next-1');
+  if (btnNext1) {
+    btnNext1.addEventListener('click', function(e) {
+      switchOnbStep(2);
+    });
+  }
+
+  var btnPpConnect = $('btn-onb-paypal-connect');
+  if (btnPpConnect) {
+    btnPpConnect.addEventListener('click', function(e) {
+      var lbl = $('onb-paypal-btn-label');
+      if (lbl) lbl.textContent = '✓ PayPal Vault Paired';
+      var badge = $('onb-paypal-status-badge');
+      if (badge) badge.innerHTML = '<span class="pill pill-ok">🟢 PayPal Sandbox Vault Connected</span>';
+      toast('PayPal Vault authority linked');
+    });
+  }
+
+  var masterSlider = $('onb-master-slider');
+  if (masterSlider) {
+    masterSlider.addEventListener('input', function(e) {
+      syncMasterCap(e.target.value);
+    });
+  }
+
+  var masterCapInp = $('onb-master-cap');
+  if (masterCapInp) {
+    masterCapInp.addEventListener('input', function(e) {
+      syncMasterCap(e.target.value);
+    });
+  }
+
+  var btnBack2 = $('btn-onb-back-2');
+  if (btnBack2) {
+    btnBack2.addEventListener('click', function(e) {
+      switchOnbStep(1);
+    });
+  }
+
+  var btnNext2 = $('btn-onb-next-2');
+  if (btnNext2) {
+    btnNext2.addEventListener('click', function(e) {
+      syncMasterCap($('onb-master-cap') ? $('onb-master-cap').value : 350);
+      switchOnbStep(3);
+    });
+  }
+
+  var btnBack3 = $('btn-onb-back-3');
+  if (btnBack3) {
+    btnBack3.addEventListener('click', function(e) {
+      switchOnbStep(2);
+    });
+  }
+
+  var btnFinish = $('btn-onb-finish');
+  if (btnFinish) {
+    btnFinish.addEventListener('click', function(e) {
+      var emailEl = $('onb-email');
+      var nameEl = $('onb-name');
+      var capEl = $('onb-master-cap');
+      var email = emailEl ? emailEl.value.trim() : 'bhavik@veripact.ai';
+      var displayName = nameEl ? nameEl.value.trim() : 'Bhavik';
+      var masterCap = capEl ? Number(capEl.value) : 350;
+
+      api('/api/onboarding/complete', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: email,
+          displayName: displayName,
+          masterPartitionUsd: masterCap,
+          authProvider: 'CLERK_GOOGLE_OAUTH'
+        })
+      }).then(function(res) {
+        closeOnboardingModal();
+        if (typeof window.setRobotState === 'function') {
+          window.setRobotState('celebrate');
+        }
+        var pillLabel = $('onb-pill-label');
+        if (pillLabel) {
+          pillLabel.textContent = '🟢 ' + displayName + ' · PayPal Vault ($' + masterCap.toFixed(0) + ')';
+        }
+        toast('✓ Onboarding complete! Autonomous fleet armed with $' + masterCap.toFixed(2) + ' partition');
+        refreshFleetState();
+      }).catch(function(err) {
+        toast('Onboarding completion failed: ' + err.message);
+      });
+    });
+  }
+
+  var btnToggleSpawn = $('btn-toggle-spawn-agent');
+  if (btnToggleSpawn) {
+    btnToggleSpawn.addEventListener('click', function(e) {
+      var f = $('form-spawn-agent');
+      if (f) f.hidden = !f.hidden;
+    });
+  }
+
+  var btnCancelSpawn = $('btn-cancel-spawn-agent');
+  if (btnCancelSpawn) {
+    btnCancelSpawn.addEventListener('click', function(e) {
+      var f = $('form-spawn-agent');
+      if (f) f.hidden = true;
+    });
+  }
+
+  var btnSpawn = $('btn-spawn-agent');
+  if (btnSpawn) {
+    btnSpawn.addEventListener('click', function(e) {
+      handleSpawnAgent(e);
+    });
+  }
+
+  // Initial load: fetch fleet state
+  refreshFleetState().catch(function() {});
+}
+
+wireOnboardingAndFleet();
 
 </script>
 </body></html>`;

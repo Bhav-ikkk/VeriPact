@@ -610,7 +610,7 @@ export const WALLET_CSS = [
 export function walletCardHtml(): string {
   return [
     '<div class="card" id="wallet-card">',
-    '<div class="card-head"><h2>Agentic Wallet &amp; Partition Enforcer</h2><span class="pill pill-info" id="wallet-net-pill">Deterministic demo wallet</span></div>',
+    '<div class="card-head"><h2>Agentic Wallet &amp; Partition Enforcer</h2><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><button type="button" class="btn btn-ghost btn-sm" id="btn-wallet-open-onboarding" title="Open 3-Step Clerk + PayPal Onboarding Wizard"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Setup Onboarding &amp; Sub-Agents</button><span class="pill pill-info" id="wallet-net-pill">Deterministic demo wallet</span></div></div>',
     '<div class="wallet-grid">',
     '<div id="qr-connect-box">',
     '<h3>Phone QR Account Pairing</h3>',
