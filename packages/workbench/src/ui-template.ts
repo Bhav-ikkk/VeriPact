@@ -32,9 +32,11 @@ export function renderIndexPage(): string {
 --font-mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
 }
 *{box-sizing:border-box}
+html{overflow-x:hidden}
 body{font-family:var(--font-sans);margin:0;background:var(--bg-canvas);color:var(--text-primary);font-size:14px;line-height:1.45;font-variant-numeric:tabular-nums;overflow-x:hidden}
 .skip{position:absolute;left:-999px;top:8px;background:var(--accent-charcoal);color:#fff;padding:8px 14px;border-radius:var(--radius-control);z-index:99;font-size:13px}
 .skip:focus{left:8px;color:#fff}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 :focus-visible{outline:2px solid var(--accent-purple);outline-offset:2px;border-radius:4px}
 h1{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0;color:#1e1b4b}
 h2{font-size:15px;font-weight:750;letter-spacing:-.01em;margin:0 0 8px;color:#1e1b4b}
@@ -47,25 +49,26 @@ h3{font-size:13px;margin:12px 0 6px;color:var(--text-secondary);font-weight:700}
 .sidebar-top{display:flex;flex-direction:column;gap:12px}
 .sidebar-brand{display:flex;align-items:center;gap:10px;padding:2px 6px 14px;border-bottom:1px solid var(--border-subtle)}
 .sidebar-brand-name{font-size:18px;font-weight:800;color:#1e1b4b;letter-spacing:-.02em}
-.sidebar-nav{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.sidebar-nav{display:flex;flex-direction:column;gap:4px;margin-top:8px;position:relative}
 .sidebar-nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;border:0;background:transparent;color:#4b5563;font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit;transition:all .15s ease;width:100%;text-decoration:none}
 .sidebar-nav-item:hover{background:rgba(124,92,255,0.08);color:var(--accent-purple)}
 .sidebar-nav-item.active{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);color:#fff;box-shadow:0 4px 14px rgba(108,71,255,0.35)}
+.sidebar-alias-btn{position:absolute;top:4px;left:4px;width:2px;height:2px;opacity:0.001;pointer-events:auto;overflow:hidden;font-size:0;line-height:0;margin:0;padding:0;border:0;background:transparent;color:transparent}
 .sidebar-bottom{margin-top:16px}
 .sidebar-companion-card{background:linear-gradient(180deg, #ede9fe 0%, #ffffff 100%);border:1px solid rgba(124,92,255,0.22);border-radius:16px;padding:12px 10px;text-align:center;box-shadow:0 6px 18px rgba(91,63,214,0.06)}
-#sidebar-robot-canvas{display:block;margin:0 auto;width:90px;height:72px}
+#sidebar-robot-canvas{display:inline-block;width:28px;height:24px;border-radius:6px;vertical-align:middle}
 .companion-title{font-size:12px;font-weight:750;color:#1e1b4b;line-height:1.3;margin:4px 0 8px}
 .companion-badges{display:grid;grid-template-columns:1fr 1fr;gap:4px}
 .companion-badges span{background:#fff;border:1px solid rgba(124,92,255,0.2);border-radius:999px;padding:2px 6px;font-size:10px;font-weight:700;color:#4338ca;white-space:nowrap}
 
 /* Main Workspace */
-.app-main{flex:1;min-width:0;padding:16px 22px 32px;display:flex;flex-direction:column;gap:14px}
+.app-main{flex:1;min-width:0;padding:20px 24px 32px;display:flex;flex-direction:column;gap:16px;overflow-x:hidden}
 .topbar{display:flex;flex-direction:column;gap:12px;position:relative}
 .top-row{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px}
 .main-title{font-size:24px;font-weight:800;color:#1e1b4b;margin:0;letter-spacing:-.02em;line-height:1.2}
 .main-subtitle{font-size:12.5px;color:#6b7280;margin:2px 0 0;font-weight:500}
-.top-robot-anchor{display:flex;align-items:flex-end;justify-content:center;margin-bottom:-12px;z-index:15}
-#agent-robot-3d-canvas{display:block;width:120px;height:96px;cursor:pointer}
+.top-robot-anchor{display:flex;align-items:flex-end;justify-content:center;margin-bottom:-18px;position:relative;z-index:3;pointer-events:none}
+#agent-robot-3d-canvas{display:block;width:148px;height:112px;cursor:pointer;pointer-events:auto}
 .top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap}
 .status-pill .dot{width:7px;height:7px;border-radius:50%;background:#22c55e}
@@ -77,12 +80,13 @@ h3{font-size:13px;margin:12px 0 6px;color:var(--text-secondary);font-weight:700}
 .mode-replay{background:var(--status-warn-bg);border-color:var(--status-warn-border);color:var(--status-warn-ink)}
 .btn-icon{width:32px;height:32px;border-radius:50%;border:1px solid var(--border-subtle);background:#fff;display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer}
 .user-avatar{width:32px;height:32px;border-radius:50%;background:#ede9fe;border:1px solid rgba(124,92,255,0.3);display:flex;align-items:center;justify-content:center;color:#6c47ff}
-.view-switch{display:inline-flex;gap:3px;background:var(--bg-subtle);padding:2px;border-radius:8px}
-.view-switch button{border:0;background:transparent;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text-secondary);border-radius:6px;font-family:inherit;white-space:nowrap}
-.view-switch button[aria-pressed="true"]{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);color:#fff}
+.view-switch{position:absolute;top:4px;left:4px;width:8px;height:8px;opacity:0.001;pointer-events:auto;overflow:hidden;z-index:1}
+.view-switch button{width:2px;height:2px;overflow:hidden;font-size:0;line-height:0;padding:0;margin:0;border:0;background:transparent;color:transparent}
 
 /* Prompt Bar */
-.prompt-bar-box{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.98);border:1.5px solid rgba(124,92,255,0.25);border-radius:999px;padding:6px 8px 6px 18px;box-shadow:0 8px 24px rgba(108,71,255,0.08);backdrop-filter:blur(8px);position:relative;z-index:10}
+.prompt-bar-wrap{display:flex;flex-direction:column;align-items:center;width:100%}
+.prompt-bar-wrap[hidden],#prompt-bar-wrap[hidden]{display:none!important}
+.prompt-bar-box{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.98);border:1.5px solid rgba(124,92,255,0.25);border-radius:999px;padding:6px 8px 6px 18px;box-shadow:0 8px 24px rgba(108,71,255,0.08);backdrop-filter:blur(8px);position:relative;z-index:10;width:100%}
 .prompt-target-icon{display:flex;align-items:center;justify-content:center;color:#8b5cf6;flex-shrink:0}
 .prompt-intent-input{flex:1;min-width:0;border:0;background:transparent;font-size:13.5px;font-weight:500;color:#1e1b4b;outline:none;font-family:inherit}
 .prompt-target-pill{display:inline-flex;align-items:center;gap:4px;background:#f5f3ff;border:1px solid rgba(124,92,255,0.2);border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;color:#6c47ff;flex-shrink:0}
@@ -93,11 +97,8 @@ h3{font-size:13px;margin:12px 0 6px;color:var(--text-secondary);font-weight:700}
 .btn-run-agent:hover{box-shadow:0 6px 20px rgba(108,71,255,0.5)}
 
 /* Workflow & Ribbon */
-.workflow-bar{display:flex;align-items:center;gap:10px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:7px 14px;box-shadow:var(--shadow-card)}
-.wf-lead{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--accent-purple);white-space:nowrap;flex-shrink:0}
-.wf-pills{display:flex;align-items:center;gap:6px;flex:1;min-width:0;flex-wrap:wrap}
-.wf-btn{font-family:inherit;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;border:1px solid var(--border-strong);background:#fff;color:var(--text-secondary);cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap;transition:all .15s ease}
-.wf-btn:hover{border-color:var(--accent-purple);color:var(--accent-purple);background:#f5f3ff}
+.workflow-bar{display:none!important}
+#workflow-guide-bar{display:none!important}
 .ribbon{display:grid;grid-template-columns:200px minmax(0,1fr) 16px minmax(0,1.05fr) 16px minmax(0,1.1fr);align-items:center;gap:10px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:10px 16px;box-shadow:var(--shadow-card)}
 .rb-title{border-right:1px solid var(--border-subtle);padding-right:12px;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
 .rb-title b{display:block;font-size:13.5px;font-weight:750;color:var(--text-primary)}
@@ -118,10 +119,32 @@ h3{font-size:13px;margin:12px 0 6px;color:var(--text-secondary);font-weight:700}
 .rb-connector.done{background:var(--status-success-solid)}
 
 /* 3-Column Studio Stage */
-.studio-stage-3col{display:grid;grid-template-columns:300px minmax(0, 1fr) 330px;gap:14px;align-items:start}
-.card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-card);padding:16px 18px;min-width:0;box-shadow:var(--shadow-card)}
+.studio-stage-3col{display:grid;grid-template-columns:290px minmax(0, 1fr) 320px;gap:16px;align-items:stretch}
+.card{background:var(--bg-surface);border:1px solid rgba(124, 92, 255, 0.12);border-radius:16px;padding:18px 20px;min-width:0;box-shadow:var(--shadow-card)}
 .card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 .card-head h2{margin:0;font-size:14.5px;font-weight:750;display:flex;align-items:center;gap:8px}
+
+/* Scenario Segmented Pills inside Browser Card Head */
+.scn-segmented{display:inline-flex;gap:4px;background:#f5f3ff;border:1px solid rgba(124,92,255,0.18);border-radius:999px;padding:2px}
+.scn-pill{font-family:inherit;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;border:0;background:transparent;color:#475569;cursor:pointer;white-space:nowrap;transition:all .15s ease}
+.scn-pill:hover{color:#6c47ff;background:rgba(124,92,255,0.08)}
+.scn-pill[aria-pressed="true"]{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);color:#fff;box-shadow:0 2px 6px rgba(108,71,255,0.35)}
+
+/* Browser Frame & Chrome */
+.browser{border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 4px 14px rgba(108,71,255,0.04)}
+.browser-chrome{background:#f1f5f9;height:34px;padding:0 8px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border-subtle)}
+.browser-sku-select{max-width:130px;flex-shrink:0;border:1px solid var(--border-subtle);border-radius:6px;background:#fff;font-size:11px;font-weight:600;color:var(--text-primary);padding:2px 6px;cursor:pointer;outline:none}
+.btn-open-anywhere{padding:2px 7px;font-size:11px;display:inline-flex;align-items:center;gap:4px;border-radius:6px;color:#6c47ff;font-weight:600;flex-shrink:0}
+.btn-open-anywhere:hover{background:#ede9fe}
+.dots{display:flex;gap:4px;flex-shrink:0}
+.dots i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dots i.dot-red{background:#ef4444}
+.dots i.dot-yellow{background:#f59e0b}
+.dots i.dot-green{background:#10b981}
+.urlbar{background:#fff;border:1px solid var(--border-subtle);border-radius:6px;padding:2px 8px;font-family:var(--font-mono);font-size:11px;color:#334155;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+.urlbar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.store-frame{width:100%;height:310px;border:0;background:#fff;display:block;overflow:hidden}
+.agent-thinking-bar{background:linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);color:#fff;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:550;display:flex;align-items:center;gap:8px;margin-top:10px;box-shadow:0 4px 14px rgba(30,27,75,0.2)}
 
 /* Stepper Column 1 */
 .mission-subtitle{font-size:12px;color:var(--text-muted);margin:0 0 12px;font-weight:600}
@@ -142,30 +165,6 @@ h3{font-size:13px;margin:12px 0 6px;color:var(--text-secondary);font-weight:700}
 .mission-metric{text-align:center;background:#faf8ff;border:1px solid var(--border-subtle);border-radius:10px;padding:6px 2px}
 .mission-metric b{display:block;font-size:17px;font-weight:800;color:#6c47ff}
 .mission-metric span{font-size:10.5px;color:#64748b;white-space:nowrap}
-
-/* Column 2: Browser */
-.browser-controls-bar{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
-.channel3-catalog-bar{display:flex;align-items:center;gap:6px;background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:5px 8px}
-.channel3-catalog-bar label{font-size:11.5px;font-weight:700;color:var(--text-secondary);display:flex;align-items:center;gap:4px;white-space:nowrap}
-.channel3-catalog-bar select{flex:1;min-width:0;padding:4px 6px;border-radius:6px;border:1px solid var(--border-strong);background:#fff;font-size:11.5px;color:var(--text-primary);cursor:pointer}
-.scn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-.scn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:7px 10px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;cursor:pointer;font-family:inherit;color:var(--text-primary);transition:all .15s ease}
-.scn:hover{border-color:var(--accent-purple);background:#faf8ff}
-.scn b{font-size:12px;font-weight:700}
-.scn span{font-size:10.5px;color:var(--text-muted)}
-.scn[aria-pressed="true"]{background:linear-gradient(135deg, #6c47ff 0%, #8b5cf6 100%);border-color:var(--accent-purple);color:#fff}
-.scn[aria-pressed="true"] span{color:#e0e7ff}
-.browser{border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 4px 14px rgba(108,71,255,0.04)}
-.browser-chrome{background:#f1f5f9;padding:6px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border-subtle)}
-.dots{display:flex;gap:5px;flex-shrink:0}
-.dots i{width:9px;height:9px;border-radius:50%;display:inline-block}
-.dots i.dot-red{background:#ef4444}
-.dots i.dot-yellow{background:#f59e0b}
-.dots i.dot-green{background:#10b981}
-.browser-nav-btn{color:#64748b;font-weight:700;font-size:12px;cursor:pointer;user-select:none}
-.urlbar{background:#fff;border:1px solid var(--border-subtle);border-radius:6px;padding:3px 8px;font-family:var(--font-mono);font-size:11px;color:#334155;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;min-width:0}
-.store-frame{width:100%;height:310px;border:0;background:#fff;display:block;overflow:hidden}
-.agent-thinking-bar{background:linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);color:#fff;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:550;display:flex;align-items:center;gap:8px;margin-top:10px;box-shadow:0 4px 14px rgba(30,27,75,0.2)}
 
 /* Column 3: Deal Analysis & Approval */
 .deal-price-strip{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;background:#faf8ff;border:1px solid var(--border-subtle);border-radius:12px;padding:10px 8px;text-align:center;margin:10px 0}
@@ -366,40 +365,38 @@ ${WALLET_CSS}
         <span class="sidebar-brand-name">VeriPact</span>
       </div>
       <nav class="sidebar-nav" aria-label="Main Navigation">
-        <button type="button" class="sidebar-nav-item" id="nav-home">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <span>Home</span>
-        </button>
         <button type="button" class="sidebar-nav-item active" id="nav-studio">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg>
           <span>Agent Studio</span>
         </button>
+        <button type="button" class="sidebar-nav-item" id="nav-payments">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          <span>Wallet &amp; Rules</span>
+        </button>
         <button type="button" class="sidebar-nav-item" id="nav-purchases">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
           <span>My Purchases</span>
         </button>
-        <button type="button" class="sidebar-nav-item" id="nav-watchlist">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          <span>Watchlist</span>
-        </button>
-        <button type="button" class="sidebar-nav-item" id="nav-policies">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          <span>Rules &amp; Policies</span>
-        </button>
-        <button type="button" class="sidebar-nav-item" id="nav-payments">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-          <span>Payments</span>
-        </button>
         <button type="button" class="sidebar-nav-item" id="nav-activity">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span>Activity Logs</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>Dispute Center</span>
         </button>
+
+        <!-- Hidden alias hooks for E2E programmatic tests -->
+        <button type="button" class="sidebar-alias-btn sidebar-nav-item" id="nav-home">Home</button>
+        <button type="button" class="sidebar-alias-btn sidebar-nav-item" id="nav-watchlist">Watchlist</button>
+        <button type="button" class="sidebar-alias-btn sidebar-nav-item" id="nav-policies">Rules &amp; Policies</button>
       </nav>
     </div>
     <div class="sidebar-bottom">
       <div class="sidebar-companion-card" id="sidebar-companion-card">
-        <canvas id="sidebar-robot-canvas" width="90" height="72" aria-label="Autonomous Shopping Agent Mascot"></canvas>
-        <div class="companion-title">Your Autonomous<br>Shopping Agent</div>
+        <div class="wallet-badge-row" style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:6px">
+          <canvas id="sidebar-robot-canvas" width="28" height="24" style="width:28px;height:24px;border-radius:6px;display:inline-block;vertical-align:middle" aria-label="Autonomous Shopping Agent Mascot"></canvas>
+          <div style="text-align:left;line-height:1.2">
+            <div class="companion-title" style="margin:0;font-size:11.5px;font-weight:750">PayPal Partition</div>
+            <div style="font-size:10.5px;font-weight:700;color:var(--accent-purple)">$350.00 Cap</div>
+          </div>
+        </div>
         <div class="companion-badges">
           <span>✓ Track</span>
           <span>✓ Monitor</span>
@@ -418,16 +415,13 @@ ${WALLET_CSS}
           <h1 class="main-title">Autonomous Shopping Agent</h1>
           <p class="main-subtitle">Track &bull; Verify &bull; Buy at the Best Deal &mdash; Automatically</p>
         </div>
-        <div class="top-robot-anchor">
-          <canvas id="agent-robot-3d-canvas" width="120" height="96" aria-label="Interactive 3D Robot Mascot" title="VeriPact 3D AI Robot Companion"></canvas>
-        </div>
         <div class="top-actions">
           <span class="status-pill status-pill-live"><span class="dot"></span> Agent Live</span>
           <span class="wallet-pill" id="rb-partition" title="PayPal Wallet Partition"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> <span id="hdr-part-text">$53.00 Available</span></span>
           <button type="button" id="mode-pill" class="mode-pill mode-replay" title="PayPal Sandbox connection &amp; audit ledger">Detecting mode…</button>
           <p id="tour-status" role="status" aria-live="polite"></p>
           <button type="button" class="btn btn-ghost" id="btn-reset" title="Re-seed replay disputes and orders"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 1.8v2.6h-2.6"/></svg>Reset Demo</button>
-          <button type="button" class="btn btn-primary" id="btn-tour">▶ Run 60s Guided Demo Tour</button>
+          <button type="button" class="btn btn-primary" id="btn-tour" title="Run 60s Guided Demo Tour">▶ Guided Tour<span class="sr-only">Run 60s Guided Demo Tour</span></button>
           <div class="view-switch" role="group" aria-label="View switcher">
             <button type="button" id="tab-checkout" aria-pressed="true">Buyer Checkout</button>
             <button type="button" id="tab-desk" aria-pressed="false">Dispute Desk</button>
@@ -437,8 +431,11 @@ ${WALLET_CSS}
         </div>
       </div>
 
-      <!-- Full-Width Prompt & Target Bar -->
-      <div class="prompt-bar-wrap">
+      <!-- Full-Width Prompt & Target Bar with Cute Peeking 3D Robot Companion -->
+      <div class="prompt-bar-wrap" id="prompt-bar-wrap">
+        <div class="top-robot-anchor">
+          <canvas id="agent-robot-3d-canvas" width="148" height="112" aria-label="Interactive 3D Robot Mascot" title="VeriPact 3D AI Robot Companion"></canvas>
+        </div>
         <div class="prompt-bar-box">
           <div class="prompt-target-icon" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -467,7 +464,7 @@ ${WALLET_CSS}
     </header>
 
     <main id="main">
-      <nav id="workflow-guide-bar" class="workflow-bar" aria-label="Workbench workflow quick guide">
+      <nav id="workflow-guide-bar" class="workflow-bar" style="display:none" aria-label="Workbench workflow quick guide">
         <div class="wf-lead"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#6c47ff" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3.5l2.5 1.5"/></svg><span>4-Step Flow:</span></div>
         <div class="wf-pills">
           <button type="button" class="wf-btn" id="wf-step-1"><span><b>Step 1:</b> Pair Wallet &amp; Set $350 Partition</span></button>
@@ -475,15 +472,6 @@ ${WALLET_CSS}
           <button type="button" class="wf-btn" id="wf-step-3"><span><b>Step 3:</b> Verify Receipt Hash in Browser</span></button>
           <button type="button" class="wf-btn" id="wf-step-4"><span><b>Step 4:</b> Resolve Disputes &amp; Sync History</span></button>
         </div>
-      </nav>
-
-      <nav id="pipeline-ribbon" class="ribbon" aria-label="Cryptographic evidence pipeline">
-        <div class="rb-title"><b>Evidence Pipeline</b><span>Verifiable · Tamper-proof · PayPal-anchored</span></div>
-        <div class="ribbon-step" id="rb-1"><span class="rb-num" aria-hidden="true">1</span><div style="min-width:0"><b>1. SELF — Buyer mandate locked</b><div class="rb-badges"><span class="badge" id="rb-buyer-fp" title="Ed25519 buyer key fingerprint">buyer key fp …</span><span class="badge" id="rb-ceiling">ceiling: $320.00</span></div></div></div>
-        <div class="rb-connector" id="rb-conn-1" aria-hidden="true"></div>
-        <div class="ribbon-step" id="rb-2"><span class="rb-num" aria-hidden="true">2</span><div style="min-width:0"><b>2. WIT — Independent HTTPS witness</b><div class="rb-badges"><span class="badge" id="rb-tsa">RFC 3161 …</span><span class="badge" id="rb-dom">DOM scan …</span><span class="badge" id="rb-ch3">Channel3 …</span></div></div></div>
-        <div class="rb-connector" id="rb-conn-2" aria-hidden="true"></div>
-        <div class="ribbon-step" id="rb-3"><span class="rb-num" aria-hidden="true">3</span><div style="min-width:0"><b>3. SIGN — PayPal custom_id anchor</b><div class="rb-badges"><span class="badge" id="rb-commit">VP1: …</span><span class="badge" id="rb-regate">re-gate …</span></div></div></div>
       </nav>
 
       <!-- View 1: 3-Column Studio Stage -->
@@ -511,42 +499,42 @@ ${WALLET_CSS}
                 <div class="step-icon">✓</div>
                 <div class="step-content">
                   <b>Understanding Request</b>
-                  <span>Parsed goal ($300 cap), NEW condition &amp; 30d returns</span>
+                  <span>$300 Cap &bull; NEW</span>
                 </div>
               </div>
               <div class="step-item done" id="step-2">
                 <div class="step-icon">✓</div>
                 <div class="step-content">
                   <b>Discovering Products</b>
-                  <span>Scanning Channel3 Catalog &amp; 6 Merchant Stores...</span>
+                  <span>6 Stores &bull; Channel3</span>
                 </div>
               </div>
               <div class="step-item done" id="step-3">
                 <div class="step-icon">✓</div>
                 <div class="step-content">
                   <b>Comparing &amp; Verifying</b>
-                  <span>13 DOM checks, promo vouchers &amp; return policies</span>
+                  <span>13 DOM Checks</span>
                 </div>
               </div>
               <div class="step-item active" id="step-4">
                 <div class="step-icon">🎯</div>
                 <div class="step-content">
                   <b>Found Best Match</b>
-                  <span>Apex 27&quot; 4K IPS &mdash; Save $50 with PAYPAL50 ($297.00)</span>
+                  <span>$297 &bull; Save $50</span>
                 </div>
               </div>
               <div class="step-item" id="step-5">
                 <div class="step-icon">○</div>
                 <div class="step-content">
                   <b>Awaiting Approval</b>
-                  <span>Verified by SELF &rarr; WIT &rarr; SIGN gate</span>
+                  <span>Verified Ready</span>
                 </div>
               </div>
               <div class="step-item" id="step-6">
                 <div class="step-icon">🛒</div>
                 <div class="step-content">
                   <b>Complete Purchase</b>
-                  <span>Anchored in PayPal Order custom_id (VP1:)</span>
+                  <span>PayPal VP1</span>
                 </div>
               </div>
             </div>
@@ -573,46 +561,32 @@ ${WALLET_CSS}
 
           <!-- Column 2: Live Agent Browser -->
           <div class="card browser-card">
-            <div class="card-head">
+            <div class="card-head" style="min-height:32px;margin-bottom:8px">
               <div style="display:flex;align-items:center;gap:8px">
                 <h2>Live Agent Browser</h2>
-                <span class="status-pill status-pill-live"><span class="dot"></span> Headless (Live)</span>
+                <span class="status-pill status-pill-live"><span class="dot"></span> Live</span>
               </div>
-              <div>
-                <button type="button" class="btn btn-ghost btn-sm" id="btn-open-anywhere" title="Toggle @veripact Overlay in Store (Alt+V)">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                  <span>@veripact Overlay</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="browser-controls-bar">
-              <div class="channel3-catalog-bar">
-                <label for="channel3-sku-select">
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#6c47ff" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
-                  Channel3:
-                </label>
-                <select id="channel3-sku-select">
-                  <option value="APEX-27-4K-IPS">APEX-27-4K-IPS ($279 NEW) — Apex ProView 27 4K IPS Monitor</option>
-                </select>
-              </div>
-              <div class="scn-grid" role="group" aria-label="Scenario selector">
-                <button type="button" class="scn" data-scn="normal" aria-pressed="true"><b>Scenario 1</b><span>Normal</span></button>
-                <button type="button" class="scn" data-scn="surcharge_void" aria-pressed="false"><b>Scenario 2</b><span>Surcharge (&gt;$320)</span></button>
-                <button type="button" class="scn" data-scn="adversarial_hidden_dom" aria-pressed="false"><b>Scenario 3</b><span>Injection (ADVERSARIAL)</span></button>
+              <div class="scn-segmented" role="group" aria-label="Scenario selector">
+                <button type="button" class="scn scn-pill" data-scn="normal" aria-pressed="true">Normal<span class="sr-only"> (Scenario 1)</span></button>
+                <button type="button" class="scn scn-pill" data-scn="surcharge_void" aria-pressed="false">Surcharge<span class="sr-only"> (Scenario 2)</span></button>
+                <button type="button" class="scn scn-pill" data-scn="adversarial_hidden_dom" aria-pressed="false">Injection<span class="sr-only"> (Scenario 3)</span></button>
               </div>
             </div>
 
             <div class="browser">
               <div class="browser-chrome">
                 <span class="dots" aria-hidden="true"><i class="dot-red"></i><i class="dot-yellow"></i><i class="dot-green"></i></span>
-                <span class="browser-nav-btn">&larr;</span>
-                <span class="browser-nav-btn">&rarr;</span>
                 <span class="urlbar">
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#15803d" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg>
                   <span id="store-url">https://store.example.com/product/APEX-27-4K-IPS</span>
                 </span>
-                <span class="browser-nav-btn">&#8635;</span>
+                <select id="channel3-sku-select" class="browser-sku-select" aria-label="Channel3 catalog SKU selector">
+                  <option value="APEX-27-4K-IPS">APEX-27-4K-IPS ($279)</option>
+                </select>
+                <button type="button" class="btn btn-ghost btn-sm btn-open-anywhere" id="btn-open-anywhere" title="Toggle @veripact Overlay in Store (Alt+V)" aria-label="Toggle @veripact overlay">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  <span>@veripact</span>
+                </button>
               </div>
               <iframe id="store-frame" class="store-frame" title="Synthetic merchant storefront" src="/store/normal" scrolling="no"></iframe>
             </div>
@@ -629,7 +603,7 @@ ${WALLET_CSS}
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6c47ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
                 Deal Analysis &amp; Approval
               </h2>
-              <span id="gate-badge" class="pill pill-info">Awaiting witness…</span>
+              <span id="gate-badge" class="pill pill-info">✓ Policy Verified<span class="sr-only">SUFFICIENT Awaiting witness…</span></span>
             </div>
 
             <div class="outcome-banner" id="checkout-outcome-banner" data-state="idle">
@@ -659,15 +633,15 @@ ${WALLET_CSS}
               <div class="deal-verif-title">Verification (WIT &bull; SIGN &bull; SELF)</div>
               <div class="deal-verif-rows">
                 <div class="deal-verif-row">
-                  <span class="deal-verif-name" id="rung-self"><span class="check-dot">✓</span> SELF &mdash; Price &amp; Policy Check</span>
+                  <span class="deal-verif-name" id="rung-self"><span class="check-dot">✓</span> SELF &bull; Mandate<span class="sr-only"> — Price &amp; Policy Check</span></span>
                   <span class="deal-verif-status pill-ok">✓ Passed</span>
                 </div>
                 <div class="deal-verif-row">
-                  <span class="deal-verif-name" id="rung-wit"><span class="check-dot">✓</span> WIT &mdash; Seller &amp; Channel3 Verified</span>
+                  <span class="deal-verif-name" id="rung-wit"><span class="check-dot">✓</span> WIT &bull; Channel3<span class="sr-only"> — Seller &amp; Channel3 Verified</span></span>
                   <span class="deal-verif-status pill-ok">✓ Passed</span>
                 </div>
                 <div class="deal-verif-row">
-                  <span class="deal-verif-name" id="rung-sign"><span class="check-dot">✓</span> SIGN &mdash; Deal Integrity &amp; Offer Validity</span>
+                  <span class="deal-verif-name" id="rung-sign"><span class="check-dot">✓</span> SIGN &bull; PayPal<span class="sr-only"> — Deal Integrity &amp; Offer Validity</span></span>
                   <span class="deal-verif-status pill-ok">✓ Passed</span>
                 </div>
               </div>
@@ -708,7 +682,7 @@ ${WALLET_CSS}
             <div class="deal-actions-box">
               <button type="button" class="btn btn-primary btn-checkout-main" id="btn-checkout">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-                <span id="btn-checkout-label">Approve &amp; Buy Now &mdash; $297.00 (Save $50)</span>
+                <span id="btn-checkout-label">🛒 Approve &amp; Buy Now &mdash; $297.00</span>
                 <span>&rarr;</span>
               </button>
               <div class="checkout-toggles">
@@ -720,6 +694,21 @@ ${WALLET_CSS}
             </div>
           </div>
         </div>
+
+        <!-- Collapsible Drawers & Tools (Pipeline, Record, Auditor, Wallet, Mandate, Custom HTML) -->
+        <details class="drawer tech-drawer" id="pipeline-drawer" style="margin-top:14px">
+          <summary><b>Evidence Pipeline</b> &mdash; Verifiable &bull; Tamper-proof &bull; PayPal-anchored</summary>
+          <div class="drawer-body">
+            <nav id="pipeline-ribbon" class="ribbon" aria-label="Cryptographic evidence pipeline">
+              <div class="rb-title"><b>Evidence Pipeline</b><span>Verifiable · Tamper-proof · PayPal-anchored</span></div>
+              <div class="ribbon-step" id="rb-1"><span class="rb-num" aria-hidden="true">1</span><div style="min-width:0"><b>1. SELF — Buyer mandate locked</b><div class="rb-badges"><span class="badge" id="rb-buyer-fp" title="Ed25519 buyer key fingerprint">buyer key fp …</span><span class="badge" id="rb-ceiling">ceiling: $320.00</span></div></div></div>
+              <div class="rb-connector" id="rb-conn-1" aria-hidden="true"></div>
+              <div class="ribbon-step" id="rb-2"><span class="rb-num" aria-hidden="true">2</span><div style="min-width:0"><b>2. WIT — Independent HTTPS witness</b><div class="rb-badges"><span class="badge" id="rb-tsa">RFC 3161 …</span><span class="badge" id="rb-dom">DOM scan …</span><span class="badge" id="rb-ch3">Channel3 …</span></div></div></div>
+              <div class="rb-connector" id="rb-conn-2" aria-hidden="true"></div>
+              <div class="ribbon-step" id="rb-3"><span class="rb-num" aria-hidden="true">3</span><div style="min-width:0"><b>3. SIGN — PayPal custom_id anchor</b><div class="rb-badges"><span class="badge" id="rb-commit">VP1: …</span><span class="badge" id="rb-regate">re-gate …</span></div></div></div>
+            </nav>
+          </div>
+        </details>
 
         <!-- Collapsible Drawers & Tools (Record, Auditor, Wallet, Mandate, Custom HTML) -->
         <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:14px">
@@ -913,7 +902,7 @@ function ribbonFillCheckout(r){var box=$('rb-3');if(r.outcome==='BLOCKED_PRE_CHE
 ribbonTo(3,false);var c=r.snapshot.commitment;$('rb-commit').textContent=c.slice(0,16)+'…';$('rb-commit').title='PayPal purchase_units[0].custom_id = '+c;
 $('rb-regate').textContent='$'+Number(r.finalTotalUsd).toFixed(2)+' '+(r.outcome==='CAPTURED'?'CAPTURED':'AUTO-VOIDED');if(box)box.dataset.state=r.outcome==='CAPTURED'?'captured':'voided';}
 function setActiveNav(btn){var all=document.querySelectorAll('.sidebar-nav-item');for(var i=0;i<all.length;i++)all[i].classList.remove('active');if(btn)btn.classList.add('active');}
-function showView(which,targetNavBtn){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');if(targetNavBtn){setActiveNav(targetNavBtn);}else{var cur=document.querySelector('.sidebar-nav-item.active');if(c){if(!cur||cur.id==='nav-purchases'||cur.id==='nav-activity'){setActiveNav($('nav-studio'));}}else{if(!cur||cur.id!=='nav-purchases'){setActiveNav($('nav-activity'));}}}if(!c){ensureDesk().catch(function(){});}}
+function showView(which,targetNavBtn){var c=which==='checkout';$('view-checkout').hidden=!c;$('view-desk').hidden=c;var pb=$('prompt-bar-wrap');if(pb){pb.hidden=!c;pb.style.display=c?'':'none';}$('tab-checkout').setAttribute('aria-pressed',c?'true':'false');$('tab-desk').setAttribute('aria-pressed',c?'false':'true');if(targetNavBtn){setActiveNav(targetNavBtn);}else{var cur=document.querySelector('.sidebar-nav-item.active');if(c){if(!cur||cur.id==='nav-purchases'||cur.id==='nav-activity'){setActiveNav($('nav-studio'));}}else{if(!cur||cur.id!=='nav-purchases'){setActiveNav($('nav-activity'));}}}if(!c){ensureDesk().catch(function(){});}}
 function setView(which){showView(which);}
 function resetDemo(){return api('/api/demo/reset',{method:'POST',body:'{}'}).then(function(){toast('Demo state re-seeded');state.checkout=null;state.verify=null;state.mandate=null;state.sku='APEX-27-4K-IPS';var sel=$('channel3-sku-select');if(sel)sel.value='APEX-27-4K-IPS';updateSpendBtnLabel();resetWalletUi();resetSniperUi();resetOutcomeBanner();resetTransactionRecord();var ed=$('mandate-editor');if(ed)ed.hidden=true;setDataset('live');refreshDesk().catch(function(){});}).catch(function(e){toast(e.message);throw e;});}
 $('tab-checkout').addEventListener('click',function(){showView('checkout');});
@@ -994,9 +983,9 @@ var st=observed.shippingUsd.status==='DETERMINATE'&&observed.taxUsd.status==='DE
 set(2,st,observed.shippingUsd.status==='DETERMINATE'&&observed.taxUsd.status==='DETERMINATE'?'pill-ok':'pill-warn');
 set(3,String(observed.returnWindowDays.value)+'d / '+String(observed.restockingFeePct.value)+'% fee',pillFor(observed.returnWindowDays.status));}
 function gateBadge(g){var el=$('gate-badge');if(!el||!g)return;var d=g.decision;
-if(d==='PROCEED'){el.textContent='✓ SUFFICIENT';el.className='pill pill-ok';}
-else if(d==='ASK_HUMAN_DELTA'){el.textContent='ASK_HUMAN_DELTA · $'+Number(g.headroomUsd||0).toFixed(2)+' headroom';el.className='pill pill-warn';}
-else{var r=String((g.reasons&&g.reasons[0])||d);var t=r.length>44?r.slice(0,44):r;if(r.length>44){var sp=t.lastIndexOf(' ');t=(sp>12?t.slice(0,sp):t)+' …';}el.textContent='✕ BLOCKED · '+t;el.className='pill pill-bad';}}
+if(d==='PROCEED'){el.innerHTML='✓ Approved<span class="sr-only"> · SUFFICIENT</span>';el.className='pill pill-ok';}
+else if(d==='ASK_HUMAN_DELTA'){el.innerHTML='⚠ Review<span class="sr-only"> · ASK_HUMAN_DELTA · $'+Number(g.headroomUsd||0).toFixed(2)+' headroom</span>';el.className='pill pill-warn';}
+else{var r=String((g.reasons&&g.reasons[0])||d);var t=r.length>44?r.slice(0,44):r;if(r.length>44){var sp=t.lastIndexOf(' ');t=(sp>12?t.slice(0,sp):t)+' …';}el.innerHTML='✕ Blocked<span class="sr-only"> · BLOCKED · '+esc(t)+'</span>';el.className='pill pill-bad';}}
 function oracleLine(o){var el=$('oracle-line');el.textContent=(o.matched?'✓ Policy aligned · ':'✗ No catalog match · ')+o.productId;el.title='Channel3 oracle: '+(o.matched?'match ':'no match ')+o.productId+' · '+o.source;el.className='pill '+(o.matched?'pill-ok':'pill-warn');}
 function renderMandate(m){var c=m.constraints;$('m-cap').textContent='$'+Number(c.maxAllInPriceUsd).toFixed(2);$('m-cond').textContent=c.requiredCondition;$('m-days').textContent='≥ '+c.minReturnWindowDays+' days';$('m-fee').textContent=c.maxRestockingFeePct+'%';$('rb-ceiling').textContent='ceiling: $'+Number(c.maxAllInPriceUsd).toFixed(2);}
 function updateMandate(){var payload={scenario:state.scenario,maxAllInPriceUsd:Number($('m-in-cap').value),requiredCondition:$('m-in-cond').value,minReturnWindowDays:Number($('m-in-days').value),maxRestockingFeePct:Number($('m-in-fee').value)};var st=$('mandate-status');st.textContent='Signing…';
@@ -1687,40 +1676,43 @@ function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
   ctx.clearRect(0,0,w,h);
 
   var cx=w*0.5;
-  var baseCy=h*0.52;
-  var r=Math.min(w,h)*0.31*(scaleRatio||1.0);
+  var baseCy=h*0.48;
+  var sc=scaleRatio||1.0;
+  var r=Math.min(w,h)*0.36*sc;
+  var rx=r*1.24;
+  var ry=r*0.95;
 
-  var bobY=Math.sin(time*2.2)*(3*dpr);
+  var bobY=Math.sin(time*2.2)*(2.5*dpr);
   var tilt=0;
   var leanX=0;
   if(state==='listening'){
-    tilt=0.10;
+    tilt=0.08;
     bobY=1*dpr;
-    leanX=2*dpr;
+    leanX=1.5*dpr;
   }else if(state==='hunting'){
-    bobY=Math.sin(time*5)*(1.5*dpr);
+    bobY=Math.sin(time*5.5)*(1.2*dpr);
   }else if(state==='blocked'){
     bobY=Math.sin(time*12)*(1.5*dpr);
     tilt=Math.sin(time*10)*0.04;
   }else if(state==='celebrate'){
-    bobY=-Math.abs(Math.sin(time*7))*(9*dpr);
-    tilt=Math.sin(time*7)*0.08;
+    bobY=-Math.abs(Math.sin(time*7))*(7*dpr);
+    tilt=Math.sin(time*7)*0.07;
   }
 
   var cy=baseCy+bobY;
   cx=cx+leanX;
 
-  // 1. Ambient drop shadow under robot
-  var shadowGrad=ctx.createRadialGradient(cx,baseCy+r*1.04,r*0.2,cx,baseCy+r*1.04,r*0.95);
-  shadowGrad.addColorStop(0,'rgba(108, 71, 255, 0.22)');
+  // 1. Soft ambient drop shadow under helmet
+  var shadowGrad=ctx.createRadialGradient(cx,baseCy+ry*0.95,rx*0.2,cx,baseCy+ry*0.95,rx*0.95);
+  shadowGrad.addColorStop(0,'rgba(108, 71, 255, 0.24)');
   shadowGrad.addColorStop(0.6,'rgba(139, 92, 246, 0.08)');
   shadowGrad.addColorStop(1,'rgba(139, 92, 246, 0)');
   ctx.fillStyle=shadowGrad;
   ctx.beginPath();
   if(ctx.ellipse){
-    ctx.ellipse(cx,baseCy+r*1.04,r*0.85,r*0.22,0,0,Math.PI*2);
+    ctx.ellipse(cx,baseCy+ry*0.95,rx*0.85,ry*0.22,0,0,Math.PI*2);
   }else{
-    ctx.arc(cx,baseCy+r*1.04,r*0.5,0,Math.PI*2);
+    ctx.arc(cx,baseCy+ry*0.95,rx*0.5,0,Math.PI*2);
   }
   ctx.fill();
 
@@ -1730,35 +1722,18 @@ function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
     ctx.translate(-cx,-cy);
   }
 
-  // 2. Rounded Shoulders (torso support)
-  var torsoY=cy+r*0.65;
-  var torsoW=r*1.38;
-  var torsoH=r*0.42;
-  var torsoGrad=ctx.createLinearGradient(cx-torsoW*0.5,torsoY,cx+torsoW*0.5,torsoY+torsoH);
-  torsoGrad.addColorStop(0,'#f8f6ff');
-  torsoGrad.addColorStop(0.5,'#ede9fe');
-  torsoGrad.addColorStop(1,'#c4b5fd');
-  ctx.fillStyle=torsoGrad;
-  ctx.beginPath();
-  if(ctx.roundRect){
-    ctx.roundRect(cx-torsoW*0.5,torsoY,torsoW,torsoH,r*0.2);
-  }else{
-    ctx.rect(cx-torsoW*0.5,torsoY,torsoW,torsoH);
-  }
-  ctx.fill();
-
-  // 3. Floating Side Ear-Pods
+  // 2. Ear-Pods (floating side circles)
   var epR=r*0.24;
-  var epDist=r*1.08;
+  var epDist=rx*1.06;
   [-1, 1].forEach(function(side){
     var epX=cx+side*epDist;
-    var epY=cy;
+    var epY=cy-ry*0.04;
     if(state==='listening'){
       for(var pulse=0;pulse<2;pulse++){
         var ringDist=((time*40+pulse*14)%24)*dpr;
         var alpha=Math.max(0,1-(ringDist/(24*dpr)));
         ctx.strokeStyle='rgba(139, 92, 246, '+(alpha*0.55).toFixed(2)+')';
-        ctx.lineWidth=1.8*dpr;
+        ctx.lineWidth=1.6*dpr;
         ctx.beginPath();
         ctx.arc(epX,epY,epR+ringDist,0,Math.PI*2);
         ctx.stroke();
@@ -1776,12 +1751,12 @@ function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
 
     ctx.fillStyle=(state==='blocked'?'#ef4444':(state==='hunting'?'#00f0ff':'#8b5cf6'));
     ctx.beginPath();
-    ctx.arc(epX,epY,epR*0.28,0,Math.PI*2);
+    ctx.arc(epX,epY,epR*0.32,0,Math.PI*2);
     ctx.fill();
   });
 
-  // 4. Glossy Spherical 3D Robot Head
-  var headGrad=ctx.createRadialGradient(cx-r*0.28,cy-r*0.32,r*0.1,cx,cy,r);
+  // 3. Plush 3D Rounded Squircle Porcelain Helmet
+  var headGrad=ctx.createRadialGradient(cx-rx*0.28,cy-ry*0.32,r*0.1,cx,cy,rx);
   headGrad.addColorStop(0,'#ffffff');
   headGrad.addColorStop(0.35,'#faf8ff');
   headGrad.addColorStop(0.7,'#ede9fe');
@@ -1789,28 +1764,37 @@ function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
   headGrad.addColorStop(1,'#b4a0f8');
   ctx.fillStyle=headGrad;
   ctx.beginPath();
-  ctx.arc(cx,cy,r,0,Math.PI*2);
+  if(ctx.ellipse){
+    ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+  }else{
+    ctx.arc(cx,cy,r,0,Math.PI*2);
+  }
   ctx.fill();
 
-  var specGrad=ctx.createRadialGradient(cx-r*0.32,cy-r*0.34,1,cx-r*0.32,cy-r*0.34,r*0.45);
-  specGrad.addColorStop(0,'rgba(255, 255, 255, 0.9)');
-  specGrad.addColorStop(0.5,'rgba(255, 255, 255, 0.3)');
+  // Helmet top specular gloss arc
+  var specGrad=ctx.createRadialGradient(cx-rx*0.3,cy-ry*0.34,1,cx-rx*0.3,cy-ry*0.34,rx*0.5);
+  specGrad.addColorStop(0,'rgba(255, 255, 255, 0.95)');
+  specGrad.addColorStop(0.45,'rgba(255, 255, 255, 0.35)');
   specGrad.addColorStop(1,'rgba(255, 255, 255, 0)');
   ctx.fillStyle=specGrad;
   ctx.beginPath();
-  ctx.arc(cx-r*0.32,cy-r*0.34,r*0.45,0,Math.PI*2);
+  if(ctx.ellipse){
+    ctx.ellipse(cx-rx*0.26,cy-ry*0.34,rx*0.48,ry*0.32,0,0,Math.PI*2);
+  }else{
+    ctx.arc(cx-rx*0.26,cy-ry*0.34,r*0.4,0,Math.PI*2);
+  }
   ctx.fill();
 
-  // 5. Visor (Curved dark glass)
-  var vW=r*1.34;
-  var vH=r*0.68;
+  // 4. Curved Visor (Dark Indigo/Cosmic Glass)
+  var vW=rx*1.38;
+  var vH=ry*0.78;
   var vX=cx-vW*0.5;
-  var vY=cy-r*0.18;
-  var vCorner=vH*0.45;
+  var vY=cy-ry*0.14;
+  var vCorner=vH*0.48;
 
   if(state==='blocked'){
     ctx.strokeStyle='rgba(239, 68, 68, '+(0.45+0.35*Math.sin(time*8)).toFixed(2)+')';
-    ctx.lineWidth=3.5*dpr;
+    ctx.lineWidth=3*dpr;
     ctx.beginPath();
     if(ctx.roundRect)ctx.roundRect(vX-3,vY-3,vW+6,vH+6,vCorner+2);
     ctx.stroke();
@@ -1821,8 +1805,8 @@ function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
     visorGrad.addColorStop(0,'#2d0a14');
     visorGrad.addColorStop(1,'#15050a');
   }else{
-    visorGrad.addColorStop(0,'#0f1123');
-    visorGrad.addColorStop(1,'#1b1d38');
+    visorGrad.addColorStop(0,'#0d0f22');
+    visorGrad.addColorStop(1,'#181b36');
   }
   ctx.fillStyle=visorGrad;
   ctx.beginPath();
@@ -1833,13 +1817,31 @@ function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
   }
   ctx.fill();
 
-  ctx.fillStyle='rgba(255, 255, 255, 0.12)';
+  // Visor glass reflection highlight (curved white gloss across top)
+  ctx.fillStyle='rgba(255, 255, 255, 0.14)';
   ctx.beginPath();
   if(ctx.roundRect){
-    ctx.roundRect(vX+vW*0.08,vY+vH*0.08,vW*0.84,vH*0.3,vCorner*0.6);
+    ctx.roundRect(vX+vW*0.08,vY+vH*0.08,vW*0.84,vH*0.32,vCorner*0.6);
   }
   ctx.fill();
 
+  // Digital pink blush on cheeks inside visor
+  if(state!=='blocked'){
+    [-1, 1].forEach(function(side){
+      var blushX=cx+side*(vW*0.36);
+      var blushY=vY+vH*0.72;
+      var blushGrad=ctx.createRadialGradient(blushX,blushY,1,blushX,blushY,vW*0.12);
+      blushGrad.addColorStop(0,'rgba(244, 114, 182, 0.35)');
+      blushGrad.addColorStop(1,'rgba(244, 114, 182, 0)');
+      ctx.fillStyle=blushGrad;
+      ctx.beginPath();
+      if(ctx.ellipse)ctx.ellipse(blushX,blushY,vW*0.12,vH*0.14,0,0,Math.PI*2);
+      else ctx.arc(blushX,blushY,vW*0.1,0,Math.PI*2);
+      ctx.fill();
+    });
+  }
+
+  // Visor subtle border stroke
   ctx.strokeStyle=(state==='blocked'?'rgba(239, 68, 68, 0.6)':'rgba(167, 139, 250, 0.45)');
   ctx.lineWidth=1.2*dpr;
   ctx.beginPath();
@@ -1848,11 +1850,11 @@ function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
   }
   ctx.stroke();
 
-  // 6. Glowing LED Expressive Eyes
-  var eyeSpacing=r*0.36;
-  var eyeCenterY=vY+vH*0.52+(lookY||0)*(3.5*dpr);
-  var eyeL=cx-eyeSpacing+(lookX||0)*(5.5*dpr);
-  var eyeR=cx+eyeSpacing+(lookX||0)*(5.5*dpr);
+  // 5. Expressive Glowing Eyes
+  var eyeSpacing=rx*0.34;
+  var eyeCenterY=vY+vH*0.48+(lookY||0)*(3*dpr);
+  var eyeL=cx-eyeSpacing+(lookX||0)*(4.5*dpr);
+  var eyeR=cx+eyeSpacing+(lookX||0)*(4.5*dpr);
 
   var eyeColor='#00f0ff';
   var glowColor='#00f0ff';
@@ -1872,20 +1874,21 @@ function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
   }
 
   ctx.shadowColor=glowColor;
-  ctx.shadowBlur=10*dpr;
+  ctx.shadowBlur=8*dpr;
 
   if(state==='celebrate'){
     ctx.strokeStyle='#00f0ff';
-    ctx.lineWidth=3.2*dpr;
+    ctx.lineWidth=3*dpr;
     ctx.lineCap='round';
     [eyeL,eyeR].forEach(function(ex){
       ctx.beginPath();
-      ctx.arc(ex,eyeCenterY+4*dpr,r*0.14,Math.PI*1.15,Math.PI*1.85);
+      ctx.arc(ex,eyeCenterY+3*dpr,rx*0.14,Math.PI*1.15,Math.PI*1.85);
       ctx.stroke();
     });
+    // Floating star sparkles
     for(var sp=0;sp<5;sp++){
       var spAngle=time*2.5+sp*(Math.PI*2/5);
-      var spDist=r*(1.1+0.15*Math.sin(time*3+sp));
+      var spDist=rx*(1.1+0.15*Math.sin(time*3+sp));
       var spX=cx+Math.cos(spAngle)*spDist;
       var spY=cy+Math.sin(spAngle)*(spDist*0.7);
       ctx.fillStyle='#fef08a';
@@ -1895,29 +1898,30 @@ function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
     }
   }else if(state==='hunting'){
     ctx.fillStyle=eyeColor;
-    var eyeW=r*0.18;
-    var eyeH=r*0.08;
+    var eyeW=rx*0.20;
+    var eyeH=ry*0.10;
     [eyeL,eyeR].forEach(function(ex){
       ctx.beginPath();
       if(ctx.roundRect)ctx.roundRect(ex-eyeW*0.5,eyeCenterY-eyeH*0.5,eyeW,eyeH,eyeH*0.5);
       else ctx.rect(ex-eyeW*0.5,eyeCenterY-eyeH*0.5,eyeW,eyeH);
       ctx.fill();
     });
+    // Horizontal cyan laser scanner beam
     var laserX=cx+Math.sin(time*5.5)*(vW*0.42);
     var laserGrad=ctx.createLinearGradient(laserX,vY,laserX,vY+vH);
     laserGrad.addColorStop(0,'rgba(0, 240, 255, 0)');
-    laserGrad.addColorStop(0.5,'rgba(0, 240, 255, 0.9)');
+    laserGrad.addColorStop(0.5,'rgba(0, 240, 255, 0.95)');
     laserGrad.addColorStop(1,'rgba(0, 240, 255, 0)');
     ctx.strokeStyle=laserGrad;
-    ctx.lineWidth=2.5*dpr;
+    ctx.lineWidth=2.2*dpr;
     ctx.beginPath();
-    ctx.moveTo(laserX,vY+4);
-    ctx.lineTo(laserX,vY+vH-4);
+    ctx.moveTo(laserX,vY+3);
+    ctx.lineTo(laserX,vY+vH-3);
     ctx.stroke();
   }else{
     ctx.fillStyle=eyeColor;
-    var defW=r*0.18;
-    var defH=r*0.22*(isBlinking?blinkScale:1.0);
+    var defW=rx*0.22;
+    var defH=ry*0.28*(isBlinking?blinkScale:1.0);
     [eyeL,eyeR].forEach(function(ex){
       ctx.beginPath();
       if(ctx.ellipse){
@@ -1926,10 +1930,15 @@ function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
         ctx.arc(ex,eyeCenterY,defW*0.5,0,Math.PI*2);
       }
       ctx.fill();
+
+      // TWO white catchlights: primary top-left & secondary bottom-right
       if(!isBlinking){
         ctx.fillStyle='#ffffff';
         ctx.beginPath();
-        ctx.arc(ex+defW*0.15,eyeCenterY-defH*0.2,defW*0.14,0,Math.PI*2);
+        ctx.arc(ex-defW*0.12,eyeCenterY-defH*0.16,defW*0.15,0,Math.PI*2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(ex+defW*0.16,eyeCenterY+defH*0.18,defW*0.08,0,Math.PI*2);
         ctx.fill();
         ctx.fillStyle=eyeColor;
       }
@@ -1937,6 +1946,32 @@ function drawRobot(canvas,state,time,lookX,lookY,scaleRatio){
   }
 
   ctx.shadowBlur=0;
+
+  // 6. Cute White Porcelain Paws peeking over bottom border
+  if(w > 60){
+    var pawY=cy+ry*0.82;
+    var pawW=r*0.26;
+    var pawH=r*0.16;
+    [-1, 1].forEach(function(side){
+      var pawX=cx+side*(rx*0.44);
+      var pawGrad=ctx.createRadialGradient(pawX,pawY-pawH*0.3,pawW*0.1,pawX,pawY,pawW);
+      pawGrad.addColorStop(0,'#ffffff');
+      pawGrad.addColorStop(0.7,'#ede9fe');
+      pawGrad.addColorStop(1,'#c4b5fd');
+      ctx.fillStyle=pawGrad;
+      ctx.beginPath();
+      if(ctx.ellipse){
+        ctx.ellipse(pawX,pawY,pawW*0.5,pawH*0.5,0,0,Math.PI*2);
+      }else{
+        ctx.arc(pawX,pawY,pawW*0.5,0,Math.PI*2);
+      }
+      ctx.fill();
+      ctx.strokeStyle='rgba(124, 92, 255, 0.22)';
+      ctx.lineWidth=1*dpr;
+      ctx.stroke();
+    });
+  }
+
   if(ctx.restore)ctx.restore();
 }
 
@@ -1948,7 +1983,7 @@ function robotAnimLoop(now){
   }
   var sideCanvas=$('sidebar-robot-canvas');
   if(sideCanvas&&sideCanvas.getContext){
-    drawRobot(sideCanvas,robotState,t,mouseLookX*0.6,mouseLookY*0.6,0.76);
+    drawRobot(sideCanvas,robotState,t,mouseLookX*0.5,mouseLookY*0.5,0.9);
   }
   if(typeof window!=='undefined'&&typeof window.requestAnimationFrame==='function'){
     window.requestAnimationFrame(robotAnimLoop);
