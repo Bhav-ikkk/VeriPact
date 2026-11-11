@@ -8,3 +8,4 @@ export * from './regression';
 export * from './wallet';
 export * from './sniper';
 export * from './intent-planner';
+export * from './web-hunter';

@@ -24,7 +24,11 @@ import { REPORTING_INDEXING_DELAY_DISCLOSURE } from '@veripact/paypal-client';
 import {
   parseShoppingIntent,
   runAutonomousDealSniper,
+  runLiveWebAndCouponHunt,
   SCENARIO_NAMES,
+  WebHuntFetchError,
+  WebHuntInputError,
+  type LiveWebHuntResult,
   type ScenarioName,
   type VeriPactWallet,
 } from '@veripact/sdk';
@@ -81,6 +85,7 @@ export const WALLET_ROUTES = [
   '/api/agents/webhook/price-drop',
   '/api/agents/poll-now',
   '/api/agents/parse-intent',
+  '/api/agents/web-hunt',
 ];
 
 /** Safe pairing-token shape (`400` on anything else — never a lookup). */
@@ -724,6 +729,60 @@ async function handlePriceDropWebhook(
   }
 }
 
+/**
+ * POST /api/agents/web-hunt — live web coupon & wild-URL hunter.
+ * Accepts a wild https URL (SSRF-guarded, fetched live) or a plain
+ * product query (Channel3 catalog + coupon registry, zero network).
+ * Input/SSRF failures answer 400, wild-URL fetch failures 502.
+ */
+async function handleWebHunt(body: Record<string, unknown>, res: WorkbenchResponse): Promise<void> {
+  const rawQuery = body['queryOrUrl'];
+  if (typeof rawQuery !== 'string' || rawQuery.trim().length === 0) {
+    throw new HttpError(400, 'queryOrUrl must be a non-empty string');
+  }
+  if (rawQuery.length > 512) {
+    throw new HttpError(400, 'queryOrUrl exceeds the 512-char cap');
+  }
+  const rawTarget = body['targetMaxAllInUsd'];
+  let targetMaxAllInUsd: number | undefined;
+  if (rawTarget !== undefined) {
+    if (
+      typeof rawTarget !== 'number' ||
+      !Number.isFinite(rawTarget) ||
+      rawTarget < 1 ||
+      rawTarget > 10000
+    ) {
+      throw new HttpError(400, 'targetMaxAllInUsd must be between 1 and 10000');
+    }
+    targetMaxAllInUsd = rawTarget;
+  }
+  const client = demoClientFor('replay');
+  let result: LiveWebHuntResult;
+  try {
+    result = await runLiveWebAndCouponHunt(client, {
+      queryOrUrl: rawQuery,
+      ...(targetMaxAllInUsd !== undefined ? { targetMaxAllInUsd } : {}),
+    });
+  } catch (e) {
+    if (e instanceof WebHuntInputError) {
+      throw new HttpError(400, e.message);
+    }
+    if (e instanceof WebHuntFetchError) {
+      throw new HttpError(502, e.message);
+    }
+    throw e;
+  }
+  appendLedger({
+    kind: 'web-hunt',
+    summary:
+      `web hunt ${result.huntId}: ${result.mode} ${result.gateDecision} ` +
+      `${result.appliedCoupon?.code ?? 'no-coupon'} -> ` +
+      `$${result.bestAllInUsd.toFixed(2)} (${result.discoveredCoupons.length} coupons)`,
+    commitment: result.commitment,
+  });
+  sendJson(res, 200, result);
+}
+
 /* ------------------------------------------------------------------ */
 /* Dispatch                                                             */
 /* ------------------------------------------------------------------ */
@@ -883,6 +942,14 @@ export async function handleWalletRequest(
       const fallbackTarget = typeof body['fallbackTargetUsd'] === 'number' ? body['fallbackTargetUsd'] : undefined;
       const parsed = await parseShoppingIntent(rawPrompt, fallbackSku, fallbackTarget);
       sendJson(res, 200, parsed);
+      return true;
+    }
+    case '/api/agents/web-hunt': {
+      if (method !== 'POST') {
+        sendJson(res, 405, { error: 'method not allowed' });
+        return true;
+      }
+      await handleWebHunt(parseJsonBody(await readBody(req)), res);
       return true;
     }
     default: {

@@ -175,6 +175,30 @@ export function buildOpenApiSpec(): Record<string, unknown> {
           },
         },
       },
+      '/api/agents/web-hunt': {
+        post: {
+          summary: 'Live web coupon & wild-URL hunt',
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    queryOrUrl: { type: 'string', maxLength: 512 },
+                    targetMaxAllInUsd: { type: 'number', minimum: 1, maximum: 10000 },
+                  },
+                  required: ['queryOrUrl'],
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Signed VP1 web-hunt report' },
+            400: { description: 'Bad input or refused SSRF target' },
+            502: { description: 'Wild-URL fetch failed' },
+          },
+        },
+      },
       '/api/catalog': {
         get: {
           operationId: 'getChannel3Catalog',

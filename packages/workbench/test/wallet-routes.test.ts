@@ -8,6 +8,7 @@ import type {
   PartitionSpendCheckVerdict,
   SyncPaymentRecord,
 } from '@veripact/core';
+import type { LiveWebHuntResult } from '@veripact/sdk';
 import {
   handleWorkbenchRequest,
   resetDemoState,
@@ -887,5 +888,88 @@ describe('@veripact/workbench Onboarding & Multi-Agent Fleet Routes', () => {
     expect(polledKanso!.lastPolledAtUtc).toBeDefined();
     expect(body.capturedOrders.length).toBeGreaterThanOrEqual(1);
     expect(body.capturedOrders[0]?.amountUsd).toBe(100.0);
+  });
+});
+
+describe('POST /api/agents/web-hunt (live web coupon & wild-URL hunter)', () => {
+  it('is mounted on ROUTES and rejects GET with 405', async () => {
+    expect(ROUTES).toContain('/api/agents/web-hunt');
+    const res = await get('/api/agents/web-hunt');
+    expect(res.status).toBe(405);
+  });
+
+  it('discovers verified coupons and rejects policy-voiding ones for a catalog query', async () => {
+    resetDemoState();
+    const res = await post('/api/agents/web-hunt', {
+      queryOrUrl: 'wireless headphones under $120',
+      targetMaxAllInUsd: 120,
+    });
+    expect(res.status).toBe(200);
+    const body = json<LiveWebHuntResult>(res);
+    expect(body.mode).toBe('CATALOG_AND_COUPON_SEARCH');
+    expect(body.huntId.startsWith('HUNT-VP-')).toBe(true);
+    expect(body.commitment.startsWith('VP1:')).toBe(true);
+    expect(body.tlsVerified).toBe(false);
+    expect(body.domIntegrity).toBe('CLEAN');
+    expect(body.observedCondition).toBe('NEW');
+    expect(body.extractedBasePriceUsd).toBe(82);
+    const codes = body.discoveredCoupons.map((coupon) => coupon.code);
+    expect(codes).toContain('PAYPAL50');
+    expect(codes).toContain('AUDIO67');
+    expect(codes).toContain('MECH30');
+    const clearance = body.discoveredCoupons.find((coupon) => coupon.code === 'CLEARANCE70');
+    expect(clearance?.verifiedTermsIntact).toBe(false);
+    expect(clearance?.rejectionReason).toContain('return');
+    const vip = body.discoveredCoupons.find((coupon) => coupon.code === 'VIP60');
+    expect(vip?.verifiedTermsIntact).toBe(false);
+    expect(vip?.rejectionReason).toContain('$500');
+    // Highest intact discount wins: 82 + 18 ship/tax - 67 = 33.
+    expect(body.appliedCoupon?.code).toBe('AUDIO67');
+    expect(body.appliedCoupon?.verifiedTermsIntact).toBe(true);
+    expect(body.bestAllInUsd).toBe(33);
+    // No merchant page observed in catalog mode: return terms stay
+    // unknown, and the witness gate hard-BLOCKs indeterminate required
+    // terms ("core terms indeterminate: return_window_days").
+    expect(body.observedReturnDays).toBe(0);
+    expect(body.gateDecision).toBe('BLOCK');
+  });
+
+  it('rejects SSRF targets and dangerous schemes with 400', async () => {
+    resetDemoState();
+    const blocked = [
+      'http://169.254.169.254/latest/meta-data/',
+      'http://127.0.0.1:22',
+      'http://10.0.0.5/admin',
+      'http://192.168.1.1/',
+      'http://[::1]:8080/',
+      'https://user:pass@store.example.com/',
+      'file:///etc/passwd',
+      'javascript:alert(1)',
+      'data:text/html,<h1>x</h1>',
+      'http://example.com/plain-http-not-allowed',
+    ];
+    for (const queryOrUrl of blocked) {
+      const res = await post('/api/agents/web-hunt', { queryOrUrl });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it('validates input shape and target range with 400', async () => {
+    resetDemoState();
+    expect((await post('/api/agents/web-hunt', {})).status).toBe(400);
+    expect((await post('/api/agents/web-hunt', { queryOrUrl: '' })).status).toBe(400);
+    expect((await post('/api/agents/web-hunt', { queryOrUrl: 'x'.repeat(513) })).status).toBe(400);
+    expect(
+      (await post('/api/agents/web-hunt', { queryOrUrl: 'headphones', targetMaxAllInUsd: 0 }))
+        .status,
+    ).toBe(400);
+    expect(
+      (
+        await post('/api/agents/web-hunt', {
+          queryOrUrl: 'headphones',
+          targetMaxAllInUsd: 99999,
+        })
+      ).status,
+    ).toBe(400);
   });
 });

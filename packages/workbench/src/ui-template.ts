@@ -566,24 +566,24 @@ $('btn-part-config').addEventListener('click',function(){partConfig();});
 function sniperPillFor(row,rep){
   var v=row?row.verdict:'';
   if(v==='REJECTED_ADVERSARIAL_DOM'){
-    return '<span class="sniper-pill crimson">BLOCKED \u00B7 ADVERSARIAL DOM INJECTION (REJECTED_ADVERSARIAL_DOM)</span>';
+    return '<span class="sniper-pill crimson">BLOCKED · ADVERSARIAL DOM INJECTION (REJECTED_ADVERSARIAL_DOM)</span>';
   }
   if(v==='REJECTED_CONDITION_CONFLICT'){
-    return '<span class="sniper-pill crimson">BLOCKED \u00B7 REFURBISHED BAIT (REJECTED_CONDITION_CONFLICT)</span>';
+    return '<span class="sniper-pill crimson">BLOCKED · REFURBISHED BAIT (REJECTED_CONDITION_CONFLICT)</span>';
   }
   if(v==='REJECTED_VOUCHER_VOIDS_RETURNS'){
-    return '<span class="sniper-pill crimson">BLOCKED \u00B7 VOUCHER VOIDS 30D RETURNS (REJECTED_VOUCHER_VOIDS_RETURNS)</span>';
+    return '<span class="sniper-pill crimson">BLOCKED · VOUCHER VOIDS 30D RETURNS (REJECTED_VOUCHER_VOIDS_RETURNS)</span>';
   }
   if(v==='REJECTED_OVER_TARGET_CAP'){
     var capStr=rep?'$'+Number(rep.targetMaxAllInUsd).toFixed(2):'$300.00';
-    return '<span class="sniper-pill crimson">REJECTED \u00B7 EXCEEDS '+capStr+' TARGET CAP</span>';
+    return '<span class="sniper-pill crimson">REJECTED · EXCEEDS '+capStr+' TARGET CAP</span>';
   }
   if(v==='REJECTED_CALLBACK_SURCHARGE_VOIDED'){
-    return '<span class="sniper-pill amber">HOLD AUTO-VOIDED \u00B7 CALLBACK SURCHARGE ($0 captured)</span>';
+    return '<span class="sniper-pill amber">HOLD AUTO-VOIDED · CALLBACK SURCHARGE ($0 captured)</span>';
   }
   if(v==='VERIFIED_VOUCHER_CAPTURED'){
-    var cShort=row.commitment?(' \u00B7 '+String(row.commitment).slice(0,10)+'\u2026'):'';
-    return '<span class="sniper-pill emerald">\u2713 CAPTURED $'+Number(row.allInTotalUsd).toFixed(2)+' \u00B7 SAVED $'+Number(row.voucherDiscountUsd||50).toFixed(2)+' ('+esc(row.voucherCode||'PAYPAL50')+') \u00B7 30d/0% Terms Verified'+cShort+'</span>';
+    var cShort=row.commitment?(' · '+String(row.commitment).slice(0,10)+'\u2026'):'';
+    return '<span class="sniper-pill emerald">\u2713 CAPTURED $'+Number(row.allInTotalUsd).toFixed(2)+' · SAVED $'+Number(row.voucherDiscountUsd||50).toFixed(2)+' ('+esc(row.voucherCode||'PAYPAL50')+') · 30d/0% Terms Verified'+cShort+'</span>';
   }
   if(v==='AUTO_VOIDED_BY_PARTITION_WALL'){
     var pAvail=(rep&&rep.partitionAfter)?('$'+Number(rep.partitionAfter.availableUsd).toFixed(2)):'$53.00';
@@ -597,14 +597,14 @@ function renderSniperResults(rep){
   var win=rep.winningCandidate||null;
   var html='';
   if(rep.outcome==='DEAL_CAPTURED'&&win){
-    html+='<div class="sniper-banner ok"><span class="sniper-banner-icon">\u2713</span><div class="sniper-banner-body"><b>DEAL CAPTURED UNDER TARGET</b>Saved $'+Number(rep.totalSavedUsd||50).toFixed(2)+' with verified voucher '+esc(win.voucherCode||'PAYPAL50')+' at '+esc(win.merchantName||'Apex Display Co.')+' \u00B7 '+rep.trapsRejectedCount+' traps blocked pre-checkout \u00B7 100% Partition protected.</div></div>';
+    html+='<div class="sniper-banner ok"><span class="sniper-banner-icon">\u2713</span><div class="sniper-banner-body"><b>DEAL CAPTURED UNDER TARGET</b>Saved $'+Number(rep.totalSavedUsd||50).toFixed(2)+' with verified voucher '+esc(win.voucherCode||'PAYPAL50')+' at '+esc(win.merchantName||'Apex Display Co.')+' · '+rep.trapsRejectedCount+' traps blocked pre-checkout · 100% Partition protected.</div></div>';
   }else if(rep.outcome==='BLOCKED_BY_PARTITION_WALL'){
     var pAvail=rep.partitionAfter?'$'+Number(rep.partitionAfter.availableUsd).toFixed(2):'$53.00';
     var spendAmt=win?'$'+Number(win.allInTotalUsd).toFixed(2):'$297.00';
-    html+='<div class="sniper-banner blocked"><span class="sniper-banner-icon">\u2715</span><div class="sniper-banner-body"><b>AUTO-VOIDED BY PARTITION WALL (BLOCKED_BY_PARTITION_WALL)</b>Target deal found at '+spendAmt+', but spending exceeds remaining partition balance ('+pAvail+' available) \u00B7 $0 captured.</div></div>';
+    html+='<div class="sniper-banner blocked"><span class="sniper-banner-icon">\u2715</span><div class="sniper-banner-body"><b>AUTO-VOIDED BY PARTITION WALL (BLOCKED_BY_PARTITION_WALL)</b>Target deal found at '+spendAmt+', but spending exceeds remaining partition balance ('+pAvail+' available) · $0 captured.</div></div>';
   }else{
     var targetStr='$'+Number(rep.targetMaxAllInUsd||300).toFixed(2);
-    html+='<div class="sniper-banner warn"><span class="sniper-banner-icon">!</span><div class="sniper-banner-body"><b>NO COMPLIANT DEAL UNDER TARGET</b>Evaluated '+(rep.candidatesEvaluated||6)+' merchants \u00B7 All compliant listings exceeded the '+targetStr+' target ceiling \u00B7 $0 spent.</div></div>';
+    html+='<div class="sniper-banner warn"><span class="sniper-banner-icon">!</span><div class="sniper-banner-body"><b>NO COMPLIANT DEAL UNDER TARGET</b>Evaluated '+(rep.candidatesEvaluated||6)+' merchants · All compliant listings exceeded the '+targetStr+' target ceiling · $0 spent.</div></div>';
   }
   var evals=rep.evaluations||[];
   if(evals.length){
@@ -636,6 +636,22 @@ function renderSniperResults(rep){
     html+='</tbody></table></div>';
   }
   resBox.innerHTML=html;
+}
+function renderWebHuntResults(wh){
+  var box=$('sniper-box');
+  if(box){
+    var host=$('web-hunt-results');
+    if(!host){host=document.createElement('div');host.id='web-hunt-results';host.className='sniper-results';box.insertBefore(host,box.firstChild);}
+    var banner=wh.gateDecision==='ALLOW'?'ok':(wh.gateDecision==='BLOCK'?'blocked':'warn');
+    var coupons=(wh.discoveredCoupons||[]).map(function(c){
+      return '<span class="sniper-pill '+(c.verifiedTermsIntact?'emerald':'crimson')+'">'+esc(c.code)+' -$'+Number(c.discountUsd).toFixed(0)+(c.verifiedTermsIntact?'':' · '+esc(c.rejectionReason||'rejected'))+'</span>';
+    }).join(' ');
+    host.innerHTML='<div class="sniper-banner '+banner+'"><span class="sniper-banner-icon">W</span><div class="sniper-banner-body"><b>WILD URL HUNT '+esc(wh.gateDecision)+'</b>'+esc(wh.extractedTitle||wh.targetUrl)+' · $'+Number(wh.bestAllInUsd).toFixed(2)+' all-in'+(wh.appliedCoupon?' with '+esc(wh.appliedCoupon.code):'')+'</div></div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'+coupons+'</div>'
+      +'<div>'+chip(wh.commitment,true)+'</div>';
+  }
+  var st=$('checkout-status');
+  if(st)st.textContent=(st.textContent?st.textContent+' · ':'')+'Web hunt '+(wh.appliedCoupon?wh.appliedCoupon.code+' ':'')+'$'+Number(wh.bestAllInUsd).toFixed(2)+' '+(wh.commitment||'').slice(0,13);
 }
 function updateSniperBtnLabel(){
   var btn=$('btn-sniper-run');
@@ -688,13 +704,13 @@ function runSniperFlow(){
       var statCur=document.querySelector('.stat-cur');if(statCur)statCur.textContent='$'+Number(win.allInTotalUsd).toFixed(2);
       var btnLbl=$('btn-checkout-label');if(btnLbl)btnLbl.textContent='Buy $'+Number(win.allInTotalUsd).toFixed(2);
       var commitBadge=$('rb-commit');if(commitBadge&&win.commitment){commitBadge.textContent=win.commitment.slice(0,16)+'…';commitBadge.title='PayPal purchase_units[0].custom_id = '+win.commitment;}
-      if(banner){banner.dataset.state='captured';banner.innerHTML=ICON_OK+'<div><h3>Deal Captured via Partition</h3><p>Captured $'+Number(win.allInTotalUsd).toFixed(2)+' at '+esc(win.merchantName)+' (Saved $'+Number(rep.totalSavedUsd).toFixed(2)+' with '+esc(win.voucherCode||'PAYPAL50')+') \u00B7 Partition balance protected.</p></div>';}
+      if(banner){banner.dataset.state='captured';banner.innerHTML=ICON_OK+'<div><h3>Deal Captured via Partition</h3><p>Captured $'+Number(win.allInTotalUsd).toFixed(2)+' at '+esc(win.merchantName)+' (Saved $'+Number(rep.totalSavedUsd).toFixed(2)+' with '+esc(win.voucherCode||'PAYPAL50')+') · Partition balance protected.</p></div>';}
       var box=$('checkout-result');
       if(box&&win.captureId){
         var html='<div class="card-head"><h2>'+DIAMOND_SVG+'Transaction Record</h2></div><dl class="record-kv">';
         html+='<dt>Order ID</dt><dd class="mono">'+esc(win.orderId||'\u2014')+'</dd>';
         html+='<dt>Authorization</dt><dd class="mono">'+esc(win.authorizationId||'\u2014')+'</dd>';
-        html+='<dt>Capture</dt><dd class="mono">'+esc(win.captureId||'\u2014')+(win.allInTotalUsd!=null?' \u00B7 <strong style="color:#0f6e56">$'+Number(win.allInTotalUsd).toFixed(2)+'</strong>':'')+'</dd>';
+        html+='<dt>Capture</dt><dd class="mono">'+esc(win.captureId||'\u2014')+(win.allInTotalUsd!=null?' · <strong style="color:#0f6e56">$'+Number(win.allInTotalUsd).toFixed(2)+'</strong>':'')+'</dd>';
         html+='<dt>Commitment</dt><dd>'+(win.commitment?chip(win.commitment,true):'<span class="mono">\u2014</span>')+'</dd>';
         html+='<dt>PayPal Mode</dt><dd class="mono">Sandbox (Deterministic)</dd></dl>';
         box.innerHTML=html;
@@ -703,13 +719,13 @@ function runSniperFlow(){
     }else if(rep.outcome==='BLOCKED_BY_PARTITION_WALL'){
       if(typeof window.setRobotState==='function')window.setRobotState('blocked');
       if(tb)tb.textContent='✦ Deal Blocked by Partition Wall! $297.00 exceeds remaining $53.00 partition balance. 0 PayPal calls made.';
-      if(banner){banner.dataset.state='blocked';banner.innerHTML=ICON_BAD+'<div><h3>Blocked by Partition Wall</h3><p>Verified deal found ($'+(win?Number(win.allInTotalUsd).toFixed(2):'297.00')+'), but spending exceeds remaining partition cap \u00B7 0 PayPal capture calls.</p></div>';}
+      if(banner){banner.dataset.state='blocked';banner.innerHTML=ICON_BAD+'<div><h3>Blocked by Partition Wall</h3><p>Verified deal found ($'+(win?Number(win.allInTotalUsd).toFixed(2):'297.00')+'), but spending exceeds remaining partition cap · 0 PayPal capture calls.</p></div>';}
     }else{
       if(typeof window.setRobotState==='function')window.setRobotState('blocked');
-      if(tb)tb.textContent='✦ No Compliant Deal Under Target! All compliant merchant listings exceed $'+targetVal.toFixed(2)+' target ceiling \u00B7 $0 spent.';
+      if(tb)tb.textContent='✦ No Compliant Deal Under Target! All compliant merchant listings exceed $'+targetVal.toFixed(2)+' target ceiling · $0 spent.';
       if(banner){
         banner.dataset.state='blocked';
-        banner.innerHTML=ICON_BAD+'<div><h3>No Compliant Deal Under Target</h3><p>All compliant merchant listings exceed $'+targetVal.toFixed(2)+' target ceiling \u00B7 <button type="button" class="btn btn-sm btn-primary" id="btn-sniper-spawn-bg" style="margin-top:6px;display:inline-flex;align-items:center;gap:4px;">Watch $'+targetVal.toFixed(2)+'</button></p></div>';
+        banner.innerHTML=ICON_BAD+'<div><h3>No Compliant Deal Under Target</h3><p>All compliant merchant listings exceed $'+targetVal.toFixed(2)+' target ceiling · <button type="button" class="btn btn-sm btn-primary" id="btn-sniper-spawn-bg" style="margin-top:6px;display:inline-flex;align-items:center;gap:4px;">Watch $'+targetVal.toFixed(2)+'</button></p></div>';
         var autoSpawnBtn=$('btn-sniper-spawn-bg');
         if(autoSpawnBtn){
           autoSpawnBtn.addEventListener('click',function(){
@@ -731,6 +747,7 @@ function runSniperFlow(){
     }
     if(st)st.textContent='Sniper: '+rep.outcome+' ('+rep.trapsRejectedCount+' traps blocked)';
     toast('Sniper '+rep.outcome);
+    if((promptVal||'').toLowerCase().indexOf('https://')===0){return api('/api/agents/web-hunt',{method:'POST',body:JSON.stringify({queryOrUrl:promptVal,targetMaxAllInUsd:targetVal})}).then(function(wh){renderWebHuntResults(wh);return rep;},function(e){toast('Web hunt failed: '+e.message);return rep;});}
     return rep;
   },function(e){
     if(typeof window.setRobotState==='function')window.setRobotState('idle');
@@ -837,10 +854,10 @@ var av=$('part-available');av.textContent=wpMoney(avail);
 var st=avail<=0?'wall':(avail<150?'low':'healthy');
 av.setAttribute('data-state',st);
 var fill=$('part-progress-fill');fill.style.width=(cap>0?Math.min(100,Math.max(0,netUsed/cap*100)):0)+'%';fill.setAttribute('data-state',st);
-var rb=$('rb-partition');if(rb)rb.textContent='Wallet Partition: '+wpMoney(cap)+' cap \u00B7 '+wpMoney(avail)+' avail';var hp=$('hdr-part-text');if(hp)hp.textContent=wpMoney(avail)+' Available';}
+var rb=$('rb-partition');if(rb)rb.textContent='Wallet Partition: '+wpMoney(cap)+' cap · '+wpMoney(avail)+' avail';var hp=$('hdr-part-text');if(hp)hp.textContent=wpMoney(avail)+' Available';}
 function paintPair(){
 var s=wallet.session;
-$('pair-code').textContent=s?s.pairingCode:'\u00B7\u00B7\u00B7\u00B7\u00B7\u00B7';
+$('pair-code').textContent=s?s.pairingCode:'······';
 var pill=$('pair-status-pill');
 if(!s){pill.textContent='Not paired';pill.className='pill pill-info';}
 else if(s.status==='APPROVED'){pill.textContent='\u25CF Vault Paired ('+(s.vaultId||'vault')+')';pill.className='pill pill-ok';}
