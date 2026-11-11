@@ -23,7 +23,8 @@
     "seed:sandbox": "tsc -b . && tsc -p scripts/tsconfig.json && node scripts/dist/seed-live-sandbox.js",
     "assets:generate": "tsc -b . && tsc -p scripts/tsconfig.json && node scripts/dist/generate-visual-assets.js",
     "demo:record": "tsc -b . && tsc -p scripts/tsconfig.json && node scripts/dist/playwright-record-demo.js",
-    "verify:e2e": "tsc -b . && tsc -p scripts/tsconfig.json && node scripts/dist/verify-ui-e2e.js"
+    "verify:e2e": "tsc -b . && tsc -p scripts/tsconfig.json && node scripts/dist/verify-ui-e2e.js",
+    "verify:live": "tsc -p scripts/tsconfig.json && node scripts/dist/verify-live-url.js"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
