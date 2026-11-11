@@ -10,6 +10,8 @@
  */
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   repoPath,
   signCanonicalPayload,
@@ -266,6 +268,11 @@ export function resolveFleetStateFile(explicitPath?: string): string {
   const override = process.env['VERIPACT_FLEET_STATE_FILE'];
   if (override !== undefined && override.length > 0) {
     return override;
+  }
+  // Vercel serverless: /var/task is read-only; only os.tmpdir() (/tmp)
+  // is writable, so the default fleet mirror lives there in production.
+  if (process.env['VERCEL']) {
+    return join(tmpdir(), '.veripact-fleet-state.json');
   }
   return repoPath('.veripact-fleet-state.json');
 }

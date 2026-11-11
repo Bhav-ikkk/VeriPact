@@ -1,3 +1,4 @@
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Script, runInNewContext } from 'node:vm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -9,6 +10,8 @@ import type {
   SyncPaymentRecord,
 } from '@veripact/core';
 import type { LiveWebHuntResult } from '@veripact/sdk';
+import { resolveWalletStateFile } from '@veripact/sdk';
+import { resolveFleetStateFile } from '../src/fleet-store';
 import {
   handleWorkbenchRequest,
   resetDemoState,
@@ -971,5 +974,49 @@ describe('POST /api/agents/web-hunt (live web coupon & wild-URL hunter)', () => 
         })
       ).status,
     ).toBe(400);
+  });
+});
+
+describe('Vercel serverless adapter (run 41)', () => {
+  it('GET /api/agents/poll-now (Vercel Cron) and POST /api/agents/poll-now both return 200', async () => {
+    resetDemoState();
+    const getRes = await get('/api/agents/poll-now');
+    expect(getRes.status).toBe(200);
+    const getBody = json<{ polledAgents: AutonomousSubAgent[] }>(getRes);
+    expect(Array.isArray(getBody.polledAgents)).toBe(true);
+    const postRes = await post('/api/agents/poll-now', {});
+    expect(postRes.status).toBe(200);
+  });
+
+  it("process.env.VERCEL = '1' resolves wallet/fleet state files into os.tmpdir()", () => {
+    const savedVercel = process.env['VERCEL'];
+    const savedWallet = process.env['VERIPACT_WALLET_STATE_FILE'];
+    const savedFleet = process.env['VERIPACT_FLEET_STATE_FILE'];
+    try {
+      delete process.env['VERIPACT_WALLET_STATE_FILE'];
+      delete process.env['VERIPACT_FLEET_STATE_FILE'];
+      process.env['VERCEL'] = '1';
+      expect(resolveWalletStateFile()).toBe(join(tmpdir(), '.veripact-wallet-state.json'));
+      expect(resolveFleetStateFile()).toBe(join(tmpdir(), '.veripact-fleet-state.json'));
+      // Explicit paths still win on Vercel (no silent rerouting).
+      expect(resolveWalletStateFile('/tmp/custom.json')).toBe('/tmp/custom.json');
+      expect(resolveFleetStateFile('/tmp/custom.json')).toBe('/tmp/custom.json');
+    } finally {
+      if (savedVercel === undefined) {
+        delete process.env['VERCEL'];
+      } else {
+        process.env['VERCEL'] = savedVercel;
+      }
+      if (savedWallet === undefined) {
+        delete process.env['VERIPACT_WALLET_STATE_FILE'];
+      } else {
+        process.env['VERIPACT_WALLET_STATE_FILE'] = savedWallet;
+      }
+      if (savedFleet === undefined) {
+        delete process.env['VERIPACT_FLEET_STATE_FILE'];
+      } else {
+        process.env['VERIPACT_FLEET_STATE_FILE'] = savedFleet;
+      }
+    }
   });
 });

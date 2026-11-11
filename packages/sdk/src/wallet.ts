@@ -13,6 +13,8 @@
  */
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   canonicalizeJson,
   computePartitionAvailableUsd,
@@ -83,7 +85,8 @@ function freshStateDoc(): WalletStateDoc {
 
 /**
  * Resolve the wallet state file: explicit path →
- * `VERIPACT_WALLET_STATE_FILE` (hermetic tests) → repo-root default.
+ * `VERIPACT_WALLET_STATE_FILE` (hermetic tests) → Vercel `/tmp` default
+ * (serverless `/var/task` is read-only) → repo-root default.
  */
 export function resolveWalletStateFile(explicitPath?: string): string {
   if (explicitPath !== undefined && explicitPath.length > 0) {
@@ -92,6 +95,9 @@ export function resolveWalletStateFile(explicitPath?: string): string {
   const override = process.env['VERIPACT_WALLET_STATE_FILE'];
   if (override !== undefined && override.length > 0) {
     return override;
+  }
+  if (process.env['VERCEL']) {
+    return join(tmpdir(), '.veripact-wallet-state.json');
   }
   return repoPath('.veripact-wallet-state.json');
 }

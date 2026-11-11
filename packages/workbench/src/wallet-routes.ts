@@ -917,7 +917,9 @@ export async function handleWalletRequest(
       return true;
     }
     case '/api/agents/poll-now': {
-      if (method !== 'POST') {
+      // GET serves Vercel Cron Jobs (which can only send GET); POST
+      // serves the workbench Poll button and tests with a JSON body.
+      if (method !== 'POST' && method !== 'GET') {
         sendJson(res, 405, { error: 'method not allowed' });
         return true;
       }

@@ -1,0 +1,1 @@
+Keeps the Vercel outputDirectory check green; every dynamic path rewrites to /api/index.mjs.
