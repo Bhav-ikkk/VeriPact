@@ -28,11 +28,11 @@ export function renderDetailsModal(): string {
     <div id="sniper-box">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <h3 style="margin:0;font-size:12.5px;font-weight:700;">Autonomous Deal &amp; Voucher Sniper (@veripact)</h3>
-        <span class="pill pill-info">Hunt Vouchers &amp; Auto-Buy Under $300</span>
+        <span class="pill pill-info">6 Stores<span class="sr-only">Hunt Vouchers &amp; Auto-Buy Under $300</span></span>
       </div>
       <div id="sniper-results" class="sniper-results" aria-live="polite">
-        <div style="padding:12px;background:#f8fafc;border:1px dashed var(--border-subtle);border-radius:6px;text-align:center;color:var(--text-muted);font-size:12px;">
-          <p style="margin:0;">Click <b>Find Best Deal</b> in the task bar to evaluate 6 competing merchant listings and coupon codes against your budget.</p>
+        <div style="padding:12px;background:#fafafa;border:1px dashed var(--border-subtle);border-radius:6px;text-align:center;color:var(--text-muted);font-size:12px;">
+          <p style="margin:0;">Click <b>Find Deal</b> in the task bar to evaluate 6 competing merchant listings and coupon codes against your budget.</p>
         </div>
       </div>
     </div>
@@ -42,7 +42,7 @@ export function renderDetailsModal(): string {
   <div id="sec-det-auditor" class="det-section" style="margin-top:14px;border-top:1px solid var(--border-subtle);padding-top:14px;">
     <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start;">
       <!-- Transaction Record -->
-      <div class="card" id="checkout-result" style="padding:12px;box-shadow:none;background:#f8fafc;">
+      <div class="card" id="checkout-result" style="padding:12px;box-shadow:none;background:#fafafa;">
         <div class="card-head" style="margin-bottom:8px;">
           <h2 style="font-size:13px;">Transaction Record</h2>
         </div>
@@ -60,7 +60,7 @@ export function renderDetailsModal(): string {
       </div>
 
       <!-- Client-Side Auditor -->
-      <div class="card auditor-card" style="padding:12px;box-shadow:none;background:#f8fafc;">
+      <div class="card auditor-card" style="padding:12px;box-shadow:none;background:#fafafa;">
         <div class="card-head" style="margin-bottom:6px;">
           <h2 style="font-size:13px;">Verify-It-Yourself (Auditor)</h2>
         </div>
@@ -83,7 +83,7 @@ export function renderDetailsModal(): string {
         <h3 style="margin:0;font-size:12.5px;font-weight:700;">Buyer Mandate &amp; Sufficiency Rules</h3>
         <button type="button" class="btn btn-sm btn-ghost" id="btn-mandate-edit">Edit Mandate</button>
       </div>
-      <div class="mandate-strip" style="border:1px solid var(--border-subtle);border-radius:6px;padding:8px;background:#f8fafc;">
+      <div class="mandate-strip" style="border:1px solid var(--border-subtle);border-radius:6px;padding:8px;background:#fafafa;">
         <div><b class="big" id="m-cap">$320.00</b><span>Cap (all-in)</span></div>
         <div><b class="mid" id="m-cond">NEW</b><span>Condition</span></div>
         <div><b class="mid" id="m-days">≥ 30 days</b><span>Return window</span></div>
@@ -128,7 +128,7 @@ export function renderDetailsModal(): string {
           <input type="checkbox" id="mutate-toggle">
           <span><b>Post-purchase policy mutation preview.</b> Shows drifted policy compared with witnessed terms.</span>
         </label>
-        <div id="mutate-panel" hidden style="margin-top:6px;background:#f8fafc;padding:8px;border-radius:4px;">
+        <div id="mutate-panel" hidden style="margin-top:6px;background:#fafafa;padding:8px;border-radius:4px;">
           <dl class="kv">
             <dt>Witnessed</dt><dd><span class="pill pill-ok">30-day free returns · 0% fee</span></dd>
             <dt>Mutated listing</dt><dd><span class="pill pill-bad">14-day returns · 25% fee</span></dd>
@@ -184,7 +184,7 @@ export function renderDetailsModal(): string {
 
   <!-- Section 4: External AI Agent Connectors -->
   <div id="sec-det-connectors" class="det-section" style="margin-top:14px;border-top:1px solid var(--border-subtle);padding-top:14px;">
-    <div class="card" style="padding:14px;background:#f8fafc;border-radius:6px;">
+    <div class="card" style="padding:14px;background:#fafafa;border-radius:6px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <h3 style="margin:0;font-size:13px;font-weight:700;">External AI Agent Connectors</h3>
         <span class="pill pill-info">ChatGPT &amp; Claude MCP</span>

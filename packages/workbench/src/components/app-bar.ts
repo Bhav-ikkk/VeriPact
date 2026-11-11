@@ -2,10 +2,10 @@
  * Top App Bar Component:
  * - Full-width sticky bar replacing the 220px left sidebar
  * - Logo & clean VeriPact branding
- * - Horizontal navigation tabs: Shop Assistant, Budget & Auto-Buy, Orders, Disputes
+ * - Horizontal navigation tabs: Shop, Rules, Budget, Orders, Disputes (1 word each)
  * - Compact sr-only compatibility buttons for E2E tests (#nav-home, #nav-watchlist, #nav-policies, #tab-checkout, #tab-desk)
  * - 1-Step PayPal connect/budget modal trigger (#btn-open-onboarding)
- * - ⓘ Details modal trigger (#btn-info-modal)
+ * - Details modal trigger (#btn-info-modal)
  * - Reset and Tour triggers
  * - Hidden mode-pill for E2E sandbox verification
  */
@@ -16,7 +16,7 @@ export function renderAppBar(): string {
   <div style="display:flex;align-items:center;gap:16px">
     <a href="/" class="app-brand">
       <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-        <rect width="28" height="28" rx="6" fill="#4f46e5"/>
+        <rect width="28" height="28" rx="6" fill="#09090b"/>
         <path d="M14 5l7 3v6c0 4.5-3 8-7 9.5-4-1.5-7-5-7-9.5v-6l7-3z" fill="#fff" fill-opacity="0.2" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
         <path d="M10.5 14l2.5 2.5 5-5.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
@@ -27,15 +27,15 @@ export function renderAppBar(): string {
     <nav class="app-nav" aria-label="Main Navigation">
       <button type="button" class="sidebar-nav-item active" id="nav-studio">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <span>Shop Assistant</span>
+        <span>Shop</span>
       </button>
       <button type="button" class="sidebar-nav-item" id="nav-policies">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        <span>Rules &amp; Policies</span>
+        <span>Rules</span>
       </button>
       <button type="button" class="sidebar-nav-item" id="nav-payments">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-        <span>Budget &amp; Auto-Buy</span>
+        <span>Budget</span>
       </button>
       <button type="button" class="sidebar-nav-item" id="nav-purchases">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
@@ -64,12 +64,13 @@ export function renderAppBar(): string {
       <span id="hdr-part-text">$53.00 Available</span>
     </span>
 
-    <button type="button" class="btn btn-sm btn-ghost" id="btn-open-onboarding" title="Configure PayPal Vault &amp; Total AI Budget">
-      <span id="onb-pill-label">👤 Bhavik · PayPal ($350)</span>
+    <button type="button" class="btn btn-sm btn-ghost" id="btn-open-onboarding" data-tooltip="PayPal Vault &amp; Budget">
+      <span id="onb-pill-label">Wallet $350</span>
     </button>
 
-    <button type="button" class="btn btn-sm btn-ghost" id="btn-info-modal" title="View cryptographic proof, witness evidence, and 6-store comparison">
-      <span>ⓘ Proof &amp; Activity Details</span>
+    <button type="button" class="btn btn-sm btn-ghost" id="btn-info-modal" data-tooltip="Store Audit &amp; Cryptographic Proof">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <span>Details</span>
     </button>
 
     <button type="button" class="btn btn-sm btn-ghost" id="btn-reset" title="Reset demo state">
@@ -78,7 +79,7 @@ export function renderAppBar(): string {
     </button>
 
     <button type="button" class="btn btn-sm btn-primary" id="btn-tour" title="Run 60s Guided Demo Tour">
-      <span>▶ Tour</span><span class="sr-only">Run 60s Guided Demo Tour</span>
+      <span>Tour</span><span class="sr-only">Run 60s Guided Demo Tour</span>
     </button>
 
     <!-- Hidden compatibility nodes: mode-pill and tour-status -->

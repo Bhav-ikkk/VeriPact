@@ -20,10 +20,10 @@ export function renderOnboardingModal(): string {
       </div>
 
       <!-- Section 1: Connect PayPal Account -->
-      <div style="background:#f8fafc;border:1px solid var(--border-subtle);border-radius:6px;padding:14px;margin-bottom:16px;">
+      <div style="background:#fafafa;border:1px solid var(--border-subtle);border-radius:6px;padding:14px;margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
           <div style="display:flex;align-items:center;gap:6px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#09090b" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             <b style="font-size:13px;">PayPal Vault Connection</b>
           </div>
           <span class="pill pill-ok" id="onb-connected-pill" style="font-size:10.5px;">✓ Vault Ready</span>
@@ -40,18 +40,18 @@ export function renderOnboardingModal(): string {
       <div style="background:#ffffff;border:1px solid var(--border-subtle);border-radius:6px;padding:14px;margin-bottom:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <label for="onb-master-cap" style="font-size:12.5px;font-weight:700;">Total AI Shopping Budget</label>
-          <span id="onb-master-disp" style="font-weight:800;font-family:var(--font-mono);font-size:14px;color:var(--accent-purple);">$350.00</span>
+          <span id="onb-master-disp" style="font-weight:800;font-family:var(--font-mono);font-size:14px;color:var(--ink);">$350.00</span>
         </div>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-          <input type="range" id="onb-master-slider" min="100" max="1000" step="25" value="350" style="flex:1;accent-color:var(--accent-purple);">
+          <input type="range" id="onb-master-slider" min="100" max="1000" step="25" value="350" style="flex:1;accent-color:var(--ink);">
           <input type="number" id="onb-master-cap" min="50" max="5000" step="10" value="350" class="form-input" style="width:90px;font-weight:700;text-align:center;">
         </div>
 
         <!-- Task Allocation Summary -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;font-size:11px;background:#f8fafc;padding:8px;border-radius:6px;border:1px solid var(--border-subtle);">
-          <div><span style="color:var(--text-muted);display:block;">Monitor Task</span><b style="color:var(--accent-purple);">$220.00</b></div>
-          <div><span style="color:var(--text-muted);display:block;">Headphones Task</span><b style="color:var(--accent-purple);">$100.00</b></div>
-          <div><span style="color:var(--text-muted);display:block;">Unallocated Buffer</span><b style="color:#15803d;">$30.00</b></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;font-size:11px;background:#fafafa;padding:8px;border-radius:6px;border:1px solid var(--border-subtle);">
+          <div><span style="color:var(--text-muted);display:block;">Monitor Task</span><b style="color:var(--ink);">$220.00</b></div>
+          <div><span style="color:var(--text-muted);display:block;">Headphones Task</span><b style="color:var(--ink);">$100.00</b></div>
+          <div><span style="color:var(--text-muted);display:block;">Unallocated Buffer</span><b style="color:#059669;">$30.00</b></div>
         </div>
       </div>
 

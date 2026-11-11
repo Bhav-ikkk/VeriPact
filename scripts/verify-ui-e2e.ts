@@ -186,6 +186,72 @@ async function assertStoreFits(page: Page, scn: string): Promise<void> {
   assert(dim.sw <= dim.cw, `store-${scn}`, `inner h-overflow: ${dim.sw} > ${dim.cw}`);
 }
 
+async function assertGeometry(page: Page, label: string): Promise<void> {
+  // Equal-height 2-card rows: identical heights and tops within 2px.
+  const rows = await page.evaluate(() => {
+    const els = Array.from(document.querySelectorAll('#view-checkout .two-card-row'));
+    return els.map((row) =>
+      Array.from(row.children).map((c) => {
+        const r = c.getBoundingClientRect();
+        return { top: r.top, height: r.height };
+      }),
+    );
+  });
+  assert(rows.length === 2, label, `expected 2 card rows, got ${rows.length}`);
+  rows.forEach((cards, i) => {
+    assert(cards.length === 2, label, `row ${i + 1}: expected 2 cards, got ${cards.length}`);
+    if (cards.length !== 2) {
+      return;
+    }
+    const pair = cards as [{ top: number; height: number }, { top: number; height: number }];
+    const a = pair[0];
+    const b = pair[1];
+    console.log(`  ${label} row${i + 1}: h=${a.height}/${b.height} top=${a.top}/${b.top}`);
+    assert(
+      Math.abs(a.height - b.height) <= 2,
+      label,
+      `row ${i + 1}: card heights differ ${a.height} vs ${b.height}`,
+    );
+    assert(
+      Math.abs(a.top - b.top) <= 2,
+      label,
+      `row ${i + 1}: card tops differ ${a.top} vs ${b.top}`,
+    );
+  });
+  // 36px button geometry + opaque, contrasting resting and hover states.
+  const ids = [
+    '#btn-sniper-run',
+    '#btn-checkout',
+    '#btn-witness',
+    '#btn-part-spend',
+    '#btn-part-refund',
+    '#btn-sim-pricedrop',
+  ];
+  for (const id of ids) {
+    const h = await page.$eval(id, (el) => el.getBoundingClientRect().height);
+    console.log(`  ${label} ${id}: height=${h}`);
+    assert(Math.abs(h - 36) <= 2, label, `${id} height ${h} is not 36px (+-2)`);
+    for (const state of ['rest', 'hover'] as const) {
+      if (state === 'hover') {
+        await page.$eval(id, (el) => el.scrollIntoView({ block: 'center' }));
+        const bb = await page.$(id).then((handle) => handle?.boundingBox());
+        if (bb !== null && bb !== undefined) {
+          await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
+        }
+        await page.waitForTimeout(120);
+      }
+      const c = await page.$eval(id, (el) => {
+        const cs = getComputedStyle(el);
+        return { color: cs.color, bg: cs.backgroundColor };
+      });
+      const transparent = c.bg === 'rgba(0, 0, 0, 0)' || c.bg === 'transparent';
+      assert(!transparent, label, `${id} ${state}: transparent background ${c.bg}`);
+      assert(c.color !== c.bg, label, `${id} ${state}: no contrast fg=${c.color} bg=${c.bg}`);
+    }
+  }
+  await page.mouse.move(8, 8);
+}
+
 async function waitBanner(page: Page, state: string, heading: string): Promise<void> {
   await page.waitForSelector(`#checkout-outcome-banner[data-state="${state}"]`, { timeout: 30000 });
   const text = await page.textContent('#checkout-outcome-banner h3');
@@ -233,6 +299,8 @@ async function fullFlow(browser: Browser): Promise<void> {
   await page.goto(`${ORIGIN}/`, { waitUntil: 'domcontentloaded' });
   await waitBanner(page, 'captured', 'Purchase Captured');
   await assertNoOverflow(page, 'view1@1600');
+  step('UI geometry: equal-height rows + 36px buttons @1600x900');
+  await assertGeometry(page, 'geo@1600');
 
   step('Autonomous Shopping Agent Studio & 3D robot canvas rendered');
   const studioBox = await page.evaluate(() => {
@@ -823,6 +891,9 @@ async function viewportSweep(browser: Browser, width: number, height: number): P
   await page.goto(`${ORIGIN}/`, { waitUntil: 'domcontentloaded' });
   await waitBanner(page, 'captured', 'Purchase Captured');
   await assertNoOverflow(page, `view1@${width}`);
+  if (width === 1366) {
+    await assertGeometry(page, 'geo@1366');
+  }
   await page.click('#tab-desk');
   await page.waitForFunction(
     () => document.getElementById('insp-seller')?.textContent?.includes('BUYER_FORGERY_DETECTED') === true,

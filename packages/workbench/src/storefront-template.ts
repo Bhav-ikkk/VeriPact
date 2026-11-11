@@ -14,14 +14,14 @@ import { extractObservedTerms, scanMerchantHtml } from '@veripact/term-extractor
 import { loadChannel3CacheFromDisk, type Channel3CatalogProduct } from '@veripact/witness-client';
 
 const MONITOR_SVG = `<svg viewBox="0 0 320 220" width="100%" role="img" aria-label="Apex ProView 27 inch 4K monitor illustration">
-<defs><linearGradient id="vp-screen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#312e81"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs>
+<defs><linearGradient id="vp-screen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#09090b"/><stop offset=".5" stop-color="#27272a"/><stop offset="1" stop-color="#52525b"/></linearGradient></defs>
 <ellipse cx="160" cy="202" rx="72" ry="8" fill="#0b0f14" opacity=".35"/>
 <rect x="138" y="168" width="44" height="30" rx="4" fill="#39424e"/>
 <rect x="112" y="196" width="96" height="8" rx="4" fill="#232a35"/>
 <rect x="30" y="18" width="260" height="154" rx="10" fill="#11161d"/>
 <rect x="37" y="25" width="246" height="132" rx="5" fill="url(#vp-screen)"/>
-<path d="M37 100 Q 90 60 140 95 T 283 85 L283 157 L37 157 Z" fill="#a5b4fc" opacity=".55"/>
-<path d="M37 120 Q 100 85 160 115 T 283 105 L283 157 L37 157 Z" fill="#e0e7ff" opacity=".35"/>
+<path d="M37 100 Q 90 60 140 95 T 283 85 L283 157 L37 157 Z" fill="#a1a1aa" opacity=".55"/>
+<path d="M37 120 Q 100 85 160 115 T 283 105 L283 157 L37 157 Z" fill="#d4d4d8" opacity=".35"/>
 <circle cx="100" cy="62" r="12" fill="#e8f4ff" opacity=".9"/>
 <rect x="60" y="132" width="70" height="7" rx="3.5" fill="#e8f4ff" opacity=".5"/>
 <rect x="200" y="45" width="58" height="40" rx="4" fill="#0b0f14" opacity=".55"/>
@@ -31,7 +31,7 @@ const MONITOR_SVG = `<svg viewBox="0 0 320 220" width="100%" role="img" aria-lab
 <text x="160" y="166" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#8b95a5">27&#8243; 4K IPS &#183; 144Hz</text>
 </svg>`;
 
-const THUMB_SVG = `<svg viewBox="0 0 36 28" width="36" height="28" aria-hidden="true"><rect x="1" y="1" width="34" height="22" rx="3" fill="#11161d"/><rect x="4" y="4" width="28" height="14" rx="2" fill="#4f46e5"/><rect x="13" y="23" width="10" height="4" rx="1" fill="#39424e"/></svg>`;
+const THUMB_SVG = `<svg viewBox="0 0 36 28" width="36" height="28" aria-hidden="true"><rect x="1" y="1" width="34" height="22" rx="3" fill="#11161d"/><rect x="4" y="4" width="28" height="14" rx="2" fill="#27272a"/><rect x="13" y="23" width="10" height="4" rx="1" fill="#39424e"/></svg>`;
 
 const LAPTOP_SVG = `<svg viewBox="0 0 320 220" width="100%" role="img" aria-label="Northloop Air laptop illustration">
 <defs><linearGradient id="vp-laptop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#1e293b"/></linearGradient></defs>

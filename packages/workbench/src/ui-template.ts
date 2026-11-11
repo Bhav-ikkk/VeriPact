@@ -64,8 +64,8 @@ function refreshLedger(){return api('/api/ledger').then(function(l){state.ledger
 function openByokModal(){refreshLedger().catch(function(){});$('creds-modal').hidden=false;}
 function closeByokModal(){$('creds-modal').hidden=true;}
 function setModePill(live){var p=$('mode-pill');state.liveMode=live;p.textContent=live?'Live Sandbox Ready':'Replay · deterministic';p.className='mode-pill '+(live?'mode-live':'mode-replay');}
-function refreshTwostepLabel(){var l=$('twostep-label');if(!l)return;l.innerHTML=state.hasPaypalCredentials===true?'<b>Two-step approval</b> (Live PayPal checkoutnow)':'<b>Two-step approval</b> (recommended)';}
-function refreshCheckoutBtn(){var l=$('btn-checkout-label');if(!l)return;var live=$('twostep-toggle').checked&&state.hasPaypalCredentials===true;l.textContent=live?'Authorize with PayPal':'1-Click Instant Checkout';}
+function refreshTwostepLabel(){var l=$('twostep-label');if(!l)return;l.textContent=state.hasPaypalCredentials===true?'Two-step popup (live)':'Two-step popup';}
+function refreshCheckoutBtn(){var l=$('btn-checkout-label');if(!l)return;var live=$('twostep-toggle').checked&&state.hasPaypalCredentials===true;l.textContent=live?'Authorize $297.00':'Buy $297.00';}
 function saveCredentials(){var id=$('pp-client-id').value;var sec=$('pp-client-secret').value;var st=$('creds-status');st.textContent='Verifying OAuth…';
 return api('/api/system/credentials',{method:'POST',body:JSON.stringify({clientId:id,clientSecret:sec})}).then(function(r){state.hasPaypalCredentials=r.mode==='LIVE_PAYPAL_SANDBOX';setModePill(state.hasPaypalCredentials);refreshTwostepLabel();refreshCheckoutBtn();st.textContent=r.verified?'Live sandbox verified.':('Fallback: '+(r.error||'replay mode'));toast(r.verified?'Live PayPal Sandbox connected':'Credentials saved — replay fallback engaged');refreshLedger().catch(function(){});return r;},function(e){st.textContent=e.message;throw e;});}
 function forceReplayMode(){return api('/api/system/credentials',{method:'POST',body:JSON.stringify({replay:true})}).then(function(){state.hasPaypalCredentials=false;setModePill(false);refreshTwostepLabel();refreshCheckoutBtn();$('creds-status').textContent='Replay forced for this session.';toast('Deterministic replay engaged');refreshLedger().catch(function(){});},function(e){$('creds-status').textContent=e.message;throw e;});}
@@ -102,7 +102,7 @@ if(s4)s4.addEventListener('click',function(){showView('desk');var d=$('view-desk
 wireWorkflowGuide();
 /* ---------- view 1 ---------- */
 var scnBtns=Array.prototype.slice.call(document.querySelectorAll('[data-scn]'));
-function resetOutcomeBanner(){var b=$('checkout-outcome-banner');if(!b)return;b.dataset.state='idle';b.innerHTML=ICON_IDLE+'<div><h3>Recommended Purchase</h3><p>Meets all your conditions and safety checks.</p></div>';var tb=$('agent-thinking-bar');if(tb)tb.textContent='✦ Agent Thinking... Verifying seller reputation, PAYPAL50 voucher validity, and 30-day return policy...';var ring=$('mission-progress-circle');if(ring)ring.setAttribute('stroke-dashoffset','24.88');var ringTxt=$('mission-progress-text');if(ringTxt)ringTxt.textContent='78%';}
+function resetOutcomeBanner(){var b=$('checkout-outcome-banner');if(!b)return;b.dataset.state='idle';b.innerHTML=ICON_IDLE+'<div><h3>Recommended Purchase</h3><p>Meets all your conditions and safety checks.</p></div>';var tb=$('agent-thinking-bar');if(tb)tb.textContent='Agent ready — witness a scenario, then check out.';var ring=$('mission-progress-circle');if(ring)ring.setAttribute('stroke-dashoffset','24.88');var ringTxt=$('mission-progress-text');if(ringTxt)ringTxt.textContent='78%';}
 function resetTransactionRecord(){var rEl=$('checkout-result');if(!rEl)return;var modeStr=state.hasPaypalCredentials?'Live PayPal Sandbox':'Sandbox (Deterministic)';var html='<div class="card-head"><h2>'+DIAMOND_SVG+'Transaction Record</h2></div><dl class="record-kv"><dt>Order ID</dt><dd class="mono">— (awaiting checkout)</dd><dt>Authorization</dt><dd class="mono">—</dd><dt>Capture</dt><dd class="mono">—</dd><dt>Commitment</dt><dd class="mono">—</dd><dt>PayPal Mode</dt><dd class="mono">'+esc(modeStr)+'</dd></dl><div class="post-purchase"><button type="button" class="btn" disabled>Verify it yourself ↓</button><button type="button" class="btn" disabled>Simulate Merchant Drift → File Dispute</button><button type="button" class="btn" disabled>Simulate Buyer Forgery → File Dispute</button></div>';rEl.innerHTML=html;}
 function selectScenario(scn){state.scenario=scn;scnBtns.forEach(function(x){x.setAttribute('aria-pressed',x.getAttribute('data-scn')===scn?'true':'false');});var sku=state.sku||'APEX-27-4K-IPS';$('store-frame').src='/store/'+scn+'?sku='+encodeURIComponent(sku);var su=$('store-url');if(su)su.textContent='https://store.example.com/product/'+sku+(scn==='normal'?'':'/'+scn);resetTransactionRecord();$('awaiting-card').hidden=true;$('checkout-status').textContent='';resetOutcomeBanner();}
 scnBtns.forEach(function(b){b.addEventListener('click',function(){selectScenario(b.getAttribute('data-scn'));});});
@@ -113,7 +113,7 @@ function updateSpendBtnLabel(){
   var sku=state.sku||'APEX-27-4K-IPS';
   var prod=state.catalog&&state.catalog.find?state.catalog.find(function(p){return p.productId===sku;}):null;
   var amt=prod?(prod.priceUsd+18):297;
-  b.textContent='Agent Spend ($'+amt.toFixed(0)+' via Partition)';
+  b.textContent='Spend $'+amt.toFixed(0);
 }
 function initChannel3Catalog(){
   api('/api/catalog').then(function(res){
@@ -176,7 +176,7 @@ function updateMandate(){var payload={scenario:state.scenario,maxAllInPriceUsd:N
 return api('/api/buyer/mandate/update',{method:'POST',body:JSON.stringify(payload)}).then(function(r){state.mandate=r.mandate;renderMandate(r.mandate);gateBadge(r.gateResult);st.textContent='Locked · re-gated '+r.gateResult.decision;toast('Mandate signed & locked — gate: '+r.gateResult.decision);runWitnessFlow().catch(function(){});return r;},function(e){st.textContent=e.message;throw e;});}
 $('btn-mandate-edit').addEventListener('click',function(){var ed=$('mandate-editor');ed.hidden=!ed.hidden;});
 $('btn-mandate-save').addEventListener('click',function(){updateMandate().catch(function(){});});
-function rungTo(stage){$('rung-wit').className='rung-step'+(stage>=1?' on':'');$('rung-sign').className='rung-step'+(stage>=2?' on':'');}
+function rungTo(stage){var w=$('rung-wit');if(w)w.classList.toggle('on',stage>=1);var s=$('rung-sign');if(s)s.classList.toggle('on',stage>=2);}
 function runWitnessFlow(){var b=$('btn-witness');b.disabled=true;$('checkout-status').textContent='Witnessing offer…';
 var sku=state.sku||'APEX-27-4K-IPS';
 return api('/api/witness/snapshot',{method:'POST',body:JSON.stringify({scenario:state.scenario,sku:sku})}).then(function(s){state.witness=s;suffPills(s.termReceipt.observedTerms);rungTo(1);ribbonFillWitness(s);gateBadge(s.gateResult);
@@ -408,7 +408,7 @@ function caseRowEl(c){if(document.querySelector){var tr=document.querySelector('
 function firstPill(hostId){var host=$(hostId);if(host&&host.querySelector){var p=host.querySelector('.diff-pill,.pill');if(p)return p;}return host;}
 function runTour(){
 if(tourRunning){tourRunning=false;return Promise.resolve();}
-tourRunning=true;tourPaused=false;$('btn-tour').textContent='■ Stop guided tour';
+tourRunning=true;tourPaused=false;$('btn-tour').textContent='Stop';
 function alive(){return tourRunning;}
 function held(r){if(r&&r.outcome==='AWAITING_BUYER_APPROVAL'){tourPaused=true;tourRunning=false;tourUnring();tourSay('Tour paused: approve the buyer popup, then press Finalize.');demoDone('Paused — approve the buyer popup, then press Finalize.');return true;}return false;}
 function clickWitness(){var b=$('btn-witness');tourScroll(b);tourRing(b);return tourSleep(1300).then(function(){if(!tourRunning){tourUnring();return null;}b.click();tourUnring();return tourWaitFor(function(){return !$('btn-witness').disabled;});});}
@@ -479,7 +479,7 @@ await tourWaitFor(function(){return $('sync-body').textContent.indexOf('VERIPACT
 await highlightOnly($('connectors-row'),'ChatGPT Actions plus Claude MCP connectors',2000);if(!alive())return;
 }
 tourSay('Tour complete — VeriPact proved what the merchant promised.');demoDone('Tour complete — VeriPact proved what the merchant promised.');
-}()).catch(function(e){tourUnring();if(e.message!=='__TOUR_ABORT__')tourSay('Tour stopped: '+e.message);}).finally(function(){var done=tourRunning&&!tourPaused;tourRunning=false;tourUnring();$('btn-tour').textContent='▶ Run 60s Guided Demo Tour';if(!done&&!tourPaused){tourSay('Tour stopped.');hideDemoToast();}});}
+}()).catch(function(e){tourUnring();if(e.message!=='__TOUR_ABORT__')tourSay('Tour stopped: '+e.message);}).finally(function(){var done=tourRunning&&!tourPaused;tourRunning=false;tourUnring();$('btn-tour').textContent='Tour';if(!done&&!tourPaused){tourSay('Tour stopped.');hideDemoToast();}});}
 $('btn-tour').addEventListener('click',function(){runTour();});
 $('demo-stop').addEventListener('click',function(){if(tourRunning){runTour();}else{hideDemoToast();}});
 function stopTour(){if(tourRunning){runTour();}else{hideDemoToast();}}
@@ -498,7 +498,7 @@ function paintQr(){
 var box=$('qr-svg-box');if(!box)return;
 var s=wallet.session;
 if(!s){box.innerHTML='<span class="status-line" style="font-size:11px;text-align:center">No session yet</span>';return;}
-try{var m=qrEncodeMatrix(s.qrPairUrl);box.innerHTML=qrMatrixToSvg(m,76);}
+try{var m=qrEncodeMatrix(s.qrPairUrl);box.innerHTML=qrMatrixToSvg(m,56);}
 catch(e){box.innerHTML='<span class="status-line" style="font-size:11px">QR unavailable</span>';}}
 function stopPairPoll(){if(wallet.pollTimer){clearTimeout(wallet.pollTimer);wallet.pollTimer=null;}}
 function pollPairStatusOnce(continuePolling){
@@ -638,11 +638,9 @@ function renderSniperResults(rep){
   resBox.innerHTML=html;
 }
 function updateSniperBtnLabel(){
-  var inp=$('sniper-target-input');
   var btn=$('btn-sniper-run');
   if(!btn)return;
-  var val=inp?(parseInt(inp.value,10)||300):300;
-  btn.innerHTML='<span>Run Agent &#9655;</span> <span class="btn-run-sub">Under $'+val+'</span><span class="skip">Hunt Vouchers &amp; Auto-Buy Under $'+val+'</span>';
+  btn.innerHTML='<span>Find Deal</span>';
 }
 function resetSniperUi(){
   var inp=$('sniper-target-input');
@@ -650,7 +648,7 @@ function resetSniperUi(){
   updateSniperBtnLabel();
   var resBox=$('sniper-results');
   if(resBox){
-    resBox.innerHTML='<div class="sniper-empty"><p>Click <b>&#127919; Hunt Vouchers &amp; Auto-Buy Under $300</b> to evaluate 6 competing merchant listings and coupons against your $350.00 PayPal Partition.</p></div>';
+    resBox.innerHTML='<div class="sniper-empty"><p>Run <b>Find Deal</b> to evaluate 6 listings against your $350 partition.</p></div>';
   }
 }
 function runSniperFlow(){
@@ -665,7 +663,7 @@ function runSniperFlow(){
   if(ringTxt)ringTxt.textContent='78%';
   var tb=$('agent-thinking-bar');
   if(tb)tb.textContent='✦ Agent Hunting... Scanning 6 competitor storefronts & Channel3 catalog for verified vouchers...';
-  if(btn){btn.disabled=true;btn.textContent='Hunting Vouchers across stores\u2026';}
+  if(btn){btn.disabled=true;btn.textContent='Finding\u2026';}
   var resBox=$('sniper-results');
   if(resBox){
     resBox.innerHTML='<div class="sniper-empty"><p>Hunting across stores, evaluating vouchers, and running 3-Rung witness checks\u2026</p></div>';
@@ -685,10 +683,10 @@ function runSniperFlow(){
       if(ringTxt)ringTxt.textContent='100%';
       if(tb)tb.textContent='✦ Deal Verified! Apex 27" 4K IPS — Saved $50 with PAYPAL50 ($297.00 all-in). VP1 commitment locked & PayPal Partition captured.';
       var pf=$('price-final-display');if(pf)pf.textContent='$'+Number(win.allInTotalUsd).toFixed(2);
-      var pd=$('price-discount-display');if(pd)pd.textContent=(rep.totalSavedUsd>0?(Math.round((rep.totalSavedUsd/win.retailPriceUsd)*100)+'% Off'):'0% Off');
-      var ps=$('price-savings-display');if(ps)ps.textContent='$'+Number(rep.totalSavedUsd).toFixed(2);
+      var pd=$('price-discount-display');if(pd)pd.textContent='-$'+Number(rep.totalSavedUsd||0).toFixed(2);
+      var ps=$('price-savings-display');if(ps)ps.textContent='$'+Number(win.retailPriceUsd||0).toFixed(2);
       var statCur=document.querySelector('.stat-cur');if(statCur)statCur.textContent='$'+Number(win.allInTotalUsd).toFixed(2);
-      var btnLbl=$('btn-checkout-label');if(btnLbl)btnLbl.textContent='Approve & Buy Now — $'+Number(win.allInTotalUsd).toFixed(2)+' (Save $'+Number(rep.totalSavedUsd).toFixed(0)+')';
+      var btnLbl=$('btn-checkout-label');if(btnLbl)btnLbl.textContent='Buy $'+Number(win.allInTotalUsd).toFixed(2);
       var commitBadge=$('rb-commit');if(commitBadge&&win.commitment){commitBadge.textContent=win.commitment.slice(0,16)+'…';commitBadge.title='PayPal purchase_units[0].custom_id = '+win.commitment;}
       if(banner){banner.dataset.state='captured';banner.innerHTML=ICON_OK+'<div><h3>Deal Captured via Partition</h3><p>Captured $'+Number(win.allInTotalUsd).toFixed(2)+' at '+esc(win.merchantName)+' (Saved $'+Number(rep.totalSavedUsd).toFixed(2)+' with '+esc(win.voucherCode||'PAYPAL50')+') \u00B7 Partition balance protected.</p></div>';}
       var box=$('checkout-result');
@@ -711,7 +709,7 @@ function runSniperFlow(){
       if(tb)tb.textContent='✦ No Compliant Deal Under Target! All compliant merchant listings exceed $'+targetVal.toFixed(2)+' target ceiling \u00B7 $0 spent.';
       if(banner){
         banner.dataset.state='blocked';
-        banner.innerHTML=ICON_BAD+'<div><h3>No Compliant Deal Under Target</h3><p>All compliant merchant listings exceed $'+targetVal.toFixed(2)+' target ceiling \u00B7 <button type="button" class="btn btn-sm btn-primary" id="btn-sniper-spawn-bg" style="margin-top:6px;display:inline-flex;align-items:center;gap:4px;">⏱ Spawn Background Watchdog ($'+targetVal.toFixed(2)+')</button></p></div>';
+        banner.innerHTML=ICON_BAD+'<div><h3>No Compliant Deal Under Target</h3><p>All compliant merchant listings exceed $'+targetVal.toFixed(2)+' target ceiling \u00B7 <button type="button" class="btn btn-sm btn-primary" id="btn-sniper-spawn-bg" style="margin-top:6px;display:inline-flex;align-items:center;gap:4px;">Watch $'+targetVal.toFixed(2)+'</button></p></div>';
         var autoSpawnBtn=$('btn-sniper-spawn-bg');
         if(autoSpawnBtn){
           autoSpawnBtn.addEventListener('click',function(){
@@ -1452,10 +1450,10 @@ function syncMasterCap(val) {
   var st = $('onb-alloc-status');
   if (st) {
     if (num < 320) {
-      st.style.color = '#991b1b';
+      st.style.color = '#dc2626';
       st.textContent = '⚠ Warning: $320.00 sub-allocations exceed $' + num.toFixed(2) + ' master partition';
     } else {
-      st.style.color = '#15803d';
+      st.style.color = '#059669';
       st.textContent = '✓ $320.00 allocated of $' + num.toFixed(2) + ' master partition ($' + reserve.toFixed(2) + ' reserve safety cushion)';
     }
   }
@@ -1464,50 +1462,51 @@ function syncMasterCap(val) {
 function renderFleetAgents(agents) {
   var list = $('fleet-agents-list');
   if (!list) return;
+  paintSimDropButton(agents);
   if (!agents || !agents.length) {
-    list.innerHTML = '<div style="padding:14px;color:var(--text-muted);font-size:12px;text-align:center">No autonomous sub-agents spawned yet.</div>';
+    list.innerHTML = '<div style="padding:14px;color:var(--text-muted);font-size:12px;text-align:center">No watchers yet.</div>';
     return;
   }
   var html = agents.map(function(a) {
     var isCaptured = a.status === 'GOAL_CAPTURED';
     var isBlocked = a.status === 'BLOCKED_SUB_ALLOCATION_WALL';
     var statusClass = isCaptured ? 'pill-ok' : (isBlocked ? 'pill-bad' : 'pill-warn');
-    var statusLabel = isCaptured
-      ? ('🟢 GOAL CAPTURED ($' + Number(a.capturedAmountUsd || a.targetMaxAllInUsd).toFixed(2) + (a.commitment ? ' · ' + esc(a.commitment.slice(0, 16)) + '…' : '') + ')')
-      : (isBlocked ? '🛑 BLOCKED · SUB-ALLOCATION WALL' : '🟣 ARMED · WATCHING 24/7');
-
-    var actionHtml = '';
-    if (a.sku === 'KANSO-Q35') {
-      if (isCaptured) {
-        actionHtml = '<button type="button" class="btn btn-sm btn-ghost" id="btn-sim-pricedrop" disabled style="opacity:0.75">✓ Goal Captured ($' + Number(a.capturedAmountUsd || 100).toFixed(2) + ')</button>';
-      } else {
-        actionHtml = '<button type="button" class="btn btn-sm btn-primary" id="btn-sim-pricedrop" title="Simulate incoming Channel3 price drop webhook to $100 all-in">⚡ Simulate $100 Price-Drop Webhook</button>';
-      }
-    }
+    var badge = isCaptured
+      ? ('<span class="pill ' + statusClass + '">GOAL CAPTURED $' + Number(a.capturedAmountUsd || a.targetMaxAllInUsd).toFixed(2) + '</span>' + (a.commitment ? chip(a.commitment, true) : ''))
+      : ('<span class="pill ' + statusClass + '">' + (isBlocked ? 'Blocked' : 'Watching') + '</span>');
 
     return '<div class="fleet-card" id="agent-card-' + esc(a.agentId) + '">' +
       '<div class="fleet-card-head">' +
-        '<div><h3 class="fleet-card-title">' + esc(a.name) + '</h3><div class="fleet-card-sku">' + esc(a.sku) + ' · ' + esc(a.productTitle || a.sku) + '</div></div>' +
-        '<span class="pill ' + statusClass + '">' + statusLabel + '</span>' +
+        '<h3 class="fleet-card-title">' + esc(a.sku) + '</h3>' +
+        '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">' + badge + '</div>' +
       '</div>' +
       '<div class="fleet-card-body">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">' +
-          '<span class="pill pill-info" style="font-family:var(--font-mono)">$' + Number(a.subAllocationUsd).toFixed(2) + ' Allocated · $' + Number(a.remainingSubAllocationUsd).toFixed(2) + ' Left</span>' +
-          '<span style="font-size:11px;color:var(--text-muted)">Retail: $' + Number(a.retailPriceUsd).toFixed(2) + '</span>' +
-        '</div>' +
-        '<div style="font-size:11.5px;color:var(--text-secondary)">Target: Buy automatically when all-in &le; $' + Number(a.targetMaxAllInUsd).toFixed(2) + '</div>' +
+        '<span class="pill pill-info" style="font-family:var(--font-mono)">$' + Number(a.subAllocationUsd).toFixed(2) + ' Allocated · $' + Number(a.remainingSubAllocationUsd).toFixed(2) + ' Left</span>' +
+        '<span style="font-size:11px;color:var(--text-muted)">Target \u2264 $' + Number(a.targetMaxAllInUsd).toFixed(2) + '</span>' +
       '</div>' +
-      (actionHtml ? ('<div class="fleet-card-footer">' + actionHtml + '</div>') : '') +
     '</div>';
   }).join('');
 
   list.innerHTML = html;
+}
 
-  var dropBtn = $('btn-sim-pricedrop');
-  if (dropBtn && !dropBtn.disabled) {
-    dropBtn.addEventListener('click', function(e) {
-      handleSimulatePriceDrop(e);
-    });
+/* The price-drop trigger lives in the Watchers card footer; this syncs its
+   label/disabled state with the KANSO agent instead of re-creating it. */
+function paintSimDropButton(agents) {
+  var btn = $('btn-sim-pricedrop');
+  if (!btn) return;
+  var kanso = null;
+  if (agents) {
+    for (var i = 0; i < agents.length; i++) {
+      if (agents[i].sku === 'KANSO-Q35') { kanso = agents[i]; break; }
+    }
+  }
+  if (kanso && kanso.status === 'GOAL_CAPTURED') {
+    btn.disabled = true;
+    btn.textContent = 'Captured $' + Number(kanso.capturedAmountUsd || 100).toFixed(2);
+  } else {
+    btn.disabled = kanso ? false : true;
+    btn.textContent = 'Test $100 Drop';
   }
 }
 
@@ -1545,7 +1544,7 @@ function handleSimulatePriceDrop(e) {
       var partAvail = $('part-available'); if (partAvail) partAvail.textContent = '$' + avail.toFixed(2);
       var partCap = $('part-captured'); if (partCap) partCap.textContent = '$' + totalSpent.toFixed(2);
     }
-    toast('⚡ KANSO-Q35 auto-captured at $100.00 via Background Deal Watcher!');
+    toast('KANSO-Q35 auto-captured at $100.00 via background watcher.');
   }).catch(function(err) {
     if (typeof window.setRobotState === 'function') window.setRobotState('blocked');
     toast('Price drop webhook failed: ' + err.message);
@@ -1564,10 +1563,10 @@ function refreshFleetState() {
     var openBtn = $('btn-open-onboarding');
     if (pillLabel && openBtn) {
       if (fleet.user) {
-        pillLabel.textContent = '🟢 ' + fleet.user.displayName + ' · PayPal Vault ($' + Number(fleet.user.masterPartitionUsd).toFixed(0) + ')';
+        pillLabel.textContent = fleet.user.displayName + ' · $' + Number(fleet.user.masterPartitionUsd).toFixed(0);
         openBtn.title = 'Connected: ' + fleet.user.displayName + ' (' + fleet.user.email + ')';
       } else {
-        pillLabel.textContent = '👤 Connect Clerk & PayPal';
+        pillLabel.textContent = 'Connect Wallet';
         openBtn.title = 'Connect Clerk Identity & PayPal Vault';
       }
     }
@@ -1581,7 +1580,7 @@ function refreshFleetState() {
 
 function resetFleetUi() {
   var pillLabel = $('onb-pill-label');
-  if (pillLabel) pillLabel.textContent = '👤 Connect Clerk & PayPal';
+  if (pillLabel) pillLabel.textContent = 'Connect Wallet';
   refreshFleetState().catch(function() {});
 }
 
@@ -1654,7 +1653,7 @@ function wireOnboardingAndFleet() {
         closeOnboardingModal();
         var pillLabel = $('onb-pill-label');
         if (pillLabel) {
-          pillLabel.textContent = '🟢 ' + displayName + ' · PayPal Vault (Set Budget Later)';
+          pillLabel.textContent = displayName + ' · Connected';
         }
         toast('✓ PayPal Vault connected! Budget allocation skipped (set anytime on dashboard).');
         refreshFleetState();
@@ -1668,7 +1667,7 @@ function wireOnboardingAndFleet() {
   if (btnPollNow) {
     btnPollNow.addEventListener('click', function(e) {
       btnPollNow.disabled = true;
-      btnPollNow.textContent = '↻ Polling...';
+      btnPollNow.textContent = 'Polling…';
       api('/api/agents/poll-now', { method: 'POST', body: '{}' }).then(function(res) {
         var count = res.polledCount || 0;
         var captured = res.autoCapturedCount || 0;
@@ -1678,8 +1677,15 @@ function wireOnboardingAndFleet() {
         toast('Poll failed: ' + err.message);
       }).finally(function() {
         btnPollNow.disabled = false;
-        btnPollNow.textContent = '↻ Poll Now';
+        btnPollNow.textContent = 'Poll';
       });
+    });
+  }
+
+  var btnSimDrop = $('btn-sim-pricedrop');
+  if (btnSimDrop) {
+    btnSimDrop.addEventListener('click', function(e) {
+      handleSimulatePriceDrop(e);
     });
   }
 
@@ -1810,7 +1816,7 @@ function wireOnboardingAndFleet() {
         }
         var pillLabel = $('onb-pill-label');
         if (pillLabel) {
-          pillLabel.textContent = '🟢 ' + displayName + ' · PayPal Vault ($' + masterCap.toFixed(0) + ')';
+          pillLabel.textContent = displayName + ' · $' + masterCap.toFixed(0);
         }
         toast('✓ Onboarding complete! Autonomous fleet armed with $' + masterCap.toFixed(2) + ' partition');
         refreshFleetState();
